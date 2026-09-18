@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V-Pleat Fold Pattern Visualiser</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.2/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --border:#d8dbe0; --text:#1f2430; --muted:#6b7280;
+    --accent:#2563eb; --accent2:#e11d48; --warn:#f59e0b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;align-items:center;gap:1.5rem;padding:.6rem 1rem;background:var(--panel);border-bottom:1px solid var(--border);}
+  header h1{font-size:1rem;font-weight:600;margin:0;white-space:nowrap;}
+  nav.tabs{display:flex;gap:.4rem;flex-wrap:wrap;}
+  .tab-btn{border:1px solid var(--border);background:#eef0f3;color:var(--text);padding:.45rem .9rem;border-radius:6px;cursor:pointer;font-size:.85rem;}
+  .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .panel{display:none;padding:1rem;gap:1rem;}
+  .panel.active{display:flex;flex-wrap:wrap;}
+  .sidebar{width:260px;flex:0 0 260px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:.85rem;}
+  .sidebar h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 .6rem;}
+  .sidebar label{display:block;margin:.8rem 0 .2rem;font-weight:600;}
+  .sidebar input[type=range]{width:100%;}
+  .sidebar input[type=number]{width:100%;padding:.35rem .4rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem;}
+  .sidebar .row{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);}
+  .sidebar button{width:100%;margin-top:.6rem;padding:.5rem;border-radius:6px;border:1px solid var(--border);background:#eef0f3;cursor:pointer;font-size:.85rem;}
+  .sidebar button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .sidebar .hint{color:var(--muted);font-size:.78rem;line-height:1.4;margin-top:.6rem;}
+  .info{margin-top:1rem;border-top:1px dashed var(--border);padding-top:.6rem;font-size:.78rem;color:var(--muted);white-space:pre-line;}
+  .legend{margin-top:.6rem;font-size:.78rem;line-height:1.6;}
+  .legend span{display:inline-block;width:14px;height:3px;margin-right:.4rem;vertical-align:middle;}
+  .chk-row{display:flex;align-items:center;gap:.4rem;font-weight:600;margin:.8rem 0 .2rem;}
+  .chk-row input{width:auto;}
+  .btn-row{display:flex;gap:.4rem;}
+  .btn-row button{margin-top:.6rem;}
+  .stage{flex:1 1 500px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:.75rem;min-width:300px;overflow:auto;}
+  canvas{background:#fff;border:1px solid #eee;max-width:100%;}
+  .svg-wrap{width:100%;text-align:center;}
+  svg.pattern-svg{background:#fff;border:1px solid #eee;}
+  #svg-straighten-wrap svg.pattern-svg{height:70vh;width:auto;}
+  #svg-array-wrap{overflow-x:auto;}
+  #svg-array-wrap svg.pattern-svg{height:60vh;width:auto;}
+  .pattern-svg .cut{stroke:#111827;stroke-width:.6;fill:none;}
+  .pattern-svg .fold{stroke:#e11d48;stroke-width:.4;stroke-dasharray:3 2;fill:none;}
+  .pattern-svg .ref{stroke:#94a3b8;stroke-width:.3;stroke-dasharray:1 2;fill:none;}
+  .pattern-svg .page-guide{stroke:#94a3b8;stroke-width:.8;stroke-dasharray:4 3;fill:none;opacity:.8;}
+  .pattern-svg .page-guide-label{fill:#94a3b8;font-family:inherit;}
+  .status-ok{color:#16a34a;}
+  .status-warn{color:#dc2626;font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <h1>V-Pleat Fold Pattern Visualiser</h1>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="draw">1. Draw Curve</button>
+    <button class="tab-btn" data-tab="segments">2. Segments &amp; Width</button>
+    <button class="tab-btn" data-tab="straighten">3. Straighten</button>
+    <button class="tab-btn" data-tab="array">4. Array &amp; Export</button>
+  </nav>
+</header>
+
+<section class="panel active" data-panel="draw">
+  <div class="sidebar">
+    <h2>Draw</h2>
+    <div class="hint">Click empty canvas to add a point at the end. Drag a point to move it. Double-click the curve to insert a point there. Double-click a point (or select + Delete/Backspace) to remove it.</div>
+    <div class="chk-row"><input type="checkbox" id="chk-lock"><label for="chk-lock">Lock canvas (prevent edits)</label></div>
+    <div class="btn-row">
+      <button id="btn-undo" disabled>Undo</button>
+      <button id="btn-delete-point">Delete selected</button>
+    </div>
+    <button id="btn-reset-curve">Reset curve</button>
+    <div class="info" id="info-draw"></div>
+  </div>
+  <div class="stage">
+    <canvas id="canvas-draw" width="900" height="550"></canvas>
+  </div>
+</section>
+
+<section class="panel" data-panel="segments">
+  <div class="sidebar">
+    <h2>Segments</h2>
+    <label>Number of segments <span id="lbl-numseg"></span></label>
+    <input type="range" id="sl-numseg" min="1" max="15" step="1">
+    <button id="btn-autoadjust">Auto-adjust breakpoints</button>
+    <div class="hint">Drag the orange handles along the grey trace to move a break point. Endpoints are fixed to the curve ends.</div>
+    <h2 style="margin-top:1.2rem;">Width</h2>
+    <label>Strip width (mm) <span id="lbl-width"></span></label>
+    <input type="range" id="sl-width" min="2" max="100" step="1">
+    <div class="legend">
+      <span style="background:#1e293b"></span>centre-line<br>
+      <span style="background:#2563eb"></span>L offset<br>
+      <span style="background:#e11d48"></span>R offset
+    </div>
+    <div class="info" id="info-segments"></div>
+  </div>
+  <div class="stage">
+    <canvas id="canvas-segments" width="900" height="550"></canvas>
+  </div>
+</section>
+
+<section class="panel" data-panel="straighten">
+  <div class="sidebar">
+    <h2>Straightened ribbon</h2>
+    <div class="hint">Read-only preview: the R-offset edge becomes the shared mirror axis, giving V/Λ-shaped fold lines and 3 boundary verticals.</div>
+    <div class="legend">
+      <span style="background:#111827"></span>cut (outer edge)<br>
+      <span style="background:#e11d48"></span>fold / score line<br>
+      <span style="background:#94a3b8"></span>mirror axis (reference)
+    </div>
+    <div class="info" id="info-straighten"></div>
+  </div>
+  <div class="stage">
+    <div class="svg-wrap" id="svg-straighten-wrap"></div>
+  </div>
+</section>
+
+<section class="panel" data-panel="array">
+  <div class="sidebar">
+    <h2>Array &amp; export</h2>
+    <label>Number of instances <span id="lbl-arraycount"></span></label>
+    <input type="range" id="sl-arraycount" min="1" max="12" step="1">
+
+    <h2 style="margin-top:1.2rem;">Page &amp; fit</h2>
+    <label>Page width (mm)</label>
+    <input type="number" id="in-pagew" min="0" step="1" placeholder="none">
+    <label>Page height (mm)</label>
+    <input type="number" id="in-pageh" min="0" step="1" placeholder="none">
+    <label>Alignment</label>
+    <div class="chk-row"><input type="radio" name="align" id="rd-align-center" checked><label for="rd-align-center">Centred</label></div>
+    <div class="chk-row"><input type="radio" name="align" id="rd-align-topleft"><label for="rd-align-topleft">Top-left aligned</label></div>
+    <div id="page-fit-status" class="hint"></div>
+
+    <label style="margin-top:1rem;">Fit strategy</label>
+    <div class="chk-row"><input type="radio" name="fitmode" id="rd-fit-scale" checked><label for="rd-fit-scale">Proportional scale</label></div>
+    <div class="chk-row"><input type="radio" name="fitmode" id="rd-fit-width"><label for="rd-fit-width">Reduce strip width only</label></div>
+    <button id="btn-autofit">Auto-fit to page</button>
+
+    <label>Strip width (mm) <span id="lbl-width2"></span></label>
+    <input type="range" id="sl-width2" min="2" max="100" step="1">
+    <label>Export scale <span id="lbl-exportscale"></span></label>
+    <input type="range" id="sl-exportscale" min="10" max="100" step="1">
+    <div class="hint">"Proportional" shrinks the whole pattern (width and length together) for the final export size only — fold angles are unaffected. "Reduce strip width" changes the actual strip width, so fold angles recalculate; it can't help if the curve itself is taller than the page.</div>
+
+    <button id="btn-download-svg" class="primary" style="margin-top:1rem;">Download ZIP (SVG + JPGs)</button>
+    <div class="hint">Bundles the cut pattern (SVG, 1:1 mm, page guide excluded) plus reference JPGs of the drawn curve and the segment/width fit into one .zip — browsers block a single click from firing more than one file download, so everything ships in a single archive instead.</div>
+    <div class="info" id="info-array"></div>
+  </div>
+  <div class="stage">
+    <div class="svg-wrap" id="svg-array-wrap"></div>
+  </div>
+</section>
+
+<script>
+"use strict";
+
+/* ---------------- Global state (all lengths in mm) ---------------- */
+const SCALE = 2;          // on-screen px per mm for tabs 1 & 2
+const CANVAS_W = 900, CANVAS_H = 550; // px -> 450mm x 275mm working area
+const SVGNS = "http://www.w3.org/2000/svg";
+
+const state = {
+  controlPoints: [[40,220],[130,60],[230,190],[330,240],[410,90]],
+  numSegments: 5,
+  breakpointTs: null,
+  widthMm: 20,
+  arrayCount: 3,
+  pageWidthMm: 0,   // 0 = no page constraint
+  pageHeightMm: 0,
+  pageAlign: 'center', // 'center' | 'topleft'
+  fitMode: 'proportional', // 'proportional' | 'width'
+  exportScale: 1,   // physical export scale multiplier, 0.1 - 1 (proportional fit mode)
+};
+
+function clamp(v,a,b){ return Math.min(b,Math.max(a,v)); }
+function toPxArr(p){ return [p[0]!==undefined? p[0]*SCALE : p.x*SCALE, p[1]!==undefined? p[1]*SCALE : p.y*SCALE]; }
+function pxToMm(pt){ return {x: pt.x/SCALE, y: pt.y/SCALE}; }
+
+/* ---------------- Hidden math scope: spline + arc length ---------------- */
+const mathCanvas = document.createElement('canvas');
+mathCanvas.width = 10; mathCanvas.height = 10;
+const mathScope = new paper.PaperScope();
+mathScope.setup(mathCanvas);
+let mathPath = null;
+
+function buildMathPath(){
+  if (mathPath) mathPath.remove();
+  mathPath = new mathScope.Path({ segments: state.controlPoints.map(p=>[p[0],p[1]]) });
+  if (state.controlPoints.length >= 2) mathPath.smooth({ type: 'catmull-rom' });
+  return mathPath;
+}
+function getPointAtT(t){
+  const len = mathPath.length;
+  const pt = mathPath.getPointAt(clamp(t,0,1)*len);
+  return { x: pt.x, y: pt.y };
+}
+function getNearestT(mmPoint){
+  const nearest = mathPath.getNearestPoint(new mathScope.Point(mmPoint.x, mmPoint.y));
+  return mathPath.getOffsetOf(nearest) / mathPath.length;
+}
+function getBreakpointCoords(){
+  return state.breakpointTs.map(getPointAtT);
+}
+function initEqualBreakpoints(){
+  const n = state.numSegments;
+  state.breakpointTs = Array.from({length:n+1}, (_,i)=> i/n);
+}
+
+/* ---------------- Geometry helpers ---------------- */
+function lineIntersect(p1,d1,p2,d2){
+  const denom = d1.x*d2.y - d1.y*d2.x;
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = ((p2.x-p1.x)*d2.y - (p2.y-p1.y)*d2.x) / denom;
+  return { x: p1.x + t*d1.x, y: p1.y + t*d1.y };
+}
+function normalOf(d){ return { x: -d.y, y: d.x }; }
+
+function computeSegmentGeometry(){
+  const bp = getBreakpointCoords();
+  const n = bp.length - 1;
+  const dirs = [], lens = [];
+  for (let i=0;i<n;i++){
+    const dx=bp[i+1].x-bp[i].x, dy=bp[i+1].y-bp[i].y;
+    const len = Math.hypot(dx,dy) || 1e-6;
+    dirs.push({x:dx/len,y:dy/len}); lens.push(len);
+  }
+  const halfW = state.widthMm/2;
+  const cornersL = new Array(n+1), cornersR = new Array(n+1);
+  const n0 = normalOf(dirs[0]);
+  cornersL[0] = { x:bp[0].x+n0.x*halfW, y:bp[0].y+n0.y*halfW };
+  cornersR[0] = { x:bp[0].x-n0.x*halfW, y:bp[0].y-n0.y*halfW };
+  for (let i=1;i<n;i++){
+    const dP=dirs[i-1], dN=dirs[i];
+    const nP=normalOf(dP), nN=normalOf(dN);
+    const pPrevL={x:bp[i].x+nP.x*halfW,y:bp[i].y+nP.y*halfW};
+    const pNextL={x:bp[i].x+nN.x*halfW,y:bp[i].y+nN.y*halfW};
+    cornersL[i] = lineIntersect(pPrevL,dP,pNextL,dN) || pPrevL;
+    const pPrevR={x:bp[i].x-nP.x*halfW,y:bp[i].y-nP.y*halfW};
+    const pNextR={x:bp[i].x-nN.x*halfW,y:bp[i].y-nN.y*halfW};
+    cornersR[i] = lineIntersect(pPrevR,dP,pNextR,dN) || pPrevR;
+  }
+  const nL = normalOf(dirs[n-1]);
+  cornersL[n] = { x:bp[n].x+nL.x*halfW, y:bp[n].y+nL.y*halfW };
+  cornersR[n] = { x:bp[n].x-nL.x*halfW, y:bp[n].y-nL.y*halfW };
+  return { bp, dirs, lens, cornersL, cornersR };
+}
+
+function computeStraightenData(){
+  const { dirs, lens } = computeSegmentGeometry();
+  const n = lens.length;
+  const cum = [0];
+  for (let i=0;i<n;i++) cum.push(cum[i]+lens[i]);
+  const halfW = state.widthMm/2;
+  const deltas = new Array(n);
+  for (let i=1;i<n;i++){
+    const dP=dirs[i-1], dN=dirs[i];
+    const turn = Math.atan2(dP.x*dN.y-dP.y*dN.x, dP.x*dN.x+dP.y*dN.y);
+    deltas[i] = halfW*Math.tan(turn/2);
+  }
+  return { n, lens, cum, deltas, totalLen: cum[n], halfW: halfW };
+}
+
+/* ---------------- Tab 1: Draw ---------------- */
+const drawScope = new paper.PaperScope();
+const drawCanvasEl = document.getElementById('canvas-draw');
+drawScope.setup(drawCanvasEl);
+let selectedIndex = -1, draggingIndex = -1, dragUndoPushed = false, canvasLocked = false;
+
+/* Undo queue (control points only) */
+const UNDO_LIMIT = 10;
+let undoStack = [];
+function pushUndo(){
+  undoStack.push(state.controlPoints.map(p=>[p[0],p[1]]));
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  updateUndoButton();
+}
+function undo(){
+  if (!undoStack.length) return;
+  state.controlPoints = undoStack.pop();
+  selectedIndex = -1;
+  renderDraw();
+  updateUndoButton();
+}
+function updateUndoButton(){
+  document.getElementById('btn-undo').disabled = undoStack.length === 0;
+}
+
+function drawGrid(scope){
+  const step = 50*SCALE;
+  for (let x=0;x<=CANVAS_W;x+=step){
+    new scope.Path.Line({from:[x,0], to:[x,CANVAS_H], strokeColor:'#f0f1f3'});
+  }
+  for (let y=0;y<=CANVAS_H;y+=step){
+    new scope.Path.Line({from:[0,y], to:[CANVAS_W,y], strokeColor:'#f0f1f3'});
+  }
+}
+function drawBackground(scope){
+  // opaque fill so canvas.toBlob('image/jpeg') doesn't render transparent areas as black
+  new scope.Path.Rectangle({ from:[0,0], to:[CANVAS_W,CANVAS_H], fillColor:'white' });
+}
+
+function domEventToProjectPoint(scope, canvasEl, event){
+  const rect = canvasEl.getBoundingClientRect();
+  const x = (event.clientX - rect.left) * (canvasEl.width / rect.width);
+  const y = (event.clientY - rect.top) * (canvasEl.height / rect.height);
+  return new scope.Point(x, y);
+}
+
+function insertPointOnCurve(clickMm){
+  const segs = state.controlPoints.map(p=>[p[0],p[1]]);
+  const tmp = new drawScope.Path({ segments: segs });
+  if (segs.length >= 2) tmp.smooth({ type:'catmull-rom' });
+  const loc = tmp.getNearestLocation(new drawScope.Point(clickMm.x, clickMm.y));
+  const insertIndex = loc.index + 1;
+  const newPt = [loc.point.x, loc.point.y];
+  tmp.remove();
+  state.controlPoints.splice(insertIndex, 0, newPt);
+  selectedIndex = insertIndex;
+}
+
+function renderDraw(){
+  drawScope.activate();
+  drawScope.project.activeLayer.removeChildren();
+  drawBackground(drawScope);
+  drawGrid(drawScope);
+  const segs = state.controlPoints.map(toPxArr);
+  if (segs.length >= 2){
+    const path = new drawScope.Path({ segments: segs, strokeColor:'#2563eb', strokeWidth:2 });
+    path.smooth({ type:'catmull-rom' });
+  }
+  state.controlPoints.forEach((p,i)=>{
+    new drawScope.Path.Circle({ center: toPxArr(p), radius:6,
+      fillColor: i===selectedIndex ? '#f59e0b' : '#2563eb',
+      strokeColor:'white', strokeWidth:1.5 }).data.index = i;
+  });
+  drawScope.view.update();
+  updateInfoDraw();
+}
+function updateInfoDraw(){
+  buildMathPath();
+  const len = state.controlPoints.length >= 2 ? mathPath.length.toFixed(1) : '0.0';
+  document.getElementById('info-draw').textContent =
+    `Points: ${state.controlPoints.length}\nApprox. curve length: ${len} mm`;
+}
+
+const drawTool = new drawScope.Tool();
+drawTool.onMouseDown = (e)=>{
+  const hit = drawScope.project.hitTest(e.point, { fill:true, tolerance:6 });
+  if (hit && hit.item && hit.item.data && hit.item.data.index !== undefined){
+    selectedIndex = hit.item.data.index;
+    draggingIndex = canvasLocked ? -1 : selectedIndex;
+    dragUndoPushed = false;
+    renderDraw();
+    return;
+  }
+  if (canvasLocked) return;
+  const hitStroke = drawScope.project.hitTest(e.point, { stroke:true, tolerance:8 });
+  if (hitStroke) return; // let dblclick handle inserting a point on the curve
+  const mm = pxToMm(e.point);
+  pushUndo();
+  state.controlPoints.push([clamp(mm.x,0,CANVAS_W/SCALE), clamp(mm.y,0,CANVAS_H/SCALE)]);
+  selectedIndex = state.controlPoints.length-1;
+  renderDraw();
+};
+drawTool.onMouseDrag = (e)=>{
+  if (canvasLocked || draggingIndex < 0) return;
+  if (!dragUndoPushed){ pushUndo(); dragUndoPushed = true; }
+  const mm = pxToMm(e.point);
+  state.controlPoints[draggingIndex] = [clamp(mm.x,0,CANVAS_W/SCALE), clamp(mm.y,0,CANVAS_H/SCALE)];
+  renderDraw();
+};
+drawTool.onMouseUp = ()=>{ draggingIndex = -1; };
+
+drawCanvasEl.addEventListener('dblclick', (e)=>{
+  if (canvasLocked) return;
+  e.preventDefault();
+  const pt = domEventToProjectPoint(drawScope, drawCanvasEl, e);
+  const hit = drawScope.project.hitTest(pt, { fill:true, tolerance:6 });
+  if (hit && hit.item && hit.item.data && hit.item.data.index !== undefined){
+    if (state.controlPoints.length > 2){
+      pushUndo();
+      state.controlPoints.splice(hit.item.data.index,1);
+      selectedIndex = -1;
+      renderDraw();
+    }
+    return;
+  }
+  const hitStroke = drawScope.project.hitTest(pt, { stroke:true, tolerance:8 });
+  if (hitStroke){
+    pushUndo();
+    insertPointOnCurve(pxToMm(pt));
+    renderDraw();
+  }
+});
+
+document.getElementById('chk-lock').onchange = (e)=>{
+  canvasLocked = e.target.checked;
+  drawCanvasEl.style.cursor = canvasLocked ? 'not-allowed' : 'crosshair';
+};
+document.getElementById('btn-undo').onclick = undo;
+document.getElementById('btn-delete-point').onclick = ()=>{
+  if (selectedIndex >= 0 && state.controlPoints.length > 2){
+    pushUndo();
+    state.controlPoints.splice(selectedIndex,1);
+    selectedIndex = -1;
+    renderDraw();
+  }
+};
+document.getElementById('btn-reset-curve').onclick = ()=>{
+  pushUndo();
+  state.controlPoints = [[40,220],[130,60],[230,190],[330,240],[410,90]];
+  selectedIndex = -1;
+  renderDraw();
+};
+window.addEventListener('keydown', (e)=>{
+  if (document.querySelector('.panel.active').dataset.panel !== 'draw' || canvasLocked) return;
+  if (e.key==='Delete'||e.key==='Backspace'){
+    e.preventDefault();
+    document.getElementById('btn-delete-point').click();
+  } else if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){
+    e.preventDefault();
+    undo();
+  }
+});
+
+/* ---------------- Tab 2: Segments & Width ---------------- */
+const segScope = new paper.PaperScope();
+segScope.setup(document.getElementById('canvas-segments'));
+let draggingBp = -1;
+
+function enterSegmentsTab(){
+  buildMathPath();
+  if (!state.breakpointTs || state.breakpointTs.length !== state.numSegments+1){
+    initEqualBreakpoints();
+  }
+  document.getElementById('sl-numseg').value = state.numSegments;
+  document.getElementById('lbl-numseg').textContent = state.numSegments;
+  document.getElementById('sl-width').value = state.widthMm;
+  document.getElementById('lbl-width').textContent = state.widthMm + ' mm';
+  renderSegments();
+}
+
+/* Strip width is shared by the Segments tab and the Export tab's "reduce
+   width" fit strategy — keep both sliders and any dependent render in sync
+   regardless of which one triggered the change. */
+function onWidthChange(v){
+  state.widthMm = clamp(v,2,100);
+  document.getElementById('sl-width').value = state.widthMm;
+  document.getElementById('lbl-width').textContent = state.widthMm + ' mm';
+  document.getElementById('sl-width2').value = state.widthMm;
+  document.getElementById('lbl-width2').textContent = state.widthMm + ' mm';
+  const active = document.querySelector('.panel.active').dataset.panel;
+  if (active === 'segments') renderSegments();
+  if (active === 'array') renderArray();
+}
+
+function renderSegments(){
+  segScope.activate();
+  segScope.project.activeLayer.removeChildren();
+  drawBackground(segScope);
+  drawGrid(segScope);
+
+  const trace = state.controlPoints.map(toPxArr);
+  if (trace.length >= 2){
+    const t = new segScope.Path({ segments: trace, strokeColor:'#cbd5e1', strokeWidth:2 });
+    t.smooth({ type:'catmull-rom' });
+  }
+
+  const geo = computeSegmentGeometry();
+  new segScope.Path({ segments: geo.bp.map(toPxArr), strokeColor:'#1e293b', strokeWidth:2 });
+  new segScope.Path({ segments: geo.cornersL.map(toPxArr), strokeColor:'#2563eb', strokeWidth:2 });
+  new segScope.Path({ segments: geo.cornersR.map(toPxArr), strokeColor:'#e11d48', strokeWidth:2 });
+
+  geo.bp.forEach((p,i)=>{
+    if (i===0 || i===geo.bp.length-1) return;
+    new segScope.Path.Circle({ center: toPxArr(p), radius:6,
+      fillColor:'#f59e0b', strokeColor:'white', strokeWidth:1.5 }).data.bpIndex = i;
+  });
+  segScope.view.update();
+  updateInfoSegments(geo);
+}
+
+function updateInfoSegments(geo){
+  geo = geo || computeSegmentGeometry();
+  const lines = geo.lens.map((l,i)=>`  seg ${i+1}: ${l.toFixed(1)} mm`).join('\n');
+  document.getElementById('info-segments').textContent =
+    `Segments: ${geo.lens.length}\n${lines}\nTotal centre-line: ${geo.lens.reduce((a,b)=>a+b,0).toFixed(1)} mm\nWidth: ${state.widthMm} mm`;
+}
+
+const segTool = new segScope.Tool();
+segTool.onMouseDown = (e)=>{
+  const hit = segScope.project.hitTest(e.point, { fill:true, tolerance:6 });
+  if (hit && hit.item && hit.item.data && hit.item.data.bpIndex !== undefined){
+    draggingBp = hit.item.data.bpIndex;
+  }
+};
+segTool.onMouseDrag = (e)=>{
+  if (draggingBp < 0) return;
+  const mm = pxToMm(e.point);
+  let t = getNearestT(mm);
+  const eps = 0.001;
+  t = clamp(t, state.breakpointTs[draggingBp-1]+eps, state.breakpointTs[draggingBp+1]-eps);
+  state.breakpointTs[draggingBp] = t;
+  renderSegments();
+};
+segTool.onMouseUp = ()=>{ draggingBp = -1; };
+
+document.getElementById('sl-numseg').oninput = (e)=>{
+  state.numSegments = parseInt(e.target.value,10);
+  document.getElementById('lbl-numseg').textContent = state.numSegments;
+  initEqualBreakpoints();
+  renderSegments();
+};
+document.getElementById('sl-width').oninput = (e)=> onWidthChange(parseInt(e.target.value,10));
+
+function segError(tA,tB){
+  const pA=getPointAtT(tA), pB=getPointAtT(tB);
+  const segLen = Math.max(1e-6, Math.hypot(pB.x-pA.x,pB.y-pA.y));
+  const dir = { x:(pB.x-pA.x)/segLen, y:(pB.y-pA.y)/segLen };
+  let err = 0;
+  const SAMPLES = 16;
+  for (let s=1;s<SAMPLES;s++){
+    const t = tA + (tB-tA)*s/SAMPLES;
+    const p = getPointAtT(t);
+    const vx=p.x-pA.x, vy=p.y-pA.y;
+    const proj = vx*dir.x+vy*dir.y;
+    const px=vx-proj*dir.x, py=vy-proj*dir.y;
+    err += px*px+py*py;
+  }
+  return err;
+}
+document.getElementById('btn-autoadjust').onclick = ()=>{
+  const n = state.numSegments;
+  if (n < 2) return;
+  let tArr = state.breakpointTs.slice();
+  const ITER = 15, CANDIDATES = 12;
+  for (let iter=0; iter<ITER; iter++){
+    for (let i=1;i<n;i++){
+      const lo = tArr[i-1], hi = tArr[i+1];
+      let best = tArr[i];
+      let bestErr = segError(lo,best) + segError(best,hi);
+      for (let c=1;c<CANDIDATES;c++){
+        const cand = lo + (hi-lo)*c/CANDIDATES;
+        const e = segError(lo,cand) + segError(cand,hi);
+        if (e < bestErr){ bestErr = e; best = cand; }
+      }
+      tArr[i] = best;
+    }
+  }
+  state.breakpointTs = tArr;
+  renderSegments();
+};
+
+/* ---------------- Tab 3: Straighten ---------------- */
+function svgRoot(w,h,minX,minY){
+  const svg = document.createElementNS(SVGNS,'svg');
+  svg.setAttribute('viewBox', `${minX||0} ${minY||0} ${w} ${h}`);
+  svg.setAttribute('class','pattern-svg');
+  return svg;
+}
+function addLine(svg,x1,y1,x2,y2,cls){
+  const l = document.createElementNS(SVGNS,'line');
+  l.setAttribute('x1',x1); l.setAttribute('y1',y1);
+  l.setAttribute('x2',x2); l.setAttribute('y2',y2);
+  l.setAttribute('class',cls);
+  svg.appendChild(l);
+}
+
+function renderStraighten(){
+  buildMathPath();
+  if (!state.breakpointTs || state.breakpointTs.length !== state.numSegments+1){
+    initEqualBreakpoints();
+  }
+  const data = computeStraightenData();
+  const W = state.widthMm, H = data.totalLen;
+  const svg = svgRoot(W,H);
+  addLine(svg,0,0,W,0,'cut');
+  addLine(svg,0,H,W,H,'cut');
+  addLine(svg,0,0,0,H,'cut');
+  addLine(svg,W,0,W,H,'cut');
+  for (let i=1;i<data.n;i++){
+    const y = data.cum[i], d = data.deltas[i];
+    addLine(svg, 0, y+d, W, y-d, 'fold');
+  }
+  const wrap = document.getElementById('svg-straighten-wrap');
+  wrap.replaceChildren(svg);
+
+  const angles = data.deltas.slice(1,data.n).map((d,idx)=>{
+    const theta = 2*Math.atan2(d, data.halfW) * 180/Math.PI;
+    return `  fold ${idx+1}: ${theta.toFixed(1)} deg`;
+  }).join('\n');
+  document.getElementById('info-straighten').textContent =
+    `Strip: ${W} mm x ${H.toFixed(1)} mm\nFold lines: ${data.n-1}\n${angles}`;
+}
+
+/* ---------------- Tab 4: Array & Export ---------------- */
+let lastArraySvg = null, lastArrayDims = null;
+
+function drawMirroredUnit(svg, ox, W, H, data, isLast){
+  addLine(svg, ox, 0, ox+2*W, 0, 'cut');
+  addLine(svg, ox, H, ox+2*W, H, 'cut');
+  addLine(svg, ox, 0, ox, H, 'cut');
+  // the right-hand edge of a unit sits exactly on top of the next unit's left
+  // edge, so only draw it for the final unit to avoid a doubled cut line.
+  if (isLast) addLine(svg, ox+2*W, 0, ox+2*W, H, 'cut');
+  addLine(svg, ox+W, 0, ox+W, H, 'ref');
+  for (let i=1;i<data.n;i++){
+    const y = data.cum[i], d = data.deltas[i];
+    addLine(svg, ox, y+d, ox+W, y-d, 'fold');
+    addLine(svg, ox+W, y-d, ox+2*W, y+d, 'fold');
+  }
+}
+
+function renderArray(){
+  buildMathPath();
+  if (!state.breakpointTs || state.breakpointTs.length !== state.numSegments+1){
+    initEqualBreakpoints();
+  }
+  document.getElementById('sl-arraycount').value = state.arrayCount;
+  document.getElementById('lbl-arraycount').textContent = state.arrayCount;
+  document.getElementById('sl-width2').value = state.widthMm;
+  document.getElementById('lbl-width2').textContent = state.widthMm + ' mm';
+  document.getElementById('in-pagew').value = state.pageWidthMm || '';
+  document.getElementById('in-pageh').value = state.pageHeightMm || '';
+  document.getElementById('sl-exportscale').value = Math.round(state.exportScale*100);
+  document.getElementById('lbl-exportscale').textContent = Math.round(state.exportScale*100) + '%';
+
+  const data = computeStraightenData();
+  const W = state.widthMm, H = data.totalLen;
+  const unitW = W*2;
+  const totalW = unitW*state.arrayCount;
+
+  // Page guide is preview-only (stripped before export) and drawn in the
+  // pattern's own un-scaled coordinate space: dividing by exportScale means
+  // the guide correctly shows how big the page will look once the physical
+  // export is shrunk by that scale.
+  const pw = state.pageWidthMm, ph = state.pageHeightMm, scale = state.exportScale;
+  let minX=0, minY=0, maxX=totalW, maxY=H, guide=null;
+  if (pw>0 && ph>0){
+    const guideW = pw/scale, guideH = ph/scale;
+    const gx = state.pageAlign==='center' ? (totalW-guideW)/2 : 0;
+    const gy = state.pageAlign==='center' ? (H-guideH)/2 : 0;
+    guide = { x:gx, y:gy, w:guideW, h:guideH };
+    minX = Math.min(minX, gx); minY = Math.min(minY, gy);
+    maxX = Math.max(maxX, gx+guideW); maxY = Math.max(maxY, gy+guideH);
+  }
+  const pad = Math.max(totalW, H, 1)*0.04 + 2;
+  const svg = svgRoot(maxX-minX+2*pad, maxY-minY+2*pad, minX-pad, minY-pad);
+
+  if (guide){
+    const r = document.createElementNS(SVGNS,'rect');
+    r.setAttribute('x', guide.x); r.setAttribute('y', guide.y);
+    r.setAttribute('width', guide.w); r.setAttribute('height', guide.h);
+    r.setAttribute('class','page-guide');
+    svg.appendChild(r);
+    const t = document.createElementNS(SVGNS,'text');
+    t.setAttribute('x', guide.x + pad*0.2);
+    t.setAttribute('y', guide.y - pad*0.2);
+    t.setAttribute('font-size', pad*0.7);
+    t.setAttribute('class','page-guide-label');
+    t.textContent = `Page ${pw} x ${ph} mm`;
+    svg.appendChild(t);
+  }
+
+  for (let u=0; u<state.arrayCount; u++){
+    drawMirroredUnit(svg, u*unitW, W, H, data, u === state.arrayCount-1);
+  }
+  const wrap = document.getElementById('svg-array-wrap');
+  wrap.replaceChildren(svg);
+  lastArraySvg = svg;
+  lastArrayDims = { w: totalW, h: H };
+
+  const outW = totalW*scale, outH = H*scale;
+  let statusHtml = '';
+  if (pw>0 && ph>0){
+    const fitsW = outW <= pw + 1e-6, fitsH = outH <= ph + 1e-6;
+    if (fitsW && fitsH){
+      statusHtml = `<span class="status-ok">Fits page (${pw} x ${ph} mm) — output ${outW.toFixed(1)} x ${outH.toFixed(1)} mm at ${Math.round(scale*100)}%.</span>`;
+    } else {
+      const parts = [];
+      if (!fitsW) parts.push(`width exceeds by ${(outW-pw).toFixed(1)} mm`);
+      if (!fitsH) parts.push(`height exceeds by ${(outH-ph).toFixed(1)} mm (reducing strip width won't fix this — try proportional scale or fewer segments/instances)`);
+      statusHtml = `<span class="status-warn">Exceeds page (${pw} x ${ph} mm): ${parts.join('; ')}. Output is ${outW.toFixed(1)} x ${outH.toFixed(1)} mm at ${Math.round(scale*100)}%.</span>`;
+    }
+  }
+  document.getElementById('page-fit-status').innerHTML = statusHtml;
+
+  document.getElementById('info-array').textContent =
+    `Instances: ${state.arrayCount}\nUnit size: ${unitW} mm x ${H.toFixed(1)} mm\nPattern size: ${totalW} mm x ${H.toFixed(1)} mm\nExport scale: ${Math.round(scale*100)}% -> output ${outW.toFixed(1)} x ${outH.toFixed(1)} mm\nStrip width after export scale: ${(W*scale).toFixed(1)} mm`;
+}
+
+function autoFitToPage(){
+  if (!state.pageWidthMm || !state.pageHeightMm) return;
+  const H = computeStraightenData().totalLen;
+  const totalW = state.widthMm*2*state.arrayCount;
+  if (state.fitMode === 'proportional'){
+    const raw = Math.min(1, state.pageWidthMm/totalW, state.pageHeightMm/H);
+    // round down to whole percent (the slider's own granularity) so the
+    // displayed percentage never overstates what was actually applied
+    state.exportScale = clamp(Math.floor(raw*100)/100, 0.1, 1);
+  } else {
+    onWidthChange(Math.floor(state.pageWidthMm/(2*state.arrayCount)));
+  }
+  renderArray();
+}
+
+document.getElementById('sl-arraycount').oninput = (e)=>{
+  state.arrayCount = parseInt(e.target.value,10);
+  document.getElementById('lbl-arraycount').textContent = state.arrayCount;
+  renderArray();
+};
+document.getElementById('sl-width2').oninput = (e)=> onWidthChange(parseInt(e.target.value,10));
+document.getElementById('sl-exportscale').oninput = (e)=>{
+  state.exportScale = parseInt(e.target.value,10)/100;
+  document.getElementById('lbl-exportscale').textContent = e.target.value + '%';
+  renderArray();
+};
+document.getElementById('in-pagew').oninput = (e)=>{ state.pageWidthMm = parseFloat(e.target.value)||0; renderArray(); };
+document.getElementById('in-pageh').oninput = (e)=>{ state.pageHeightMm = parseFloat(e.target.value)||0; renderArray(); };
+document.getElementById('rd-align-center').onchange = ()=>{ state.pageAlign='center'; renderArray(); };
+document.getElementById('rd-align-topleft').onchange = ()=>{ state.pageAlign='topleft'; renderArray(); };
+document.getElementById('rd-fit-scale').onchange = ()=>{ state.fitMode='proportional'; };
+document.getElementById('rd-fit-width').onchange = ()=>{ state.fitMode='width'; };
+document.getElementById('btn-autofit').onclick = autoFitToPage;
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function canvasToJpegBlob(canvas){
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+}
+
+document.getElementById('btn-download-svg').onclick = async ()=>{
+  if (!lastArraySvg) return;
+  const clone = lastArraySvg.cloneNode(true);
+  clone.querySelectorAll('.page-guide, .page-guide-label').forEach(el=>el.remove());
+  // reset to the pattern's own bounds — the on-screen viewBox is padded out
+  // to fit the page guide, which isn't part of the actual cut file.
+  clone.setAttribute('viewBox', `0 0 ${lastArrayDims.w} ${lastArrayDims.h}`);
+  clone.setAttribute('xmlns', SVGNS);
+  clone.setAttribute('width', (lastArrayDims.w*state.exportScale) + 'mm');
+  clone.setAttribute('height', (lastArrayDims.h*state.exportScale) + 'mm');
+  const svgSrc = new XMLSerializer().serializeToString(clone);
+
+  // re-render the draw & segment canvases so the JPGs match current state
+  // even if the user jumped straight to this tab.
+  renderDraw();
+  enterSegmentsTab();
+  const [drawBlob, segBlob] = await Promise.all([
+    canvasToJpegBlob(drawCanvasEl),
+    canvasToJpegBlob(document.getElementById('canvas-segments')),
+  ]);
+
+  // Bundled as one zip: a click can only trigger one real file download
+  // before the browser starts silently blocking further ones as spam.
+  const zip = new JSZip();
+  zip.file('vpleat-pattern.svg', svgSrc);
+  zip.file('vpleat-curve.jpg', drawBlob);
+  zip.file('vpleat-segments.jpg', segBlob);
+  const zipBlob = await zip.generateAsync({ type:'blob' });
+  downloadBlob(zipBlob, 'vpleat-export.zip');
+};
+
+/* ---------------- Tab switching ---------------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    const name = btn.dataset.tab;
+    document.querySelector(`.panel[data-panel="${name}"]`).classList.add('active');
+    if (name==='draw') renderDraw();
+    else if (name==='segments') enterSegmentsTab();
+    else if (name==='straighten') renderStraighten();
+    else if (name==='array') renderArray();
+  });
+});
+
+/* ---------------- Init ---------------- */
+renderDraw();
+</script>
+</body>
+</html>
