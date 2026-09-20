@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X Span Generator</title>
+<style>
+:root{--bg:#f4f3ef;--panel:#fff;--ink:#222;--mute:#777;--line:#d9d6cc;--acc:#2e7d32;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+#app{display:grid;grid-template-columns:340px 1fr;height:100%}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 14px 30px}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+#cv{flex:1;min-height:0;width:100%;background:#fff;touch-action:none;display:block}
+#status{padding:6px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--mute);min-height:44px}
+#status .bad{color:#c62828;font-weight:600}
+#status .ok{color:#2e7d32;font-weight:600}
+h1{font-size:15px;margin:0 0 10px}
+fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:8px 10px 10px}
+legend{font-weight:600;padding:0 4px}
+.row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:5px 0}
+label{display:inline-flex;align-items:center;gap:5px}
+input[type=number]{width:64px;padding:3px 4px}
+input[type=color]{width:30px;height:22px;padding:0;border:1px solid var(--line)}
+select{font:inherit;padding:3px 4px}
+button{font:inherit;padding:4px 9px;border:1px solid #bbb;border-radius:4px;background:#fafafa;cursor:pointer}
+button:hover{background:#eee}
+button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.note{color:var(--mute);font-size:12px;margin:4px 0 0}
+@media(max-width:780px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}aside{max-height:48vh}main{height:70vh}}
+</style>
+</head>
+<body>
+<div id="app">
+<aside>
+  <h1>X Span Generator</h1>
+
+  <fieldset><legend>Rectangle</legend>
+    <div class="row">
+      <label>W <input type="number" id="W" min="10" step="1"> mm</label>
+      <label>H <input type="number" id="H" min="10" step="1"> mm</label>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>Verticals</legend>
+    <div class="row">
+      <label>Count <input type="number" id="gN" min="2" max="40" step="1"></label>
+      <label>Spacing <input type="number" id="gSp" min="1" step="0.5"> mm</label>
+      <label>First x <input type="number" id="gSt" step="0.5"> mm</label>
+    </div>
+    <div class="row">
+      <button id="bFit">Fit edge to edge</button>
+      <button id="bReset">Reset verticals</button>
+    </div>
+    <div class="row" id="selV" hidden>
+      <b>V<span id="selVn"></span></b>
+      <label>x <input type="number" id="vx" step="0.5"> mm</label>
+      <span>
+        <button id="nudL" title="Move left">◀</button>
+        <button id="nudR" title="Move right">▶</button>
+        <input type="number" id="step" value="1" min="0.1" step="0.5" style="width:52px"> mm
+      </span>
+    </div>
+    <p class="note">Always exactly vertical. Even distribution from the fields above, or drag / type each one.</p>
+  </fieldset>
+
+  <fieldset><legend>Rhombus</legend>
+    <div class="row"><label>Angle θ <input type="number" id="th" min="0.5" max="89" step="0.5"> °</label></div>
+    <div class="row"><label><input type="radio" name="hm" value="const" checked> Same height everywhere (identical rhombi)</label></div>
+    <div class="row"><label><input type="radio" name="hm" value="exact"> Exact θ in each first section</label></div>
+    <p class="note">You set one angle; the rest is computed. Both options give identical rhombi when the verticals are evenly spaced. When they are not, <i>same height</i> keeps every vertical diagonal the same length (the angles adapt), and <i>exact θ</i> keeps θ on the left half of each rhombus (the diagonal length adapts). The height is taken from the first section, V1–V2.</p>
+  </fieldset>
+
+  <fieldset><legend>Chains</legend>
+    <div class="row">
+      <label>Count <input type="number" id="nC" min="1" max="30" step="1"></label>
+      <button id="bDist">Distribute evenly</button>
+    </div>
+    <div class="row">
+      <label>Chains cross on
+        <select id="pm">
+          <option value="same">the same verticals</option>
+          <option value="alt">alternating verticals</option>
+        </select>
+      </label>
+    </div>
+    <p class="note">A chain is one up/down pair of lines that crosses on every second vertical. <i>Same</i>: all chains cross on V1, V3, V5… — parallel bands. <i>Alternating</i>: odd chains cross on V2, V4… instead, so the chains interlock into an X lattice. Changing this re-applies it to every chain (top to bottom).</p>
+    <div class="row" id="selC" hidden>
+      <b>Chain <span id="selCn"></span></b>
+      <label>y <input type="number" id="cy" step="0.5"> mm</label>
+      <button id="cFlip">Flip crossings</button>
+    </div>
+    <p class="note" id="selCnote" hidden></p>
+  </fieldset>
+
+  <fieldset><legend>Edit mode</legend>
+    <div class="row">
+      <button id="mChains" class="on">Chains</button>
+      <button id="mVerts">Verticals</button>
+      <button id="mMeas">Measure</button>
+    </div>
+    <p class="note" id="modeNote"></p>
+    <div class="row">
+      <button id="bDel">Delete selected</button>
+      <button id="bClear">Clear chains</button>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>Randomize</legend>
+    <div class="row">
+      <button id="rV">Verticals</button>
+      <button id="rC">Chains</button>
+      <button id="rA">Both</button>
+    </div>
+    <div class="row"><label>Min vertex gap <input type="number" id="mg" min="0" step="0.5"> mm</label></div>
+    <p class="note">Chains are placed one at a time and rejected if they cross a chain that crosses on the same verticals, or come closer than the gap on any vertical.</p>
+  </fieldset>
+
+  <fieldset><legend>Dimensions</legend>
+    <div class="row"><label><input type="checkbox" id="gh" checked> Show off-rectangle ghost lines (grey)</label></div>
+    <div class="row"><label><input type="checkbox" id="dEdge"> Section widths (mm)</label></div>
+    <div class="row"><label><input type="checkbox" id="dAng"> Line angles (°)</label></div>
+    <div class="row"><label><input type="checkbox" id="dDiag"> Vertical diagonal lengths (mm)</label></div>
+    <div class="row"><label><input type="checkbox" id="dVtx"> Vertex gaps on verticals (mm)</label></div>
+    <div class="row">
+      <label><input type="radio" name="mt" id="mtD" value="dist" checked> Measure distance (2 points)</label>
+      <label><input type="radio" name="mt" value="angle"> Measure angle (2 lines)</label>
+    </div>
+    <div class="row"><button id="mClear">Clear measurements</button></div>
+    <p class="note">Measurements are snapshots; they don't follow later edits.</p>
+  </fieldset>
+
+  <fieldset><legend>Export</legend>
+    <div class="row">
+      <label>Lines <input type="color" id="colLine" value="#2e8b57"></label>
+      <label>Rectangle <input type="color" id="colRect" value="#111111"></label>
+    </div>
+    <div class="row">
+      <label>Stroke <input type="number" id="sw" value="0.2" min="0.05" step="0.05"> mm</label>
+      <label>PNG <input type="number" id="ppm" value="6" min="1" max="30" step="1"> px/mm</label>
+    </div>
+    <div class="row">
+      <button id="xSvg" class="pri">Export SVG</button>
+      <button id="xPng" class="pri">Export PNG</button>
+    </div>
+  </fieldset>
+
+  <div class="row"><button id="bUndo">Undo</button><button id="bRedo">Redo</button></div>
+</aside>
+<main>
+  <svg id="cv" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="status"></div>
+</main>
+</div>
+
+<script>
+'use strict';
+/* X Span generator — vertical mirrors + up/down line pairs that cross only on verticals (chains of rhombi). */
+const GAP = 1;                                   // min mm between neighbouring verticals
+const DEG = Math.PI / 180;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const fmt = n => +n.toFixed(4);
+const $ = id => document.getElementById(id);
+const cv = $('cv');
+
+/* ---------- state ---------- */
+const S = {
+  W: 200, H: 120,
+  xs: [],               // x of each vertical, sorted
+  chains: [],           // {y, p}: y of the crossing points, p = 0|1 → crosses on verticals p, p+2, p+4 …
+  layout: 'gen',        // 'gen' (generated from the fields) | 'free' (hand-edited)
+  theta: 25,            // angle of the first section of a rhombus
+  hmode: 'const',       // 'const' same half-height everywhere | 'exact' θ exact in each rhombus' first section
+  pmode: 'same',        // how new chains pick their crossing verticals: 'same' | 'alt'
+  nC: 2, minGap: 4,
+  gen: { n: 5, spacing: 50, start: 0 },
+};
+const UI = {
+  mode: 'chains', shift: false, selV: -1, selC: -1, viewLock: null, hp: null,
+  meas: [], mp: null, mcur: null, info: null, note: '', ghost: true,
+  dim: { edge: false, ang: false, diag: false, vtx: false },
+};
+
+/* ---------- undo ---------- */
+const undoS = [], redoS = [];
+const snap = () => JSON.stringify(S);
+function restore(j) { Object.assign(S, JSON.parse(j)); UI.selV = UI.selC = -1; syncUI(); render(); }
+function pushUndo(j) { undoS.push(j || snap()); if (undoS.length > 80) undoS.shift(); redoS.length = 0; }
+function act(fn) { pushUndo(); UI.note = ''; fn(); syncUI(); render(); }
+function undo() { if (!undoS.length) return; redoS.push(snap()); restore(undoS.pop()); }
+function redo() { if (!redoS.length) return; undoS.push(snap()); restore(redoS.pop()); }
+
+/* ---------- geometry ---------- */
+// Liang–Barsky crop to a box (default: the rectangle)
+function clipBox(x1, y1, x2, y2, bx0 = 0, by0 = 0, bx1 = S.W, by1 = S.H) {
+  let t0 = 0, t1 = 1; const dx = x2 - x1, dy = y2 - y1;
+  const ps = [-dx, dx, -dy, dy], qs = [x1 - bx0, bx1 - x1, y1 - by0, by1 - y1];
+  for (let i = 0; i < 4; i++) {
+    if (Math.abs(ps[i]) < 1e-12) { if (qs[i] < 0) return null; continue; }
+    const r = qs[i] / ps[i];
+    if (ps[i] < 0) { if (r > t1) return null; if (r > t0) t0 = r; }
+    else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  if ((t1 - t0) * Math.hypot(dx, dy) < 1e-6) return null;
+  return [x1 + t0 * dx, y1 + t0 * dy, x1 + t1 * dx, y1 + t1 * dy];
+}
+function distSeg(p, a, b) {
+  const ex = b[0] - a[0], ey = b[1] - a[1], L = ex * ex + ey * ey || 1;
+  const t = clamp(((p.x - a[0]) * ex + (p.y - a[1]) * ey) / L, 0, 1);
+  return Math.hypot(p.x - a[0] - t * ex, p.y - a[1] - t * ey);
+}
+function segsCross(a, b) {
+  const o = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+  const d1 = o(a[0], a[1], a[2], a[3], b[0], b[1]), d2 = o(a[0], a[1], a[2], a[3], b[2], b[3]);
+  const d3 = o(b[0], b[1], b[2], b[3], a[0], a[1]), d4 = o(b[0], b[1], b[2], b[3], a[2], a[3]);
+  if (Math.abs(d1) < 1e-9 && Math.abs(d2) < 1e-9) {          // collinear: overlap test on the bounding boxes
+    return Math.max(Math.min(a[0], a[2]), Math.min(b[0], b[2])) <= Math.min(Math.max(a[0], a[2]), Math.max(b[0], b[2])) + 1e-9 &&
+           Math.max(Math.min(a[1], a[3]), Math.min(b[1], b[3])) <= Math.min(Math.max(a[1], a[3]), Math.max(b[1], b[3])) + 1e-9;
+  }
+  return d1 * d2 <= 1e-9 && d3 * d4 <= 1e-9;
+}
+
+// One chain: the up/down pair, crossing (at y) on verticals p, p+2, …; between two crossings the lines bend on
+// the vertical in between, which is the vertical diagonal of a rhombus. A section left over at either end gets
+// half a rhombus (lines fan out from the crossing to the edge vertical). Nothing is cropped here.
+function computeChain(ch, ci) {
+  const X = S.xs, n = X.length, segs = [], vtx = [], diags = [], y0 = ch.y, tn = Math.tan(S.theta * DEG);
+  if (n < 2) return { segs, vtx, diags };
+  const hRef = (X[1] - X[0]) * tn, hFor = d => S.hmode === 'const' ? hRef : d * tn;
+  const seg = (x1, y1, x2, y2) => segs.push({ s: [x1, y1, x2, y2], c: clipBox(x1, y1, x2, y2), ci, p: ch.p });
+  const add = (v, y) => { if (y >= -1e-6 && y <= S.H + 1e-6) vtx.push({ v, p: [X[v], y] }); };
+  const openEnd = (cx, ox) => {                        // half rhombus: crossing on vertical cx, open on vertical ox
+    const h = hFor(Math.abs(X[ox] - X[cx]));
+    seg(X[cx], y0, X[ox], y0 - h); seg(X[cx], y0, X[ox], y0 + h);
+    add(ox, y0 - h); add(ox, y0 + h); diags.push({ v: ox, y1: y0 - h, y2: y0 + h, ci });
+  };
+  if (ch.p === 1) openEnd(1, 0);
+  let c = ch.p;
+  for (; c < n; c += 2) {
+    add(c, y0);
+    if (c + 2 >= n) break;
+    const m = c + 1, e = c + 2, h = hFor(X[m] - X[c]);
+    seg(X[c], y0, X[m], y0 - h); seg(X[m], y0 - h, X[e], y0);
+    seg(X[c], y0, X[m], y0 + h); seg(X[m], y0 + h, X[e], y0);
+    add(m, y0 - h); add(m, y0 + h); diags.push({ v: m, y1: y0 - h, y2: y0 + h, ci });
+  }
+  if (c === n - 2) openEnd(n - 2, n - 1);              // c stopped on the second-to-last vertical
+  return { segs, vtx, diags };
+}
+const crossIdx = ch => { const r = []; for (let c = ch.p; c < S.xs.length; c += 2) r.push(c); return r; };
+function computeAll(chains = S.chains) {
+  const segs = [], vtx = [], diags = [];
+  chains.forEach((ch, i) => { const r = computeChain(ch, i); segs.push(...r.segs); vtx.push(...r.vtx); diags.push(...r.diags); });
+  return { segs, vtx, diags };
+}
+// chains that cross on the same verticals must not cross each other (overlap); interlocking ones cross by design
+function analyze(all) {
+  let same = 0, lattice = 0;
+  const cs = all.segs.filter(g => g.c);
+  if (cs.length <= 700) {
+    for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++)
+      if (cs[i].ci !== cs[j].ci && segsCross(cs[i].c, cs[j].c)) (cs[i].p === cs[j].p ? same++ : lattice++);
+  } else same = lattice = -1;
+  let minGap = Infinity;
+  const by = {};
+  all.vtx.forEach(q => (by[q.v] = by[q.v] || []).push(q.p));
+  Object.values(by).forEach(l => {
+    l.sort((a, b) => a[1] - b[1]);
+    for (let i = 1; i < l.length; i++) minGap = Math.min(minGap, l[i][1] - l[i - 1][1]);
+  });
+  return { same, lattice, minGap };
+}
+const chainH = () => (S.xs[1] - S.xs[0]) * Math.tan(S.theta * DEG);   // half-height of the first rhombus (both height modes)
+
+/* ---------- verticals ---------- */
+function xRange(i) {
+  return { lo: i > 0 ? S.xs[i - 1] + GAP : 0, hi: i < S.xs.length - 1 ? S.xs[i + 1] - GAP : S.W };
+}
+function setX(i, x) { const { lo, hi } = xRange(i); if (lo > hi) return; S.xs[i] = clamp(x, lo, hi); S.layout = 'free'; }
+function sanitize() {
+  const n = S.xs.length;
+  for (let i = 0; i < n; i++) S.xs[i] = clamp(Math.max(S.xs[i], i ? S.xs[i - 1] + GAP : 0), 0, S.W);
+  for (let i = n - 1; i >= 0; i--) S.xs[i] = Math.min(S.xs[i], i < n - 1 ? S.xs[i + 1] - GAP : S.W);
+}
+function genXs() {
+  const g = S.gen, n = g.n;
+  g.start = clamp(g.start, 0, S.W - (n - 1) * GAP);
+  g.spacing = Math.max(GAP, Math.min(g.spacing, (S.W - g.start) / (n - 1)));
+  return Array.from({ length: n }, (_, i) => g.start + i * g.spacing);
+}
+function regen() { S.xs = genXs(); S.layout = 'gen'; }
+function addVertical(x) {
+  const V = S.xs, i = V.filter(v => v < x).length;
+  if ((i > 0 && x < V[i - 1] + GAP) || (i < V.length && x > V[i] - GAP)) { UI.note = 'That vertical would touch a neighbour (min gap ' + GAP + ' mm).'; return false; }
+  V.splice(i, 0, x); S.layout = 'free'; S.gen.n = V.length; UI.selV = i; UI.selC = -1; UI.note = '';
+  return true;
+}
+function delVertical(j) { S.xs.splice(j, 1); S.layout = 'free'; S.gen.n = S.xs.length; UI.selV = -1; }
+
+/* ---------- chains ---------- */
+const parityFor = i => S.pmode === 'alt' ? i % 2 : 0;
+const sortChains = () => { const sel = S.chains[UI.selC]; S.chains.sort((a, b) => a.y - b.y); UI.selC = sel ? S.chains.indexOf(sel) : -1; };
+function distribute(m) {
+  S.nC = m;
+  S.chains = Array.from({ length: m }, (_, i) => ({ y: S.H * (i + 0.5) / m, p: parityFor(i) }));
+  UI.selC = -1;
+}
+function randomVerts() {
+  const n = S.xs.length, sp = S.W / (n - 1), j = sp * 0.45;
+  S.xs = Array.from({ length: n }, (_, i) => clamp(i * sp + (Math.random() - 0.5) * 2 * j, 0, S.W));
+  S.layout = 'free'; sanitize();
+}
+// place chains one by one; each must not cross a same-parity chain and must keep the min vertex gap on every vertical
+function randomChains(m) {
+  const keep = [], keptSegs = [], keptVtx = [];
+  for (let i = 0; i < m; i++) {
+    for (let t = 0; t < 250; t++) {
+      const cand = { y: Math.random() * S.H, p: parityFor(i) };
+      const r = computeChain(cand, keep.length), cs = r.segs.filter(g => g.c);
+      if (cs.some(g => keptSegs.some(o => o.p === g.p && segsCross(g.c, o.c)))) continue;
+      if (r.vtx.some(q => keptVtx.some(o => o.v === q.v && Math.abs(o.p[1] - q.p[1]) < S.minGap))) continue;
+      keep.push(cand); keptSegs.push(...cs); keptVtx.push(...r.vtx);
+      break;
+    }
+  }
+  S.chains = keep; S.nC = keep.length; UI.selC = -1; sortChains();
+  UI.note = keep.length < m ? `Placed ${keep.length} of ${m} chains (no room for more with the ${S.minGap} mm gap).` : '';
+}
+
+/* ---------- view ---------- */
+function bounds() {
+  if (UI.viewLock) return UI.viewLock;
+  const pad = Math.max(S.W, S.H) * 0.08;
+  return { x0: -pad, y0: -pad, x1: S.W + pad, y1: S.H + pad };
+}
+const edgeVert = x => x < 1e-6 || x > S.W - 1e-6;      // verticals lying on a rectangle edge are not drawn/exported twice
+let lastAll = { segs: [], vtx: [], diags: [] };
+
+function effMode(shift) {
+  if (UI.mode === 'measure') return 'measure';
+  return shift ? (UI.mode === 'chains' ? 'verts' : 'chains') : UI.mode;
+}
+
+/* ---------- render ---------- */
+function render() {
+  const b = bounds();
+  cv.setAttribute('viewBox', `${b.x0} ${b.y0} ${b.x1 - b.x0} ${b.y1 - b.y0}`);
+  const ctm = cv.getScreenCTM(), px = ctm && ctm.a ? 1 / ctm.a : 1;
+  const lc = $('colLine').value, rc = $('colRect').value, NS = 'vector-effect="non-scaling-stroke"';
+  const ln = (a, b2, c, d, extra = '') => `<line x1="${fmt(a)}" y1="${fmt(b2)}" x2="${fmt(c)}" y2="${fmt(d)}" ${extra}/>`;
+  const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#333'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
+  const X = S.xs;
+  lastAll = computeAll();
+  if (!drag) UI.info = analyze(lastAll);
+  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="2" ${NS}/>`;
+
+  UI.hiddenS = lastAll.segs.filter(g => !g.c).length;
+  UI.partS = lastAll.segs.filter(g => g.c && Math.hypot(g.s[2] - g.s[0], g.s[3] - g.s[1]) - Math.hypot(g.c[2] - g.c[0], g.c[3] - g.c[1]) > 1e-6).length;
+  if (UI.ghost) {                                   // grey ghosts: whatever the rectangle crops away
+    let g = '';
+    lastAll.segs.forEach(sg => {
+      if (sg.c && Math.hypot(sg.s[2] - sg.s[0], sg.s[3] - sg.s[1]) - Math.hypot(sg.c[2] - sg.c[0], sg.c[3] - sg.c[1]) < 1e-6) return;
+      const c = clipBox(sg.s[0], sg.s[1], sg.s[2], sg.s[3], b.x0, b.y0, b.x1, b.y1);
+      if (c) g += ln(...c);
+    });
+    s += `<g stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
+  }
+
+  s += `<g stroke="${lc}" stroke-width="1.1" fill="none" stroke-linecap="round" ${NS}>`;
+  X.forEach(x => { if (!edgeVert(x)) s += ln(x, 0, x, S.H); });
+  lastAll.segs.forEach(g => { if (g.c) s += ln(...g.c); });
+  s += '</g>';
+
+  const hl = `stroke="#1976d2" stroke-width="5" opacity=".3" ${NS}`;
+  if (UI.selV >= 0 && X[UI.selV] !== undefined) s += ln(X[UI.selV], 0, X[UI.selV], S.H, hl);
+  if (UI.selC >= 0 && S.chains[UI.selC]) lastAll.segs.forEach(g => { if (g.ci === UI.selC && g.c) s += ln(...g.c, hl); });
+
+  // dimensions
+  const D = UI.dim, ink = '#555';
+  if (D.edge && X.length) {
+    const y = -10 * px, arr = [0, ...X, S.W];
+    for (let i = 0; i < arr.length - 1; i++) {
+      const a = arr[i], c = arr[i + 1];
+      if (c - a < 0.05) continue;
+      s += `<g stroke="${ink}" stroke-width="1" ${NS}>${ln(a, y, c, y)}${ln(a, y - 3 * px, a, y + 3 * px)}${ln(c, y - 3 * px, c, y + 3 * px)}</g>`;
+      if ((c - a) / px > 26) s += T((a + c) / 2, y - 4 * px, (c - a).toFixed(1));
+    }
+  }
+  if (D.ang) lastAll.segs.forEach(g => {
+    if (!g.c) return;
+    const a = Math.abs(Math.atan2(g.c[3] - g.c[1], g.c[2] - g.c[0]) / DEG);
+    if (Math.hypot(g.c[2] - g.c[0], g.c[3] - g.c[1]) / px < 34) return;
+    s += T((g.c[0] + g.c[2]) / 2, (g.c[1] + g.c[3]) / 2 - 3 * px, (a > 90 ? 180 - a : a).toFixed(1) + '°', { c: '#1976d2' });
+  });
+  if (D.diag) lastAll.diags.forEach(d => {
+    const y1 = clamp(d.y1, 0, S.H), y2 = clamp(d.y2, 0, S.H);
+    if ((y2 - y1) / px > 14) s += T(X[d.v] + 5 * px, (y1 + y2) / 2 + 3 * px, (d.y2 - d.y1).toFixed(1), { a: 'start', c: '#6a1b9a' });
+  });
+  if (D.vtx) {
+    const by = {};
+    lastAll.vtx.forEach(q => (by[q.v] = by[q.v] || []).push(q.p));
+    Object.values(by).forEach(l => {
+      l.sort((a, b2) => a[1] - b2[1]);
+      for (let i = 1; i < l.length; i++) {
+        const a = l[i - 1], c = l[i], d = c[1] - a[1];
+        if (d / px > 14) s += T(a[0] - 5 * px, (a[1] + c[1]) / 2 + 3 * px, d.toFixed(1), { a: 'end', c: '#e65100' });
+      }
+    });
+  }
+
+  // measurements
+  const mc = '#e65100';
+  UI.meas.forEach(m => {
+    if (m.type === 'dist') {
+      const d = Math.hypot(m.q[0] - m.p[0], m.q[1] - m.p[1]);
+      s += `<g stroke="${mc}" stroke-width="1.5" ${NS}>${ln(m.p[0], m.p[1], m.q[0], m.q[1])}</g>`;
+      s += `<circle cx="${m.p[0]}" cy="${m.p[1]}" r="${3 * px}" fill="${mc}"/><circle cx="${m.q[0]}" cy="${m.q[1]}" r="${3 * px}" fill="${mc}"/>`;
+      s += T((m.p[0] + m.q[0]) / 2, (m.p[1] + m.q[1]) / 2 - 5 * px, `${d.toFixed(2)} mm  (Δx ${Math.abs(m.q[0] - m.p[0]).toFixed(1)}, Δy ${Math.abs(m.q[1] - m.p[1]).toFixed(1)})`, { c: mc });
+    } else {
+      s += `<g stroke="${mc}" stroke-width="3" opacity=".65" ${NS}>${ln(...m.l1)}${ln(...m.l2)}</g>`;
+      s += T(m.at[0], m.at[1] - 6 * px, `${m.acute.toFixed(2)}° / ${(180 - m.acute).toFixed(2)}°`, { c: mc });
+    }
+  });
+  if (UI.mp) {
+    if (UI.mp.pt) {
+      s += `<circle cx="${UI.mp.pt[0]}" cy="${UI.mp.pt[1]}" r="${4 * px}" fill="${mc}"/>`;
+      if (UI.mcur) s += ln(UI.mp.pt[0], UI.mp.pt[1], UI.mcur[0], UI.mcur[1], `stroke="${mc}" stroke-dasharray="5 4" stroke-width="1.2" ${NS}`);
+    } else if (UI.mp.line) s += ln(...UI.mp.line, `stroke="${mc}" stroke-width="3" opacity=".65" ${NS}`);
+  }
+
+  // handles: verticals only in Verticals mode, chains only in Chains mode
+  const r = 5 * px, em = effMode(UI.shift);
+  if (em === 'verts') {
+    s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
+    X.forEach((x, i) => [0, S.H].forEach(y => {
+      s += `<rect x="${fmt(x - r)}" y="${fmt(y - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`;
+    }));
+    s += '</g>';
+  }
+  if (em === 'chains') {
+    s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
+    S.chains.forEach((ch, i) => crossIdx(ch).forEach(c => {
+      s += `<circle cx="${fmt(X[c])}" cy="${fmt(ch.y)}" r="${fmt(r)}" ${i === UI.selC ? 'fill="#bbdefb"' : ''}/>`;
+    }));
+    s += '</g>';
+    if (UI.hp) s += `<circle cx="${fmt(UI.hp.x)}" cy="${fmt(UI.hp.y)}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".35"/>`;
+  }
+  cv.innerHTML = s;
+  updateStatus();
+}
+
+function updateStatus() {
+  const em = effMode(UI.shift);
+  let t;
+  if (S.xs.length < 2) t = 'Need at least 2 verticals.';
+  else if (em === 'measure') t = UI.mp ? 'Pick the second ' + (UI.mp.pt ? 'point.' : 'line.') : ($('mtD').checked ? 'Measure distance: click two points (snaps to corners, ends and vertices).' : 'Measure angle: click two lines.');
+  else if (em === 'chains') t = 'CHAINS: click a vertical to add a chain that crosses on it · drag a circle or a line up/down to move it · Delete removes the selected · hold Shift to edit verticals.';
+  else t = 'VERTICALS: drag a vertical (or a square) left/right · click a point on the top or bottom edge to add one · Delete removes the selected · hold Shift to edit chains.';
+  let info = '';
+  const i = UI.info;
+  if (i && S.chains.length) {
+    const bad = i.same > 0 || i.minGap < S.minGap;
+    info = `<br><span class="${bad ? 'bad' : 'ok'}">Overlapping chains: ${i.same < 0 ? 'n/a' : i.same}` +
+      `${i.lattice ? ` · interlocking crossings: ${i.lattice}` : ''} · min vertex gap: ${isFinite(i.minGap) ? i.minGap.toFixed(1) + ' mm' : '–'}</span>`;
+  }
+  if (UI.note) info += `<br>${UI.note}`;
+  if (UI.ghost && (UI.hiddenS || UI.partS)) info += `<br>Grey = outside the rectangle: ${UI.partS} segment(s) leave it, ${UI.hiddenS} fall wholly outside.`;
+  $('status').innerHTML = t + info;
+}
+
+/* ---------- export ---------- */
+function buildSVG(bg) {
+  const sw = +$('sw').value || 0.2, m = sw / 2, W = S.W, H = S.H;
+  let l = '';
+  S.xs.forEach(x => { if (!edgeVert(x)) l += `<line x1="${fmt(x)}" y1="0" x2="${fmt(x)}" y2="${fmt(H)}"/>`; });
+  computeAll().segs.forEach(g => { if (g.c) l += `<line x1="${fmt(g.c[0])}" y1="${fmt(g.c[1])}" x2="${fmt(g.c[2])}" y2="${fmt(g.c[3])}"/>`; });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(W + sw)}mm" height="${fmt(H + sw)}mm" viewBox="${-m} ${-m} ${fmt(W + sw)} ${fmt(H + sw)}">` +
+    (bg ? `<rect x="${-m}" y="${-m}" width="${fmt(W + sw)}" height="${fmt(H + sw)}" fill="#fff"/>` : '') +
+    `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
+    `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
+}
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$('xSvg').onclick = () => download(new Blob([buildSVG(false)], { type: 'image/svg+xml' }), 'x-span.svg');
+$('xPng').onclick = () => {
+  const ppm = +$('ppm').value || 6, sw = +$('sw').value || 0.2, img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = Math.round((S.W + sw) * ppm); c.height = Math.round((S.H + sw) * ppm);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(b => download(b, 'x-span.png'), 'image/png');
+  };
+  img.src = URL.createObjectURL(new Blob([buildSVG(true)], { type: 'image/svg+xml' }));
+};
+
+/* ---------- pointer interaction ---------- */
+function ptr(e) {
+  const pt = cv.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(cv.getScreenCTM().inverse()); return { x: q.x, y: q.y };
+}
+const pxmm = () => 1 / cv.getScreenCTM().a;
+
+function hitChains(p) {
+  const tol = 9 * pxmm();
+  for (let i = S.chains.length - 1; i >= 0; i--) {
+    const ch = S.chains[i];
+    if (crossIdx(ch).some(c => Math.hypot(p.x - S.xs[c], p.y - ch.y) < tol)) return { type: 'cDot', i };
+  }
+  for (let i = S.chains.length - 1; i >= 0; i--)
+    if (lastAll.segs.some(g => g.ci === i && g.c && distSeg(p, [g.c[0], g.c[1]], [g.c[2], g.c[3]]) < tol * 0.7)) return { type: 'cBody', i };
+  return null;
+}
+function hitVerts(p) {
+  const tol = 9 * pxmm();
+  for (let i = 0; i < S.xs.length; i++)
+    if (Math.abs(p.x - S.xs[i]) < tol && (Math.abs(p.y) < tol || Math.abs(p.y - S.H) < tol)) return { type: 'vEnd', i };
+  for (let i = 0; i < S.xs.length; i++)
+    if (Math.abs(p.x - S.xs[i]) < tol * 0.7 && p.y >= 0 && p.y <= S.H) return { type: 'vBody', i };
+  return null;
+}
+function nearestVertical(p, tol) {
+  let best = -1, bd = tol;
+  S.xs.forEach((x, i) => { const d = distSeg(p, [x, 0], [x, S.H]); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
+function edgeNear(p) {
+  const tol = 14 * pxmm();
+  if (p.x < -tol || p.x > S.W + tol) return null;
+  return Math.abs(p.y) < tol || Math.abs(p.y - S.H) < tol ? true : null;
+}
+
+// measure helpers
+function snapPoint(p) {
+  const tol = 12 * pxmm(), pts = [[0, 0], [S.W, 0], [0, S.H], [S.W, S.H]];
+  S.xs.forEach(x => pts.push([x, 0], [x, S.H]));
+  lastAll.segs.forEach(g => { if (g.c) pts.push([g.c[0], g.c[1]], [g.c[2], g.c[3]]); });
+  let best = null, bd = tol;
+  pts.forEach(q => { const d = Math.hypot(q[0] - p.x, q[1] - p.y); if (d < bd) { bd = d; best = q; } });
+  return best || [p.x, p.y];
+}
+function pickLine(p) {
+  const tol = 9 * pxmm(), L = [[0, 0, S.W, 0], [S.W, 0, S.W, S.H], [S.W, S.H, 0, S.H], [0, S.H, 0, 0]];
+  S.xs.forEach(x => L.push([x, 0, x, S.H]));
+  lastAll.segs.forEach(g => { if (g.c) L.push(g.c); });
+  let best = null, bd = tol;
+  L.forEach(l => { const d = distSeg(p, [l[0], l[1]], [l[2], l[3]]); if (d < bd) { bd = d; best = l; } });
+  return best;
+}
+function measurePress(p) {
+  if ($('mtD').checked) {
+    const pt = snapPoint(p);
+    if (!UI.mp) UI.mp = { pt };
+    else { UI.meas.push({ type: 'dist', p: UI.mp.pt, q: pt }); UI.mp = null; UI.mcur = null; }
+  } else {
+    const l = pickLine(p); if (!l) return;
+    if (!UI.mp) UI.mp = { line: l };
+    else {
+      const l1 = UI.mp.line, d1 = [l1[2] - l1[0], l1[3] - l1[1]], d2 = [l[2] - l[0], l[3] - l[1]];
+      const cr = d1[0] * d2[1] - d1[1] * d2[0], dt = d1[0] * d2[0] + d1[1] * d2[1];
+      const acute = Math.atan2(Math.abs(cr), Math.abs(dt)) / DEG;
+      let at = [(l1[0] + l1[2]) / 2, (l1[1] + l1[3]) / 2];
+      if (Math.abs(cr) > 1e-9) {
+        const sc = ((l[0] - l1[0]) * d2[1] - (l[1] - l1[1]) * d2[0]) / cr;
+        at = [l1[0] + sc * d1[0], l1[1] + sc * d1[1]];
+        const b = bounds(); if (at[0] < b.x0 || at[0] > b.x1 || at[1] < b.y0 || at[1] > b.y1) at = [p.x, p.y];
+      }
+      UI.meas.push({ type: 'angle', l1, l2: l, acute, at }); UI.mp = null;
+    }
+  }
+}
+
+let drag = null;
+cv.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || S.xs.length < 2) return;
+  const p = ptr(e), em = effMode(e.shiftKey);
+  UI.shift = e.shiftKey;
+  if (em === 'measure') { measurePress(p); render(); return; }
+
+  if (em === 'chains') {
+    const h = hitChains(p);
+    UI.selV = -1; UI.selC = h ? h.i : -1;
+    if (h) {
+      drag = { ...h, start: p, snapJ: snap(), pushed: false, y0: S.chains[h.i].y };
+      cv.setPointerCapture(e.pointerId);
+    } else {                                         // click on a vertical: new chain crossing on it
+      const vi = nearestVertical(p, 14 * pxmm());
+      if (vi >= 0) {
+        pushUndo(); UI.note = '';
+        S.chains.push({ y: clamp(p.y, 0, S.H), p: vi % 2 }); S.nC = S.chains.length;
+        UI.selC = S.chains.length - 1; sortChains(); UI.hp = null;
+      }
+    }
+    syncUI(); render(); return;
+  }
+
+  const h = hitVerts(p);                             // Verticals mode
+  UI.selC = -1; UI.selV = h ? h.i : -1;
+  if (!h && edgeNear(p)) { const j = snap(); if (addVertical(clamp(p.x, 0, S.W))) pushUndo(j); }
+  if (h) {
+    drag = { ...h, start: p, snapJ: snap(), pushed: false, x0: S.xs[h.i] };
+    UI.viewLock = bounds();
+    cv.setPointerCapture(e.pointerId);
+  }
+  syncUI(); render();
+});
+
+cv.addEventListener('pointermove', e => {
+  if (S.xs.length < 2) return;
+  const p = ptr(e);
+  UI.shift = e.shiftKey;
+  if (UI.mp && UI.mp.pt) { UI.mcur = snapPoint(p); render(); return; }
+  if (!drag) {
+    const em = effMode(e.shiftKey);
+    const h = em === 'chains' ? hitChains(p) : em === 'verts' ? hitVerts(p) : null;
+    const vi = em === 'chains' && !h ? nearestVertical(p, 14 * pxmm()) : -1;
+    const hp = vi >= 0 ? { x: S.xs[vi], y: clamp(p.y, 0, S.H) } : null;
+    if ((hp && !UI.hp) || (!hp && UI.hp) || (hp && UI.hp && (hp.x !== UI.hp.x || hp.y !== UI.hp.y))) { UI.hp = hp; render(); }
+    cv.style.cursor = em === 'measure' ? 'crosshair' : h ? 'pointer' : vi >= 0 || (em === 'verts' && edgeNear(p)) ? 'crosshair' : 'default';
+    return;
+  }
+  if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
+  const d = drag;
+  if (d.type === 'vEnd' || d.type === 'vBody') setX(d.i, d.x0 + p.x - d.start.x);
+  else S.chains[d.i].y = clamp(d.y0 + p.y - d.start.y, 0, S.H);
+  syncUI(); render();
+});
+const endDrag = () => {
+  if (!drag) return;
+  const chains = drag.type === 'cDot' || drag.type === 'cBody';
+  drag = null; UI.viewLock = null;
+  if (chains) sortChains();
+  syncUI(); render();
+};
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('pointerleave', () => { if (UI.hp && !drag) { UI.hp = null; render(); } });
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'Shift' && !UI.shift) { UI.shift = true; render(); return; }
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && document.activeElement.type !== 'checkbox' && document.activeElement.type !== 'radio') return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+  else if (e.key === 'Escape') { UI.mp = null; UI.selV = UI.selC = -1; syncUI(); render(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') delSel();
+});
+window.addEventListener('keyup', e => { if (e.key === 'Shift') { UI.shift = false; render(); } });
+
+/* ---------- controls ---------- */
+function setMode(m) {
+  UI.mode = m; UI.mp = null; UI.hp = null;
+  $('mChains').classList.toggle('on', m === 'chains');
+  $('mVerts').classList.toggle('on', m === 'verts');
+  $('mMeas').classList.toggle('on', m === 'measure');
+  $('modeNote').textContent = m === 'chains'
+    ? 'Click a vertical to add a chain that crosses on it (its parity follows that vertical). Drag a circle or a line up/down to move it. Hold Shift to move verticals.'
+    : m === 'verts' ? 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift to edit chains.'
+    : 'Use the Dimensions panel to choose distance or angle.';
+  render();
+}
+function delSel() {
+  if (UI.selC >= 0) act(() => { S.chains.splice(UI.selC, 1); S.nC = S.chains.length; UI.selC = -1; });
+  else if (UI.selV >= 0) {
+    if (S.xs.length <= 2) { UI.note = 'At least 2 verticals are needed.'; render(); return; }
+    act(() => delVertical(UI.selV));
+  }
+}
+const nC = () => clamp(Math.round(+$('nC').value) || 2, 1, 30);
+const on = (id, ev, fn) => { $(id)[ev] = fn; };
+
+on('mChains', 'onclick', () => setMode('chains'));
+on('mVerts', 'onclick', () => setMode('verts'));
+on('mMeas', 'onclick', () => setMode('measure'));
+on('bDel', 'onclick', delSel);
+on('bClear', 'onclick', () => act(() => { S.chains = []; S.nC = 0; UI.selC = -1; }));
+on('bReset', 'onclick', () => act(regen));
+on('bFit', 'onclick', () => act(() => { S.gen.start = 0; S.gen.spacing = S.W / (S.gen.n - 1); regen(); }));
+on('bDist', 'onclick', () => act(() => distribute(nC())));
+on('nC', 'onchange', () => act(() => distribute(nC())));
+on('rV', 'onclick', () => act(randomVerts));
+on('rC', 'onclick', () => act(() => randomChains(nC())));
+on('rA', 'onclick', () => act(() => { randomVerts(); randomChains(nC()); }));
+on('bUndo', 'onclick', undo); on('bRedo', 'onclick', redo);
+on('mClear', 'onclick', () => { UI.meas = []; UI.mp = null; render(); });
+on('mg', 'onchange', () => { S.minGap = Math.max(0, +$('mg').value || 0); render(); });
+on('gh', 'onchange', () => { UI.ghost = $('gh').checked; render(); });
+on('th', 'onchange', () => act(() => { S.theta = clamp(+$('th').value || S.theta, 0.5, 89); }));
+document.querySelectorAll('input[name=hm]').forEach(r => r.onchange = () => act(() => { S.hmode = r.value; }));
+on('pm', 'onchange', () => act(() => { S.pmode = $('pm').value; S.chains.forEach((c, i) => { c.p = parityFor(i); }); }));
+on('cFlip', 'onclick', () => { if (UI.selC >= 0) act(() => { S.chains[UI.selC].p ^= 1; }); });
+on('cy', 'onchange', () => {
+  if (UI.selC < 0) return;
+  act(() => { S.chains[UI.selC].y = clamp(+$('cy').value || 0, 0, S.H); sortChains(); });
+});
+
+const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() => {
+  let v = +$(id).value; if (!isFinite(v)) return;
+  S.gen[key] = clamp(round ? Math.round(v) : v, min, max); regen();
+}));
+genField('gN', 'n', 2, 40, true); genField('gSp', 'spacing', 1, 1e4); genField('gSt', 'start', 0, 1e4);
+['W', 'H'].forEach(id => on(id, 'onchange', () => act(() => {
+  const nw = Math.max(10, +$('W').value || S.W), nh = Math.max(10, +$('H').value || S.H), fx = nw / S.W, fy = nh / S.H;
+  S.xs = S.xs.map(x => x * fx); S.chains.forEach(c => { c.y *= fy; });
+  S.gen.start *= fx; S.gen.spacing *= fx;
+  S.W = nw; S.H = nh;
+  if (S.layout === 'gen') regen(); else sanitize();
+})));
+on('vx', 'onchange', () => { if (UI.selV >= 0) act(() => setX(UI.selV, +$('vx').value)); });
+const nudge = sign => { if (UI.selV >= 0) act(() => setX(UI.selV, S.xs[UI.selV] + sign * (+$('step').value || 1))); };
+on('nudL', 'onclick', () => nudge(-1)); on('nudR', 'onclick', () => nudge(1));
+['colLine', 'colRect'].forEach(id => on(id, 'oninput', render));
+Object.keys(UI.dim).forEach(k => {
+  const id = 'd' + k[0].toUpperCase() + k.slice(1);
+  on(id, 'onchange', () => { UI.dim[k] = $(id).checked; render(); });
+});
+document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI.mp = null; render(); });
+
+function syncUI() {
+  const set = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
+  set('W', S.W); set('H', S.H); set('gN', S.gen.n); set('gSp', S.gen.spacing); set('gSt', S.gen.start);
+  set('th', S.theta); set('nC', S.nC); set('mg', S.minGap); $('pm').value = S.pmode;
+  document.querySelectorAll('input[name=hm]').forEach(r => { r.checked = r.value === S.hmode; });
+  const sv = UI.selV >= 0 ? S.xs[UI.selV] : undefined;
+  $('selV').hidden = sv === undefined;
+  if (sv !== undefined) { $('selVn').textContent = UI.selV + 1; set('vx', sv); }
+  const sc = UI.selC >= 0 ? S.chains[UI.selC] : null;
+  $('selC').hidden = $('selCnote').hidden = !sc;
+  if (sc) {
+    $('selCn').textContent = UI.selC + 1; set('cy', sc.y);
+    const h = chainH();
+    $('selCnote').textContent = `Crosses on ${crossIdx(sc).map(c => 'V' + (c + 1)).join(', ')} · first half-height h = ${h.toFixed(2)} mm (vertical diagonal ${(2 * h).toFixed(2)} mm)`;
+  }
+}
+
+/* ---------- init ---------- */
+regen(); distribute(2);
+syncUI(); setMode('chains');
+new ResizeObserver(render).observe(cv);
+</script>
+</body>
+</html>
