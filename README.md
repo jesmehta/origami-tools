@@ -24,6 +24,13 @@ design and fabrication.
   diagonals to the centre, with an optional centre cut. SVG/PNG export. See
   [hypar/README.md](hypar/README.md).
 
+- **[X Span Generator](x-span/index.html)** — verticals across a rectangle,
+  with pairs of lines fanning up and down at the same angle and meeting again
+  only on a vertical, forming chains of rhombi. One angle in, the rest computed;
+  chains can cross on the same or alternating verticals (X lattice). Measure,
+  dimensions, randomize, SVG/PNG export. See
+  [x-span/README.md](x-span/README.md).
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
