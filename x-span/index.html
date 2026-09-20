@@ -29,6 +29,8 @@ select{font:inherit;padding:3px 4px}
 button{font:inherit;padding:4px 9px;border:1px solid #bbb;border-radius:4px;background:#fafafa;cursor:pointer}
 button:hover{background:#eee}
 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#hRows .row{margin:2px 0}
+input[type=range]{width:120px}
 button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
 .note{color:var(--mute);font-size:12px;margin:4px 0 0}
 @media(max-width:780px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}aside{max-height:48vh}main{height:70vh}}
@@ -47,7 +49,12 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
   </fieldset>
 
   <fieldset><legend>Grid type</legend>
-    <div class="row"><button id="kReg" class="on">Regular</button><button id="kIrr">Irregular</button></div>
+    <div class="row">
+      <button id="kReg" class="on">Regular</button>
+      <button id="kMW" title="Constant height, movable verticals">Const H · move W</button>
+      <button id="kMH" title="Constant vertical spacing, variable heights">Const W · move H</button>
+      <button id="kMB" title="Movable verticals and variable heights">Move both</button>
+    </div>
     <p class="note" id="kindNote"></p>
   </fieldset>
 
@@ -100,7 +107,24 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <label>Chains <input type="number" id="nCh" min="0.5" max="200" step="0.5"></label>
     </div>
     <p class="note" id="derived"></p>
-    <p class="note">θ is the angle of a rhombus side to the horizontal (h = distance × tan θ, taken from the first section V1–V2). Number of chains (in steps of 0.5, so the last row can be half a rhombus): the vertical diagonals stack to fill the rectangle height exactly (2h = H ÷ chains), and θ follows. Every rhombus has the same vertical diagonal 2h.</p>
+    <p class="note">θ is the angle of a rhombus side to the horizontal (h = distance × tan θ, taken from the first section V1–V2). Number of chains (in steps of 0.5, so the last row can be half a rhombus): the vertical diagonals stack to fill the rectangle height exactly (2h = H ÷ chains), and θ follows. With constant heights every rhombus has the same vertical diagonal 2h; with variable heights this is the reference h that each chain row scales.</p>
+  </fieldset>
+
+  <fieldset id="panH" hidden><legend>Chain heights</legend>
+    <p class="note">One half-height h per chain row, top to bottom (the rhombus vertical diagonal is 2h). Drag the circles on the canvas up/down, or use the sliders. Rows below the last one keep its height. The Rhombus angle / chains setting scales all heights together.</p>
+    <div id="hRows"></div>
+    <div class="row">
+      <label>First h <input type="number" id="gh0" min="0.3" step="0.5"> mm</label>
+      <label>Last h <input type="number" id="gh1" min="0.3" step="0.5"> mm</label>
+      <label>Curve <select id="gcv"><option value="linear">linear</option><option value="in">ease in</option><option value="out">ease out</option><option value="inout">ease in-out</option></select></label>
+    </div>
+    <div class="row">
+      <button id="bProf">Apply profile</button>
+      <button id="bHRand">Randomize</button>
+      <button id="bHFit">Fit to height</button>
+      <button id="bHReset">All equal</button>
+    </div>
+    <p class="note">Profile: first → last h over the rows now on the canvas. Fit to height: scales all heights so the chains now shown end exactly at the bottom edge.</p>
   </fieldset>
 
   <fieldset><legend>Grid position</legend>
@@ -168,24 +192,35 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
    Regular: verticals evenly spread, straight lines. Irregular: free verticals, lines bend at each one. */
 const GAP = 1;                                   // min mm between neighbouring verticals (irregular)
 const MAXSEG = 30000;                            // safety cap on generated segments
+const MAXROWS = 4000, MINH = 0.3;                // row cap; smallest allowed half-height (mm)
 const DEG = Math.PI / 180;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const fmt = n => +n.toFixed(4);
 const half = x => Math.round(x * 2) / 2;
+const isFreeX = () => S.kind === 'movW' || S.kind === 'both';   // verticals movable
+const isVarH = () => S.kind === 'movH' || S.kind === 'both';    // heights variable per chain row
+const KIND_NOTE = {
+  regular: 'Verticals evenly spread; the rhombi tile into a grid of straight lines.',
+  movW: 'Constant height, verticals free (still vertical): the rhombi still tile, but the lines bend at each vertical.',
+  movH: 'Constant vertical spacing, each chain row has its own height: the lines bend where the height changes.',
+  both: 'Verticals free and each chain row has its own height.',
+};
 const $ = id => document.getElementById(id);
 const cv = $('cv');
 
 /* ---------- state ---------- */
 const S = {
   W: 200, H: 120,
-  kind: 'regular',      // 'regular' | 'irregular'
+  kind: 'regular',      // 'regular' | 'movW' (const H, free verticals) | 'movH' (const W, variable heights) | 'both'
   xs: [],               // x of each vertical, sorted (regular: derived from `reg`; irregular: the state)
   layout: 'gen',        // irregular: 'gen' (from the fields) | 'free' (hand-edited)
   reg: { v: 'count', n: 5, d: 50, m: 100 },
   gen: { n: 5, spacing: 50, start: 0 },
   a: 'angle',           // what defines the rhombus: 'angle' | 'chains'
   theta: 25, nCh: 2,
-  yoff: 0,              // y of the first chain's top vertex (grid is periodic, 2h)
+  ratio: [1],           // variable heights: h of chain row j = reference h × ratio[j] (rows past the end repeat the last)
+  prof: { h0: 15, h1: 35, curve: 'linear' },
+  yoff: 0,              // y of the first chain's top vertex (constant heights: the grid is periodic, 2h)
   ph: 0,                // chains cross on verticals ph, ph+2, …
 };
 const UI = {
@@ -229,28 +264,57 @@ function gridH() {
   if (X.length < 2) return 0;
   return S.a === 'angle' ? (X[1] - X[0]) * Math.tan(S.theta * DEG) : S.H / (2 * S.nCh);
 }
-const normY = y => { const h = gridH(), P = 2 * h; return P > 1e-9 ? ((y % P) + P) % P : y; };
+const normY = y => { if (isVarH()) return y; const h = gridH(), P = 2 * h; return P > 1e-9 ? ((y % P) + P) % P : y; };
+const ensureRatio = n => { while (S.ratio.length < n) S.ratio.push(S.ratio[S.ratio.length - 1]); };
+const hAt = j => { const h = gridH(); return isVarH() ? h * S.ratio[clamp(j, 0, S.ratio.length - 1)] : h; };   // half-height of chain row j
 
-// The lattice. Vertical k carries vertices at yoff + h·(a_k + 2m), a_k = 1 for the verticals the chains cross on and
-// 0 for the others. Each vertex joins the two vertices of the next vertical at ±h, so every rhombus (vertical diagonal
-// 2h) touches its neighbours vertex to vertex and all vertices lie on verticals. Segments are not cropped here except
-// for a `c` field (the part inside the rectangle).
+// Touch levels t_j: t_0 = yoff and t_{j+1} = t_j + 2·h_j (rows above t_0 repeat row 0's height). Runs until t ≤ lo and t > hi.
+function touchLevels(lo, hi) {
+  if (!(gridH() > 1e-6)) return [{ j: 0, t: S.yoff }];
+  const up = [], dn = [{ j: 0, t: S.yoff }];
+  let j = 0, t = S.yoff;
+  while (t > lo && up.length < MAXROWS) { j--; t -= 2 * hAt(j); up.push({ j, t }); }
+  j = 0; t = S.yoff;
+  while (t <= hi && dn.length < MAXROWS) { t += 2 * hAt(j); j++; dn.push({ j, t }); }
+  return up.reverse().concat(dn);
+}
+// chain rows currently on the canvas (j ≥ 0, starting inside the rectangle) with their half-heights
+function rowHs() {
+  const T = touchLevels(0, S.H), out = [];
+  for (let i = 0; i < T.length - 1; i++) if (T[i].j >= 0 && T[i].t < S.H - 1e-6) out.push({ j: T[i].j, t: T[i].t, h: hAt(T[i].j) });
+  return out;
+}
+function chainsFit() {                                  // chain rows inside the rectangle, fractional
+  const T = touchLevels(0, S.H); let f = 0;
+  for (let i = 0; i < T.length - 1; i++) {
+    const a = T[i].t, b = T[i + 1].t, ov = Math.min(b, S.H) - Math.max(a, 0);
+    if (ov > 0) f += ov / (b - a);
+  }
+  return f;
+}
+
+// The lattice. Chain row j is a run of rhombi with vertical diagonals from t_j to t_{j+1} on the "touch" verticals and
+// horizontal diagonals at c_j = t_j + h_j (the crossings) on the other verticals. Each crossing joins the touch vertices
+// above and below it on the next vertical, so rhombi touch vertex to vertex, the "1.5" rows appear between the chains,
+// and every vertex lies on a vertical. Segments carry `c`, the part inside the rectangle.
 function computeGrid() {
   const X = S.xs, n = X.length, h = gridH(), segs = [], diags = [], res = { segs, diags, h, capped: false };
   if (n < 2 || !(h > 1e-6)) return res;
-  const pad = Math.max(S.W, S.H) * 0.08, lo = -pad - 2 * h, hi = S.H + pad + 2 * h;
-  if ((hi - lo) / (2 * h) * n * 2 > MAXSEG) { res.capped = true; return res; }
-  const level = k => S.yoff + h * ((k + S.ph) % 2 === 0 ? 1 : 0);
-  for (let k = 0; k < n; k++) {
-    const base = level(k);
-    for (let m = Math.ceil((lo - base) / (2 * h)); base + 2 * h * m <= hi; m++) {
-      const y = base + 2 * h * m;
-      diags.push({ v: k, y1: y, y2: y + 2 * h });
-      if (k < n - 1) for (const s of [1, -1]) {
-        const y2 = y + s * h;
-        segs.push({ s: [X[k], y, X[k + 1], y2], c: clipBox(X[k], y, X[k + 1], y2) });
-      }
+  const pad = Math.max(S.W, S.H) * 0.08, T = touchLevels(-pad, S.H + pad);
+  if (T.length >= MAXROWS || (T.length - 1) * (n - 1) * 2 > MAXSEG) { res.capped = true; return res; }
+  const isT = k => (k + S.ph) % 2 === 1;               // this vertical carries the touch levels
+  const add = (xa, ya, xb, yb) => segs.push({ s: [xa, ya, xb, yb], c: clipBox(xa, ya, xb, yb) });
+  let prevC = null;
+  for (let i = 0; i < T.length - 1; i++) {
+    const tj = T[i].t, hj = hAt(T[i].j), cj = tj + hj, tn = tj + 2 * hj;
+    for (let k = 0; k < n; k++) {
+      if (isT(k)) diags.push({ v: k, y1: tj, y2: tn });
+      else if (prevC !== null) diags.push({ v: k, y1: prevC, y2: cj });
+      if (k === n - 1) continue;
+      if (isT(k)) { add(X[k], tj, X[k + 1], cj); add(X[k + 1], cj, X[k], tn); }
+      else { add(X[k], cj, X[k + 1], tj); add(X[k], cj, X[k + 1], tn); }
     }
+    prevC = cj;
   }
   return res;
 }
@@ -274,7 +338,7 @@ function genXs() {
   g.spacing = Math.max(GAP, Math.min(g.spacing, (S.W - g.start) / (n - 1)));
   return Array.from({ length: n }, (_, i) => g.start + i * g.spacing);
 }
-function regen() { S.xs = S.kind === 'regular' ? regularXs() : genXs(); S.layout = 'gen'; }
+function regen() { S.xs = isFreeX() ? genXs() : regularXs(); S.layout = 'gen'; }
 function addVertical(x) {
   const V = S.xs, i = V.filter(v => v < x).length;
   if ((i > 0 && x < V[i - 1] + GAP) || (i < V.length && x > V[i] - GAP)) { UI.note = 'That vertical would touch a neighbour (min gap ' + GAP + ' mm).'; return false; }
@@ -290,12 +354,15 @@ function randomVerts() {
 function setKind(k) {
   if (k === S.kind) return;
   act(() => {
+    const wasFree = isFreeX();
     S.kind = k; UI.selV = -1;
-    if (k === 'irregular') {                         // start from the regular layout (minus verticals beyond the edge)
+    if (isVarH() && !S.ratio.length) S.ratio = [1];
+    if (!isFreeX()) regen();
+    else if (!wasFree) {                             // start from the regular layout (minus verticals beyond the edge)
       const keep = S.xs.filter(x => x <= S.W + 1e-6);
       if (keep.length >= 2) { S.xs = keep; S.gen = { n: keep.length, spacing: keep[1] - keep[0], start: keep[0] }; S.layout = 'gen'; }
       else regen();
-    } else regen();
+    }
   });
 }
 
@@ -310,7 +377,7 @@ let lastG = { segs: [], diags: [], h: 0 };
 
 function effMode(shift) {
   if (UI.mode === 'measure') return 'measure';
-  if (S.kind === 'regular') return 'grid';
+  if (!isFreeX()) return 'grid';
   return shift ? (UI.mode === 'grid' ? 'verts' : 'grid') : UI.mode;
 }
 
@@ -394,6 +461,12 @@ function render() {
     s += `<circle cx="${fmt(g.ax)}" cy="${fmt(g.ay)}" r="${fmt(r0 * 1.2)}" fill="${ac}" opacity=".85"/>`;
     s += T(g.ax + (g.cur[0] < g.ax ? -1 : 1) * 12 * px, g.ay - 8 * px, S.theta.toFixed(1) + '°', { c: ac, a: g.cur[0] < g.ax ? 'end' : 'start' });
   }
+  if (isVarH() && effMode(UI.shift) === 'grid') {    // touch-level handles: drag up/down to trade height between the chains above and below
+    const r = 5 * px;
+    s += `<g fill="#fff" stroke="#e65100" stroke-width="1.5" ${NS}>`;
+    touchHandles().forEach(q => { s += `<circle cx="${fmt(q.x)}" cy="${fmt(q.y)}" r="${fmt(r)}"/>`; });
+    s += '</g>';
+  }
   if (effMode(UI.shift) === 'verts') {               // vertical handles, irregular Verticals mode only
     const r = 5 * px;
     s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
@@ -411,15 +484,17 @@ function updateStatus(G) {
   let t;
   if (S.xs.length < 2) t = 'Need at least 2 verticals.';
   else if (em === 'measure') t = UI.mp ? 'Pick the second ' + (UI.mp.pt ? 'point.' : 'line.') : ($('mtD').checked ? 'Measure distance: click two points (snaps to corners, ends and vertices).' : 'Measure angle: click two lines.');
-  else if (em === 'grid') t = 'GRID: drag a line to set the angle (pivots about the top of V2) · drag empty space to shift the grid up/down' + (S.kind === 'irregular' ? ' · hold Shift to edit verticals.' : '.');
+  else if (em === 'grid') t = 'GRID: ' + (isVarH() ? 'drag a circle to trade height between the chains above and below · ' : '') + 'drag a line to set the angle (pivots about the top of V2; heights scale together) · drag empty space to shift the grid up/down' + (isFreeX() ? ' · hold Shift to edit verticals.' : '.');
   else t = 'VERTICALS: drag a vertical (or a square) left/right · click a point on the top or bottom edge to add one · Delete removes the selected · hold Shift for Grid.';
   let info = '';
   if (G.h > 1e-6) {
-    const X = S.xs, ang = [];
-    for (let k = 0; k < X.length - 1; k++) ang.push(Math.atan(G.h / (X[k + 1] - X[k])) / DEG);
-    const a0 = Math.min(...ang), a1 = Math.max(...ang);
-    info = `<br>h = ${G.h.toFixed(2)} mm (vertical diagonal ${(2 * G.h).toFixed(2)} mm) · chains that fit: ${(S.H / (2 * G.h)).toFixed(2)} · ` +
-      (a1 - a0 < 0.005 ? `θ = ${a0.toFixed(2)}°` : `line angles ${a0.toFixed(1)}°–${a1.toFixed(1)}°`);
+    const X = S.xs, ws = X.slice(1).map((x, k) => x - X[k]), rows = rowHs(), hs = rows.length ? rows.map(r => r.h) : [G.h];
+    const hmin = Math.min(...hs), hmax = Math.max(...hs);
+    const a0 = Math.atan(hmin / Math.max(...ws)) / DEG, a1 = Math.atan(hmax / Math.min(...ws)) / DEG;
+    info = isVarH()
+      ? `<br>reference h = ${G.h.toFixed(2)} mm · chain heights h = ${hmin.toFixed(2)}–${hmax.toFixed(2)} mm · chains that fit: ${chainsFit().toFixed(2)} · line angles ${a0.toFixed(1)}°–${a1.toFixed(1)}°`
+      : `<br>h = ${G.h.toFixed(2)} mm (vertical diagonal ${(2 * G.h).toFixed(2)} mm) · chains that fit: ${chainsFit().toFixed(2)} · ` +
+        (a1 - a0 < 0.005 ? `θ = ${a0.toFixed(2)}°` : `line angles ${a0.toFixed(1)}°–${a1.toFixed(1)}°`);
   }
   if (G.capped) info += '<br><span class="bad">Too many lines to draw — increase θ or the vertical spacing.</span>';
   if (UI.note) info += `<br>${UI.note}`;
@@ -473,10 +548,29 @@ function hitLine(p) {
   const tol = 9 * pxmm() * 0.7;
   return lastG.segs.some(g => g.c && distSeg(p, [g.c[0], g.c[1]], [g.c[2], g.c[3]]) < tol);
 }
-// The angle sweep pivots on the top vertex of the 2nd vertical (its first vertex inside the rectangle); that point stays put.
+function touchHandles() {                                // touch vertices (rows j ≥ 0) inside the rectangle
+  const out = [];
+  touchLevels(0, S.H).forEach(e => {
+    if (e.j < 0 || e.t < -1e-6 || e.t > S.H + 1e-6) return;
+    S.xs.forEach((x, k) => { if ((k + S.ph) % 2 === 1 && x <= S.W + 1e-6) out.push({ j: e.j, x, y: e.t }); });
+  });
+  return out;
+}
+const hitTouch = p => { const tol = 9 * pxmm(); return touchHandles().find(q => Math.hypot(p.x - q.x, p.y - q.y) < tol) || null; };
+// y of vertex (touch t_j or crossing c_j) relative to yoff, with the current heights
+function relOff(type, j) {
+  let o = 0;
+  if (j >= 0) for (let i = 0; i < j; i++) o += 2 * hAt(i); else for (let i = j; i < 0; i++) o -= 2 * hAt(i);
+  return type === 'c' ? o + hAt(j) : o;
+}
+// The angle sweep pivots on the top vertex of the 2nd vertical (its first vertex inside the rectangle); that vertex stays put.
 function angleAnchor() {
-  const h = gridH(), a1 = (1 + S.ph) % 2 === 0 ? 1 : 0, base = S.yoff + h * a1;
-  return { ax: S.xs[1], ay: base + 2 * h * Math.ceil((0 - base) / (2 * h) - 1e-9), a1 };
+  const isT = (1 + S.ph) % 2 === 1;
+  for (const e of touchLevels(0, S.H)) {
+    const y = isT ? e.t : e.t + hAt(e.j);
+    if (y >= -1e-6) return { ax: S.xs[1], ay: y, vt: isT ? 't' : 'c', j: e.j };
+  }
+  return { ax: S.xs[1], ay: 0, vt: 't', j: 0 };
 }
 function edgeNear(p) {
   const tol = 14 * pxmm();
@@ -532,8 +626,10 @@ cv.addEventListener('pointerdown', e => {
   if (em === 'measure') { measurePress(p); render(); return; }
   if (em === 'grid') {
     UI.selV = -1;
-    drag = hitLine(p) && gridH() > 1e-6 ? { type: 'angle', ...angleAnchor(), snapJ: snap(), pushed: false }
-      : { type: 'grid', start: p, y0: S.yoff, snapJ: snap(), pushed: false };
+    const th = isVarH() ? hitTouch(p) : null, snapJ = snap();
+    if (th) { ensureRatio(th.j + 2); drag = { type: 'touch', j: th.j, start: p, r0: S.ratio.slice(), y0: S.yoff, href: gridH(), snapJ, pushed: false }; }
+    else drag = hitLine(p) && gridH() > 1e-6 ? { type: 'angle', ...angleAnchor(), snapJ, pushed: false }
+      : { type: 'grid', start: p, y0: S.yoff, snapJ, pushed: false };
     cv.setPointerCapture(e.pointerId); syncUI(); render(); return;
   }
   const h = hitVerts(p);                             // Verticals mode (irregular)
@@ -553,7 +649,7 @@ cv.addEventListener('pointermove', e => {
   if (UI.mp && UI.mp.pt) { UI.mcur = snapPoint(p); render(); return; }
   if (!drag) {
     const em = effMode(e.shiftKey);
-    cv.style.cursor = em === 'measure' ? 'crosshair' : em === 'grid' ? (hitLine(p) ? 'crosshair' : 'ns-resize')
+    cv.style.cursor = em === 'measure' ? 'crosshair' : em === 'grid' ? (isVarH() && hitTouch(p) ? 'row-resize' : hitLine(p) ? 'crosshair' : 'ns-resize')
       : hitVerts(p) ? 'pointer' : edgeNear(p) ? 'crosshair' : 'default';
     return;
   }
@@ -561,8 +657,16 @@ cv.addEventListener('pointermove', e => {
   const d = drag;
   if (d.type === 'angle') {                          // θ from the pointer's direction off the anchor; anchor stays a vertex
     S.a = 'angle'; S.theta = clamp(Math.atan2(Math.abs(p.y - d.ay), Math.abs(p.x - d.ax)) / DEG, 0.5, 89.5);
-    S.yoff = normY(d.ay - gridH() * d.a1);
+    S.yoff = normY(d.ay - relOff(d.vt, d.j));
     UI.ang = { ax: d.ax, ay: d.ay, cur: [p.x, p.y] };
+  } else if (d.type === 'touch') {                   // move touch level j: chain above grows, chain below shrinks (the rest stay put)
+    const R = d.r0.slice(), dy = p.y - d.start.y, k = d.href;
+    if (d.j === 0) { const h0 = R[0] * k, dd = Math.min(dy, 2 * (h0 - MINH)); R[0] = (h0 - dd / 2) / k; S.yoff = d.y0 + dd; }
+    else {
+      const hp = R[d.j - 1] * k, hj = R[d.j] * k, dd = clamp(dy, -2 * (hp - MINH), 2 * (hj - MINH));
+      R[d.j - 1] = (hp + dd / 2) / k; R[d.j] = (hj - dd / 2) / k;
+    }
+    S.ratio = R;
   } else if (d.type === 'grid') S.yoff = normY(d.y0 + p.y - d.start.y);
   else setX(d.i, d.x0 + p.x - d.start.x);
   syncUI(); render();
@@ -583,26 +687,28 @@ window.addEventListener('keyup', e => { if (e.key === 'Shift') { UI.shift = fals
 
 /* ---------- controls ---------- */
 function setMode(m) {
-  if (m === 'verts' && S.kind === 'regular') m = 'grid';
+  if (m === 'verts' && !isFreeX()) m = 'grid';
   UI.mode = m; UI.mp = null;
   $('mGrid').classList.toggle('on', m === 'grid');
   $('mVerts').classList.toggle('on', m === 'verts');
   $('mMeas').classList.toggle('on', m === 'measure');
   $('modeNote').textContent = m === 'grid'
-    ? 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (S.kind === 'irregular' ? ' Hold Shift to move verticals.' : '')
+    ? 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (isFreeX() ? ' Hold Shift to move verticals.' : '')
     : m === 'verts' ? 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift for Grid.'
     : 'Use the Dimensions panel to choose distance or angle.';
   render();
 }
 function delSel() {
-  if (S.kind !== 'irregular' || UI.selV < 0) return;
+  if (!isFreeX() || UI.selV < 0) return;
   if (S.xs.length <= 2) { UI.note = 'At least 2 verticals are needed.'; render(); return; }
   act(() => delVertical(UI.selV));
 }
 const on = (id, ev, fn) => { $(id)[ev] = fn; };
 
 on('kReg', 'onclick', () => setKind('regular'));
-on('kIrr', 'onclick', () => setKind('irregular'));
+on('kMW', 'onclick', () => setKind('movW'));
+on('kMH', 'onclick', () => setKind('movH'));
+on('kMB', 'onclick', () => setKind('both'));
 on('mGrid', 'onclick', () => setMode('grid'));
 on('mVerts', 'onclick', () => setMode('verts'));
 on('mMeas', 'onclick', () => setMode('measure'));
@@ -629,6 +735,48 @@ on('yo', 'onchange', () => act(() => { S.yoff = normY(+$('yo').value || 0); }));
 on('bYo', 'onclick', () => act(() => { S.yoff = 0; }));
 on('ph', 'onchange', () => act(() => { S.ph = +$('ph').value; }));
 
+// variable heights: sliders, profile, randomize, fit
+const setRowH = (j, h) => { ensureRatio(j + 2); S.ratio[j] = clamp(h, MINH, 1e4) / gridH(); UI.note = ''; syncUI(); render(); };
+function makeRow(j) {
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = '<b></b><input type="range" min="0.3" step="0.1"><input type="number" min="0.3" step="0.5"> mm';
+  const sl = row.querySelector('input[type=range]'), nm = row.querySelector('input[type=number]');
+  sl.oninput = () => { if (!sl._u) { pushUndo(); sl._u = true; } setRowH(j, +sl.value); };
+  sl.onchange = () => { sl._u = false; };
+  nm.onchange = () => { pushUndo(); setRowH(j, +nm.value || MINH); };
+  return row;
+}
+function syncRows() {
+  const box = $('hRows'), rows = isVarH() ? rowHs() : [];
+  while (box.children.length > rows.length) box.lastChild.remove();
+  while (box.children.length < rows.length) box.appendChild(makeRow(box.children.length));
+  rows.forEach((r, i) => {
+    const row = box.children[i], sl = row.querySelector('input[type=range]'), nm = row.querySelector('input[type=number]');
+    row.querySelector('b').textContent = 'Chain ' + (r.j + 1);
+    sl.max = Math.max(S.H, 2 * r.h);
+    if (document.activeElement !== sl) sl.value = r.h;
+    if (document.activeElement !== nm) nm.value = +r.h.toFixed(2);
+  });
+}
+const EASE = { linear: u => u, in: u => u * u, out: u => 1 - (1 - u) * (1 - u), inout: u => u * u * (3 - 2 * u) };
+on('gh0', 'onchange', () => { S.prof.h0 = Math.max(MINH, +$('gh0').value || S.prof.h0); syncUI(); });
+on('gh1', 'onchange', () => { S.prof.h1 = Math.max(MINH, +$('gh1').value || S.prof.h1); syncUI(); });
+on('gcv', 'onchange', () => { S.prof.curve = $('gcv').value; });
+on('bProf', 'onclick', () => act(() => {
+  const R = Math.max(2, rowHs().length), P = S.prof, k = gridH();
+  S.ratio = Array.from({ length: R }, (_, i) => Math.max(MINH, P.h0 + (P.h1 - P.h0) * EASE[P.curve](i / (R - 1))) / k);
+}));
+on('bHRand', 'onclick', () => act(() => { const R = Math.max(2, rowHs().length); S.ratio = Array.from({ length: R }, () => 0.5 + Math.random()); }));
+on('bHReset', 'onclick', () => act(() => { S.ratio = [1]; }));
+on('bHFit', 'onclick', () => act(() => {               // scale so the chains now shown (to the nearest half) end exactly at the bottom edge
+  const R = Math.max(0.5, half(chainsFit())), whole = Math.floor(R), k = gridH();
+  ensureRatio(whole + 2);
+  let sum = 0;
+  for (let i = 0; i < whole; i++) sum += 2 * hAt(i);
+  sum += (R - whole) * 2 * hAt(whole);
+  if (sum > 1e-6 && S.H - S.yoff > 0) { const f = (S.H - S.yoff) / sum; S.ratio = S.ratio.map(r => Math.max(MINH / k, r * f)); }
+}));
+
 const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() => {
   let v = +$(id).value; if (!isFinite(v)) return;
   S.gen[key] = clamp(round ? Math.round(v) : v, min, max); regen();
@@ -636,9 +784,9 @@ const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() =
 genField('gN', 'n', 2, 40, true); genField('gSp', 'spacing', 1, 1e4); genField('gSt', 'start', 0, 1e4);
 ['W', 'H'].forEach(id => on(id, 'onchange', () => act(() => {
   const nw = Math.max(10, +$('W').value || S.W), nh = Math.max(10, +$('H').value || S.H), fx = nw / S.W;
-  if (S.kind === 'irregular') { S.xs = S.xs.map(x => x * fx); S.gen.start *= fx; S.gen.spacing *= fx; }
+  if (isFreeX()) { S.xs = S.xs.map(x => x * fx); S.gen.start *= fx; S.gen.spacing *= fx; }
   S.W = nw; S.H = nh;
-  if (S.kind === 'regular' || S.layout === 'gen') regen(); else sanitize();
+  if (!isFreeX() || S.layout === 'gen') regen(); else sanitize();
 })));
 on('vx', 'onchange', () => { if (UI.selV >= 0) act(() => setX(UI.selV, +$('vx').value)); });
 const nudge = sign => { if (UI.selV >= 0) act(() => setX(UI.selV, S.xs[UI.selV] + sign * (+$('step').value || 1))); };
@@ -652,13 +800,12 @@ document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI
 
 function syncUI() {
   const set = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
-  const reg = S.kind === 'regular', X = S.xs, h = gridH(), d = X.length > 1 ? X[1] - X[0] : 0;
+  const free = isFreeX(), reg = !free, X = S.xs, h = gridH(), d = X.length > 1 ? X[1] - X[0] : 0;
   set('W', S.W); set('H', S.H);
-  $('kReg').classList.toggle('on', reg); $('kIrr').classList.toggle('on', !reg);
-  $('kindNote').textContent = reg
-    ? 'Verticals evenly spread; the rhombi tile into a grid of straight lines.'
-    : 'Verticals free (still vertical); the rhombi still tile, but the lines bend at each vertical. Height stays constant.';
-  $('panReg').hidden = !reg; $('panIrr').hidden = reg; $('mVerts').hidden = reg;
+  [['kReg', 'regular'], ['kMW', 'movW'], ['kMH', 'movH'], ['kMB', 'both']].forEach(([id, k]) => $(id).classList.toggle('on', S.kind === k));
+  $('kindNote').textContent = KIND_NOTE[S.kind];
+  $('panReg').hidden = free; $('panIrr').hidden = !free; $('mVerts').hidden = !free; $('panH').hidden = !isVarH();
+  set('gh0', S.prof.h0); set('gh1', S.prof.h1); $('gcv').value = S.prof.curve; syncRows();
   if (reg && UI.mode === 'verts') setMode('grid');
   // regular verticals: only the driver is editable, the others show the derived value
   const vd = regularD(), R = S.reg;
@@ -670,7 +817,7 @@ function syncUI() {
   $('aIn').value = S.a;
   set('th', S.a === 'angle' ? S.theta : (d > 0 ? Math.atan(h / d) / DEG : 0)); set('nCh', S.a === 'chains' ? S.nCh : (h > 0 ? S.H / (2 * h) : 0));
   $('th').disabled = S.a !== 'angle'; $('nCh').disabled = S.a !== 'chains';
-  $('derived').textContent = h > 0 ? `h = ${h.toFixed(2)} mm · vertical diagonal 2h = ${(2 * h).toFixed(2)} mm` + (d > 0 ? ` · first section ${d.toFixed(2)} mm` : '') : '';
+  $('derived').textContent = h > 0 ? (isVarH() ? `reference h = ${h.toFixed(2)} mm (each chain row scales it)` : `h = ${h.toFixed(2)} mm · vertical diagonal 2h = ${(2 * h).toFixed(2)} mm`) + (d > 0 ? ` · first section ${d.toFixed(2)} mm` : '') : '';
   set('yo', S.yoff); $('ph').value = String(S.ph);
   const sv = UI.selV >= 0 ? X[UI.selV] : undefined;
   $('selV').hidden = sv === undefined;
