@@ -153,7 +153,7 @@ const UI = {
 /* ---------- undo ---------- */
 const undoS = [], redoS = [];
 const snap = () => JSON.stringify({ W: S.W, H: S.H, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, gen: S.gen, minGap: S.minGap });
-function restore(j) { Object.assign(S, JSON.parse(j)); UI.selV = UI.selH = -1; UI.draw = null; syncUI(); render(); }
+function restore(j) { Object.assign(S, JSON.parse(j)); UI.selV = UI.selH = -1; UI.draw = null; UI.vdraw = null; syncUI(); render(); }
 function pushUndo(j) { undoS.push(j || snap()); if (undoS.length > 80) undoS.shift(); redoS.length = 0; }
 function act(fn) { pushUndo(); UI.note = ''; fn(); syncUI(); render(); }
 function undo() { if (!undoS.length) return; redoS.push(snap()); restore(undoS.pop()); }
@@ -225,7 +225,9 @@ function computeOne(h, hi) {
   mk(P, Q, true); addV(h.k, P); addV(h.k + 1, Q);
   for (const dir of [1, -1]) {
     let A = dir > 0 ? P : Q, B = dir > 0 ? Q : P, ai = dir > 0 ? h.k + 1 : h.k;
-    while (ai + dir >= 0 && ai + dir < n) {
+    let atEnd = false;
+    for (;;) {
+      if (ai + dir < 0 || ai + dir >= n) { atEnd = true; break; }
       const Ap = reflectPt(A, V[ai]);
       const d = [Ap[0] - B[0], Ap[1] - B[1]];
       if (Math.hypot(d[0], d[1]) < 1e-9) break;
@@ -234,6 +236,10 @@ function computeOne(h, hi) {
       const C = [B[0] + hit.s * d[0], B[1] + hit.s * d[1]];
       mk(B, C, false); addV(ai + dir, C);
       A = B; B = C; ai += dir;
+    }
+    if (atEnd) {                       // first/last vertical also mirrors outward; the ray is cropped by the rectangle
+      const Ap = reflectPt(A, V[ai]), d = [Ap[0] - B[0], Ap[1] - B[1]], len = Math.hypot(d[0], d[1]);
+      if (len > 1e-9) mk(B, [B[0] + d[0] * LIM / len, B[1] + d[1] * LIM / len], false);
     }
   }
   return { segs, vtx };
@@ -509,6 +515,12 @@ function render() {
     s += `<circle cx="${P[0]}" cy="${P[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".7"/>`;
     if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#1976d2" stroke-dasharray="5 4" stroke-width="1.5" ${NS}`);
   }
+  if (UI.vdraw) {
+    const f = UI.vdraw, x2 = UI.vdraw.cur === undefined ? f.x : UI.vdraw.cur;
+    const [xt, xb] = f.edge === 't' ? [f.x, x2] : [x2, f.x];
+    s += ln(xt, 0, xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`);
+    s += `<circle cx="${f.x}" cy="${f.edge === 't' ? 0 : S.H}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".8"/>`;
+  }
   cv.innerHTML = s;
   updateStatus();
 }
@@ -523,7 +535,8 @@ function updateStatus() {
   if (S.verts.length < 2) t = 'Need at least 2 verticals.';
   else if (em === 'measure') t = UI.mp ? 'Pick the second ' + (UI.mp.pt ? 'point.' : 'line.') : ($('mtD').checked ? 'Measure distance: click two points (snaps to corners, ends and vertices).' : 'Measure angle: click two lines.');
   else if (em === 'lines') t = UI.draw ? 'Click an adjacent vertical to finish the line (Esc cancels).' : 'LINES: click a vertical to start a line · drag a circle or a line to move it · hold Shift to edit verticals.';
-  else t = 'VERTICALS: drag a body to move it whole, a square to move one end · hold Shift to edit lines.';
+  else t = UI.vdraw ? 'Click a point on the opposite edge to finish the vertical (Esc cancels).'
+    : 'VERTICALS: drag a body to move it whole, a square to move one end · click an edge point then the opposite edge to add one · Delete removes the selected · hold Shift to edit lines.';
   let info = '';
   const i = UI.info;
   if (i && S.hors.length) {
@@ -689,8 +702,18 @@ cv.addEventListener('pointerdown', e => {
     syncUI(); render(); return;
   }
 
+  if (UI.vdraw) {                                    // second click: finish the new vertical on the opposite edge
+    const from = UI.vdraw, x2 = vdrawX(p.x);
+    const j = snap();
+    if (from.edge === 't' ? addVertical(from.x, x2) : addVertical(x2, from.x)) pushUndo(j);
+    UI.vdraw = null; syncUI(); render(); return;
+  }
   const h = hitVerts(p);                             // Verticals mode
   UI.selH = -1; UI.selV = h && h.type !== 'centre' ? h.i : -1;
+  if (!h) {                                          // empty click near the top/bottom edge starts a new vertical
+    const edge = edgeNear(p);
+    if (edge) { UI.vdraw = { edge, x: clamp(p.x, 0, S.W) }; UI.note = ''; }
+  }
   if (h) {
     drag = { ...h, start: p, snapJ: snap(), pushed: false };
     if (h.type === 'vBody') drag.orig = { ...S.verts[h.i] };
@@ -709,10 +732,13 @@ cv.addEventListener('pointermove', e => {
     const { ai, t } = drawTarget(p);
     UI.draw.cur = vp(S.verts[ai], t); render(); return;
   }
+  if (UI.vdraw) { UI.vdraw.cur = vdrawX(p.x); render(); return; }
   if (!drag) {
     const em = effMode(e.shiftKey);
     const h = em === 'lines' ? hitLines(p) : em === 'verts' ? hitVerts(p) : null;
-    cv.style.cursor = em === 'measure' ? 'crosshair' : h ? 'pointer' : em === 'lines' && nearestVertical(p, 14 * pxmm()) >= 0 ? 'crosshair' : 'default';
+    cv.style.cursor = em === 'measure' ? 'crosshair' : h ? 'pointer'
+      : em === 'lines' && nearestVertical(p, 14 * pxmm()) >= 0 ? 'crosshair'
+      : em === 'verts' && edgeNear(p) ? 'crosshair' : 'default';
     return;
   }
   if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
@@ -741,23 +767,65 @@ window.addEventListener('keydown', e => {
   if (/INPUT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.type !== 'checkbox' && document.activeElement.type !== 'radio') return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
-  else if (e.key === 'Escape') { UI.draw = null; UI.mp = null; render(); }
+  else if (e.key === 'Escape') { UI.draw = null; UI.vdraw = null; UI.mp = null; render(); }
   else if (e.key === 'Delete' || e.key === 'Backspace') delSel();
 });
 window.addEventListener('keyup', e => { if (e.key === 'Shift') { UI.shift = false; render(); } });
 
 /* ---------- controls ---------- */
 function setMode(m) {
-  UI.mode = m; UI.draw = null; UI.mp = null;
+  UI.mode = m; UI.draw = null; UI.vdraw = null; UI.mp = null;
   $('mLines').classList.toggle('on', m === 'lines');
   $('mVerts').classList.toggle('on', m === 'verts');
   $('mMeas').classList.toggle('on', m === 'measure');
   $('modeNote').textContent = m === 'lines'
     ? 'Click a vertical to start a line, click an adjacent one to finish. Drag circles/lines to move them. Hold Shift to move verticals.'
-    : m === 'verts' ? 'Drag a vertical to move it whole, or a square end handle. Hold Shift to edit lines.' : 'Use the Dimensions panel to choose distance or angle.';
+    : m === 'verts' ? 'Drag a vertical to move it whole, or a square end handle. To add a vertical, click a point on the top or bottom edge, then a point on the opposite edge. Delete removes the selected vertical. Hold Shift to edit lines.' : 'Use the Dimensions panel to choose distance or angle.';
   render();
 }
-function delSel() { if (UI.selH >= 0) act(() => { S.hors.splice(UI.selH, 1); UI.selH = -1; }); }
+function delSel() {
+  if (UI.selH >= 0) act(() => { S.hors.splice(UI.selH, 1); UI.selH = -1; });
+  else if (UI.selV >= 0) {
+    if (S.verts.length <= 2) { UI.note = 'At least 2 verticals are needed.'; render(); return; }
+    act(() => delVertical(UI.selV));
+  }
+}
+
+// x on the opposite edge for a new vertical (kept inside the rectangle, and inside the 45° cap if on)
+function vdrawX(x) {
+  let lo = 0, hi = S.W;
+  if (S.cap) { lo = Math.max(lo, UI.vdraw.x - S.H); hi = Math.min(hi, UI.vdraw.x + S.H); }
+  return clamp(x, lo, hi);
+}
+function edgeNear(p) {
+  const tol = 14 * pxmm(), pad = tol;
+  if (p.x < -pad || p.x > S.W + pad) return null;
+  if (Math.abs(p.y) < tol) return 't';
+  if (Math.abs(p.y - S.H) < tol) return 'b';
+  return null;
+}
+// insert a vertical (top x, bottom x) in sorted position; lines it splits are trimmed to it
+function addVertical(xt, xb) {
+  const V = S.verts, i = V.filter(v => v.xt < xt).length;
+  const fits = (k, x) => (i === 0 || x >= V[i - 1][k] + GAP) && (i === V.length || x <= V[i][k] - GAP);
+  if (!fits('xt', xt) || !fits('xb', xb)) { UI.note = 'That vertical would cross or touch a neighbour (min gap ' + GAP + ' mm).'; return false; }
+  if (S.cap && Math.abs(xb - xt) > S.H + 1e-9) { UI.note = 'Exceeds the ±45° cap.'; return false; }
+  const nv = { xt, xb }, nh = [];
+  S.hors.forEach(h => {
+    if (h.k >= i) nh.push({ ...h, k: h.k + 1 });
+    else if (h.k === i - 1) {                        // this line spans the new vertical: trim it to the new one
+      const P = vp(V[h.k], h.a), Q = vp(V[h.k + 1], h.b);
+      const hit = rayVert(P, [Q[0] - P[0], Q[1] - P[1]], nv);
+      if (hit && hit.s > 0 && hit.s < 1) nh.push({ k: h.k, a: h.a, b: (P[1] + hit.s * (Q[1] - P[1])) / S.H });
+    } else nh.push(h);
+  });
+  V.splice(i, 0, nv); S.hors = nh; S.layout = 'free'; S.gen.n = V.length; UI.selV = i; UI.selH = -1; UI.note = '';
+  return true;
+}
+function delVertical(j) {
+  S.hors = S.hors.filter(h => h.k !== j && h.k !== j - 1).map(h => h.k > j ? { ...h, k: h.k - 1 } : h);
+  S.verts.splice(j, 1); S.layout = 'free'; S.gen.n = S.verts.length; UI.selV = -1;
+}
 const nH = () => clamp(Math.round(+$('nH').value) || 5, 1, 60);
 
 on('mLines', 'onclick', () => setMode('lines'));

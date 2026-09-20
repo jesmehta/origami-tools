@@ -37,7 +37,12 @@ panel and the vertical generator differ.
   directions.
 - **Verticals** — drag a body to move the whole line in ±x, drag a square
   handle to move one end, or use the numeric fields / ◀ ▶ nudge. (Radial: drag
-  the ◆ to move the centre.)
+  the ◆ to move the centre.) **Add a vertical** by clicking a point on the top
+  (or bottom) edge, then a point on the opposite edge; it's inserted in sorted
+  position and rejected if it would cross/touch a neighbour or break the ±45°
+  cap (linear). Lines that spanned the new vertical are trimmed to it.
+  **Delete** removes the selected vertical (min 2), along with the lines
+  attached to it. Hand-added verticals make the layout "free".
 - **Measure** — *distance*: click two points (snaps to corners, vertical ends
   and vertices); *angle*: click two lines (verticals, rectangle edges, any
   drawn or reflected line). Shown as acute / obtuse. Measurements are
@@ -47,7 +52,9 @@ panel and the vertical generator differ.
 mirrored across the next vertical and extended/trimmed to the one after, and
 so on to the last, *without* regard to the rectangle; the result is cropped to
 the rectangle only at the end. A trail that leaves the rectangle and re-enters
-is therefore drawn where it's inside.
+is therefore drawn where it's inside. The first and last verticals also
+mirror **outward**: the trail continues as a ray past them, cropped by the
+rectangle (one step; there is no further virtual mirror beyond).
 
 **Dimensions** (toggles) — edge spacing, vertical tilt, drawn-line angle,
 reflected-line angles, vertex gaps along each vertical.
@@ -98,3 +105,5 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
   lines; reflect through infinite mirrors then crop; dimensions + measure
   tool; click-to-draw with Lines/Verticals/Measure modes (Shift swap);
   random layouts avoid crossings and enforce a min vertex gap.
+- **v3** — Add verticals by drawing edge-to-edge (and delete); first/last
+  vertical reflect outward, cropped by the rectangle.
