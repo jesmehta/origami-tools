@@ -11,6 +11,12 @@ design and fabrication.
   browser. See [vPleat-visualiser/README.md](vPleat-visualiser/README.md)
   for how it works and the design decisions behind it.
 
+- **[Mirror Pleats](mirror-pleats/index.html)** — draw verticals across a
+  rectangle, draw lines in the first section, and each vertical mirrors them
+  onward to build a trail of V-pleats. Linear or radial verticals, ordered and
+  random layouts, SVG/PNG export. See
+  [mirror-pleats/README.md](mirror-pleats/README.md).
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).

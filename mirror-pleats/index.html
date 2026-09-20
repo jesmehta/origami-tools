@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mirror Pleats</title>
+<style>
+  :root{--bg:#f4f3ef;--panel:#fff;--ink:#222;--mute:#777;--line:#d9d6cc;--acc:#b3261e;}
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%;margin:0}
+  body{font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  #app{display:grid;grid-template-columns:330px 1fr;height:100%}
+  aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 14px 30px}
+  main{display:flex;flex-direction:column;min-width:0;min-height:0}
+  #cv{flex:1;min-height:0;width:100%;background:#fff;touch-action:none;display:block}
+  #status{padding:6px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--mute);min-height:30px}
+  h1{font-size:15px;margin:0 0 2px}
+  .sub{color:var(--mute);margin:0 0 10px;font-size:12px}
+  fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:8px 10px 10px}
+  legend{font-weight:600;padding:0 4px}
+  .row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:5px 0}
+  label{display:inline-flex;align-items:center;gap:5px}
+  input[type=number]{width:64px;padding:3px 4px}
+  input[type=color]{width:30px;height:22px;padding:0;border:1px solid var(--line)}
+  button{font:inherit;padding:4px 9px;border:1px solid #bbb;border-radius:4px;background:#fafafa;cursor:pointer}
+  button:hover{background:#eee}
+  button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .note{color:var(--mute);font-size:12px;margin:4px 0 0}
+  @media(max-width:780px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}aside{max-height:48vh}main{height:70vh}}
+</style>
+</head>
+<body>
+<div id="app">
+<aside>
+  <h1>Mirror Pleats</h1>
+  <p class="sub">Verticals act as mirrors: lines drawn in section 1 are reflected across every following vertical.</p>
+
+  <fieldset><legend>Rectangle</legend>
+    <div class="row">
+      <label>W <input type="number" id="W" min="10" step="1"> mm</label>
+      <label>H <input type="number" id="H" min="10" step="1"> mm</label>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>Verticals</legend>
+    <div class="row">
+      <label>Count <input type="number" id="nV" min="2" max="40" step="1"></label>
+      <label>Margin <input type="number" id="margin" min="0" step="1"> mm</label>
+    </div>
+    <div class="row">
+      <button id="bParallel">Parallel</button>
+      <button id="bRadial">Radial</button>
+    </div>
+    <div class="row">
+      <label>Centre x <input type="number" id="cx" step="1"></label>
+      <label>y <input type="number" id="cy" step="1"></label>
+    </div>
+    <p class="note">Radial centre must sit above or below the rectangle so the lines don't cross. Drag the ◆ handle too.</p>
+    <div class="row"><label><input type="checkbox" id="cap"> Cap verticals at ±45°</label></div>
+    <div class="row" id="selV" hidden>
+      <b>V<span id="selVn"></span></b>
+      <label>top x <input type="number" id="vxt" step="0.5"></label>
+      <label>bottom x <input type="number" id="vxb" step="0.5"></label>
+      <span>
+        <button id="nudL" title="Move whole line left">◀</button>
+        <button id="nudR" title="Move whole line right">▶</button>
+        <input type="number" id="step" value="1" min="0.1" step="0.5" style="width:52px"> mm
+      </span>
+    </div>
+    <p class="note">Drag a vertical's body to move it whole, or a square end handle to move just that end.</p>
+  </fieldset>
+
+  <fieldset><legend>Section-1 lines (V1 → V2)</legend>
+    <div class="row">
+      <button id="tSel" class="on">Select / move</button>
+      <button id="tDraw">Draw line</button>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="snap45"> Snap to 45° while drawing/dragging</label>
+    </div>
+    <div class="row">
+      <button id="bDel">Delete selected</button>
+      <button id="bClear">Clear lines</button>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>Ordered layouts</legend>
+    <div class="row">
+      <label>Lines <input type="number" id="nH" min="1" max="60" step="1"></label>
+      <label><input type="checkbox" id="alt"> alternate ↑↓</label>
+    </div>
+    <div class="row">
+      <button id="oPar">Ordered · parallel</button>
+      <button id="oRad">Ordered · radial</button>
+    </div>
+    <div class="row"><button id="oHor">Re-order lines only (keep verticals)</button></div>
+    <p class="note">Ordered = evenly spaced lines snapped to 45°.</p>
+  </fieldset>
+
+  <fieldset><legend>Randomize</legend>
+    <div class="row">
+      <button id="rV">Verticals</button>
+      <button id="rH">Lines</button>
+      <button id="rA">Both</button>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>Export</legend>
+    <div class="row">
+      <label>Lines <input type="color" id="colLine" value="#c62828"></label>
+      <label>Rectangle <input type="color" id="colRect" value="#111111"></label>
+    </div>
+    <div class="row">
+      <label>Stroke <input type="number" id="sw" value="0.3" min="0.05" step="0.05"> mm</label>
+      <label>PNG <input type="number" id="ppm" value="6" min="1" max="30" step="1"> px/mm</label>
+    </div>
+    <div class="row">
+      <button id="xSvg" class="pri">Export SVG</button>
+      <button id="xPng" class="pri">Export PNG</button>
+    </div>
+  </fieldset>
+
+  <div class="row"><button id="bUndo">Undo</button><button id="bRedo">Redo</button></div>
+</aside>
+<main>
+  <svg id="cv" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="status"></div>
+</main>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('cv');
+const GAP = 1;                       // minimum mm between neighbouring vertical ends
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const fmt = n => +n.toFixed(4);
+
+/* ---------- state ---------- */
+const S = {
+  W: 200, H: 120,
+  verts: [],            // {xt, xb}: x at the top edge (y=0) and bottom edge (y=H)
+  hors: [],             // {a, b}: position (0..1, top→bottom) on V1 and V2
+  layout: 'parallel',   // 'parallel' | 'radial' | 'free'
+  centre: { x: 100, y: -70 },
+  cap: true,
+  margin: 0,
+};
+const UI = { tool: 'select', selV: -1, selH: -1, draw: null, hover: null, viewLock: null };
+
+/* ---------- undo ---------- */
+const undoS = [], redoS = [];
+const snap = () => JSON.stringify({ W: S.W, H: S.H, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, margin: S.margin });
+function restore(j) { Object.assign(S, JSON.parse(j)); UI.selV = UI.selH = -1; UI.draw = null; syncUI(); render(); }
+function pushUndo(j) { undoS.push(j || snap()); if (undoS.length > 80) undoS.shift(); redoS.length = 0; }
+function act(fn) { pushUndo(); fn(); syncUI(); render(); }
+function undo() { if (!undoS.length) return; redoS.push(snap()); restore(undoS.pop()); }
+function redo() { if (!redoS.length) return; undoS.push(snap()); restore(redoS.pop()); }
+
+/* ---------- geometry ---------- */
+const vp = (v, t) => [v.xt + (v.xb - v.xt) * t, S.H * t];
+
+function reflectPt(p, v) {
+  const dx = v.xb - v.xt, dy = S.H, L = dx * dx + dy * dy;
+  const px = p[0] - v.xt, py = p[1];
+  const k = (px * dx + py * dy) / L;
+  return [2 * (v.xt + k * dx) - p[0], 2 * (k * dy) - p[1]];
+}
+
+// intersect ray o + s*d with vertical v (A + t*e); returns {s,t} or null
+function rayVert(o, d, v) {
+  const ex = v.xb - v.xt, ey = S.H;
+  const den = d[0] * ey - d[1] * ex;
+  if (Math.abs(den) < 1e-12) return null;
+  const s = ((v.xt - o[0]) * ey - (0 - o[1]) * ex) / den;
+  const t = ((o[0] - v.xt) * d[1] - o[1] * d[0]) / (ex * d[1] - ey * d[0]);
+  return { s, t };
+}
+
+// t on vertical v such that the line from fixed point P at ±45° (dx = side, dy = ±1) meets it
+function ray45(P, dx, dy, v) {
+  const q = dx * dy, D = v.xb - v.xt;
+  const den = S.H - q * D;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = (P[1] + q * (v.xt - P[0])) / den;
+  if (t < -1e-9 || t > 1 + 1e-9) return null;
+  if (dx * (vp(v, t)[0] - P[0]) <= 0) return null;
+  return clamp(t, 0, 1);
+}
+
+function projT(p, v) {
+  const A = vp(v, 0), B = vp(v, 1), ex = B[0] - A[0], ey = B[1] - A[1];
+  return clamp(((p.x - A[0]) * ex + (p.y - A[1]) * ey) / (ex * ex + ey * ey), 0, 1);
+}
+
+function distSeg(p, a, b) {
+  const ex = b[0] - a[0], ey = b[1] - a[1], L = ex * ex + ey * ey || 1;
+  const t = clamp(((p.x - a[0]) * ex + (p.y - a[1]) * ey) / L, 0, 1);
+  return Math.hypot(p.x - a[0] - t * ex, p.y - a[1] - t * ey);
+}
+
+// Reflection trail. Each line is mirrored across the next vertical, then
+// extended/trimmed to meet the vertical after that; if it leaves the rectangle
+// (top/bottom) before reaching the next vertical it is clipped at the edge and
+// that trail ends.
+function computeSegments() {
+  const out = [], n = S.verts.length;
+  if (n < 2) return out;
+  S.hors.forEach((h, hi) => {
+    let A = vp(S.verts[0], h.a), B = vp(S.verts[1], h.b);
+    out.push({ s: [A[0], A[1], B[0], B[1]], base: true, hi });
+    for (let k = 1; k < n - 1; k++) {
+      const Ap = reflectPt(A, S.verts[k]);
+      const d = [Ap[0] - B[0], Ap[1] - B[1]];
+      if (Math.hypot(d[0], d[1]) < 1e-9) break;
+      const hit = rayVert(B, d, S.verts[k + 1]);
+      let se = Infinity;
+      if (d[1] > 1e-12) se = (S.H - B[1]) / d[1]; else if (d[1] < -1e-12) se = -B[1] / d[1];
+      if (hit && hit.s > 1e-9 && hit.t >= -1e-9 && hit.t <= 1 + 1e-9 && hit.s <= se + 1e-9) {
+        const C = [B[0] + hit.s * d[0], B[1] + hit.s * d[1]];
+        out.push({ s: [B[0], B[1], C[0], C[1]], base: false, hi });
+        A = B; B = C; continue;
+      }
+      if (isFinite(se) && se > 1e-9) {
+        const C = [B[0] + se * d[0], B[1] + se * d[1]];
+        out.push({ s: [B[0], B[1], C[0], C[1]], base: false, hi, clipped: true });
+      }
+      break;
+    }
+  });
+  return out;
+}
+
+/* ---------- vertical constraints ---------- */
+function ordRange(i, k) {
+  let lo = 0, hi = S.W;
+  if (i > 0) lo = Math.max(lo, S.verts[i - 1][k] + GAP);
+  if (i < S.verts.length - 1) hi = Math.min(hi, S.verts[i + 1][k] - GAP);
+  return { lo, hi };
+}
+function setEnd(i, end, x) {
+  const k = end === 't' ? 'xt' : 'xb', o = end === 't' ? 'xb' : 'xt';
+  let { lo, hi } = ordRange(i, k);
+  if (S.cap) {
+    const l2 = Math.max(lo, S.verts[i][o] - S.H), h2 = Math.min(hi, S.verts[i][o] + S.H);
+    if (l2 <= h2) { lo = l2; hi = h2; }
+  }
+  if (lo > hi) return;
+  S.verts[i][k] = clamp(x, lo, hi);
+}
+function moveBody(i, orig, dx) {
+  const rT = ordRange(i, 'xt'), rB = ordRange(i, 'xb');
+  const mn = Math.max(rT.lo - orig.xt, rB.lo - orig.xb), mx = Math.min(rT.hi - orig.xt, rB.hi - orig.xb);
+  if (mn > mx) return;
+  dx = clamp(dx, mn, mx);
+  S.verts[i].xt = orig.xt + dx; S.verts[i].xb = orig.xb + dx;
+}
+function sanitize() {
+  const n = S.verts.length;
+  if (S.cap) S.verts.forEach(v => { v.xb = clamp(v.xb, v.xt - S.H, v.xt + S.H); });
+  for (const k of ['xt', 'xb']) {
+    for (let i = 0; i < n; i++) {
+      const lo = i ? S.verts[i - 1][k] + GAP : 0;
+      S.verts[i][k] = Math.max(S.verts[i][k], lo);
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      const hi = i < n - 1 ? S.verts[i + 1][k] - GAP : S.W;
+      S.verts[i][k] = Math.min(S.verts[i][k], hi);
+    }
+  }
+}
+
+/* ---------- generators ---------- */
+function genParallel(n, m) {
+  return Array.from({ length: n }, (_, i) => { const x = m + (S.W - 2 * m) * i / (n - 1); return { xt: x, xb: x }; });
+}
+function fixCentre() {
+  S.centre.x = clamp(S.centre.x, 0, S.W);
+  if (S.centre.y >= 0 && S.centre.y <= S.H) S.centre.y = S.centre.y < S.H / 2 ? -1 : S.H + 1;
+}
+function genRadial(n, m) {
+  fixCentre();
+  const { x: cx, y: cy } = S.centre, W = S.W, H = S.H;
+  const yw = Math.abs(H - cy) > Math.abs(cy) ? H : 0, dyw = yw - cy;
+  const aL = Math.atan((m - cx) / dyw), aR = Math.atan((W - m - cx) / dyw);
+  return Array.from({ length: n }, (_, i) => {
+    const tn = Math.tan(aL + (aR - aL) * i / (n - 1));
+    return { xt: clamp(cx + tn * (0 - cy), 0, W), xb: clamp(cx + tn * (H - cy), 0, W) };
+  });
+}
+function applyParallel() { S.verts = genParallel(S.verts.length, S.margin); S.layout = 'parallel'; S.cap = true; }
+function applyRadial() { S.verts = genRadial(S.verts.length, S.margin); S.layout = 'radial'; S.cap = false; sanitize(); }
+
+function orderedHors(m, alt) {
+  const V1 = S.verts[0], V2 = S.verts[1], out = [];
+  for (let i = 0; i < m; i++) {
+    const a = (i + 0.5) / m, P = vp(V1, a);
+    const first = alt && i % 2 ? -1 : 1;
+    let b = ray45(P, 1, first, V2);
+    if (b === null) b = ray45(P, 1, -first, V2);
+    if (b === null) b = a;
+    out.push({ a, b });
+  }
+  S.hors = out;
+}
+function randomVerts() {
+  const n = S.verts.length, sp = S.W / (n - 1), j = sp * 0.45;
+  const lean = (Math.random() - 0.5) * S.H * 0.5;
+  S.verts = Array.from({ length: n }, (_, i) => {
+    const base = i * sp;
+    return { xt: clamp(base + (Math.random() - 0.5) * 2 * j, 0, S.W), xb: clamp(base + lean + (Math.random() - 0.5) * 2 * j, 0, S.W) };
+  });
+  S.layout = 'free'; sanitize();
+}
+function randomHors(m) { S.hors = Array.from({ length: m }, () => ({ a: Math.random(), b: Math.random() })); }
+
+/* ---------- view ---------- */
+function bounds() {
+  if (UI.viewLock) return UI.viewLock;
+  const pad = Math.max(S.W, S.H) * 0.06;
+  let x0 = -pad, y0 = -pad, x1 = S.W + pad, y1 = S.H + pad;
+  if (S.layout === 'radial') {
+    x0 = Math.min(x0, S.centre.x - pad); x1 = Math.max(x1, S.centre.x + pad);
+    y0 = Math.min(y0, S.centre.y - pad); y1 = Math.max(y1, S.centre.y + pad);
+  }
+  return { x0, y0, x1, y1 };
+}
+
+function render() {
+  const b = bounds();
+  cv.setAttribute('viewBox', `${b.x0} ${b.y0} ${b.x1 - b.x0} ${b.y1 - b.y0}`);
+  const ctm = cv.getScreenCTM();
+  const px = ctm && ctm.a ? 1 / ctm.a : 1;      // mm per screen pixel
+  const lc = $('colLine').value, rc = $('colRect').value;
+  const ln = (a, b2, c, d, extra = '') => `<line x1="${fmt(a)}" y1="${fmt(b2)}" x2="${fmt(c)}" y2="${fmt(d)}" ${extra}/>`;
+  const NS = 'vector-effect="non-scaling-stroke"';
+  let s = '';
+  s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="2" ${NS}/>`;
+
+  // radial guides
+  if (S.layout === 'radial') {
+    s += `<g stroke="#999" stroke-dasharray="4 4" stroke-width="1" ${NS} opacity=".55">`;
+    S.verts.forEach(v => {
+      const far = Math.abs(S.centre.y) < Math.abs(S.H - S.centre.y) ? [v.xb, S.H] : [v.xt, 0];
+      s += ln(S.centre.x, S.centre.y, far[0], far[1]);
+    });
+    s += '</g>';
+  }
+
+  // lines
+  s += `<g stroke="${lc}" stroke-width="1.5" fill="none" stroke-linecap="round" ${NS}>`;
+  S.verts.forEach(v => { if (!edgeVert(v)) s += ln(v.xt, 0, v.xb, S.H); });
+  computeSegments().forEach(g => { s += ln(...g.s); });
+  s += '</g>';
+
+  // selection highlights
+  if (UI.selV >= 0 && S.verts[UI.selV]) {
+    const v = S.verts[UI.selV];
+    s += ln(v.xt, 0, v.xb, S.H, `stroke="#1976d2" stroke-width="5" opacity=".3" ${NS}`);
+  }
+  if (UI.selH >= 0 && S.hors[UI.selH] && S.verts.length > 1) {
+    const h = S.hors[UI.selH], A = vp(S.verts[0], h.a), B = vp(S.verts[1], h.b);
+    s += ln(A[0], A[1], B[0], B[1], `stroke="#1976d2" stroke-width="5" opacity=".3" ${NS}`);
+  }
+
+  // handles
+  const r = 5 * px;
+  s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
+  S.verts.forEach((v, i) => {
+    [[v.xt, 0], [v.xb, S.H]].forEach(p => { s += `<rect x="${fmt(p[0] - r)}" y="${fmt(p[1] - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`; });
+  });
+  if (S.verts.length > 1) S.hors.forEach((h, i) => {
+    [vp(S.verts[0], h.a), vp(S.verts[1], h.b)].forEach(p => { s += `<circle cx="${fmt(p[0])}" cy="${fmt(p[1])}" r="${fmt(r)}" ${i === UI.selH ? 'fill="#bbdefb"' : ''}/>`; });
+  });
+  if (S.layout === 'radial') {
+    const c = S.centre, d = r * 1.4;
+    s += `<polygon points="${c.x},${c.y - d} ${c.x + d},${c.y} ${c.x},${c.y + d} ${c.x - d},${c.y}" fill="#ffe082" stroke="#e65100"/>`;
+  }
+  s += '</g>';
+
+  // draw preview
+  if (UI.draw) {
+    const P = vp(S.verts[UI.draw.vi], UI.draw.t);
+    s += `<circle cx="${P[0]}" cy="${P[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".7"/>`;
+    if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#1976d2" stroke-dasharray="5 4" stroke-width="1.5" ${NS}`);
+  }
+  cv.innerHTML = s;
+  updateStatus();
+}
+const edgeVert = v => (v.xt === 0 && v.xb === 0) || (v.xt === S.W && v.xb === S.W);
+
+function updateStatus() {
+  let t;
+  if (S.verts.length < 2) t = 'Need at least 2 verticals.';
+  else if (UI.tool === 'draw') t = UI.draw ? 'Now click on the other of V1 / V2 (Esc to cancel).' : 'Click a point on V1 or V2, then a point on the other.';
+  else t = 'Drag: vertical body = move whole, square = move end, circle = slide along vertical, line body = slide line. Delete removes selected line.';
+  const clipped = computeSegments().filter(g => g.clipped).length;
+  $('status').textContent = t + (clipped ? `   · ${clipped} trail(s) clipped at the rectangle edge` : '');
+}
+
+/* ---------- export ---------- */
+function buildSVG(bg) {
+  const sw = +$('sw').value || 0.3, m = sw / 2, W = S.W, H = S.H;
+  let l = '';
+  S.verts.forEach(v => { if (!edgeVert(v)) l += `<line x1="${fmt(v.xt)}" y1="0" x2="${fmt(v.xb)}" y2="${H}"/>`; });
+  computeSegments().forEach(g => { l += `<line x1="${fmt(g.s[0])}" y1="${fmt(g.s[1])}" x2="${fmt(g.s[2])}" y2="${fmt(g.s[3])}"/>`; });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(W + sw)}mm" height="${fmt(H + sw)}mm" viewBox="${-m} ${-m} ${fmt(W + sw)} ${fmt(H + sw)}">` +
+    (bg ? `<rect x="${-m}" y="${-m}" width="${fmt(W + sw)}" height="${fmt(H + sw)}" fill="#fff"/>` : '') +
+    `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
+    `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
+}
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$('xSvg').onclick = () => download(new Blob([buildSVG(false)], { type: 'image/svg+xml' }), 'mirror-pleats.svg');
+$('xPng').onclick = () => {
+  const ppm = +$('ppm').value || 6, sw = +$('sw').value || 0.3;
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = Math.round((S.W + sw) * ppm); c.height = Math.round((S.H + sw) * ppm);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(b => download(b, 'mirror-pleats.png'), 'image/png');
+  };
+  img.src = URL.createObjectURL(new Blob([buildSVG(true)], { type: 'image/svg+xml' }));
+};
+
+/* ---------- pointer interaction ---------- */
+function ptr(e) {
+  const pt = cv.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(cv.getScreenCTM().inverse()); return { x: q.x, y: q.y };
+}
+const pxmm = () => 1 / cv.getScreenCTM().a;
+
+function hitTest(p) {
+  const tol = 9 * pxmm();
+  if (S.layout === 'radial' && Math.hypot(p.x - S.centre.x, p.y - S.centre.y) < tol * 1.3) return { type: 'centre' };
+  for (let i = 0; i < S.verts.length; i++) {
+    const v = S.verts[i];
+    if (Math.hypot(p.x - v.xt, p.y) < tol) return { type: 'vEnd', i, end: 't' };
+    if (Math.hypot(p.x - v.xb, p.y - S.H) < tol) return { type: 'vEnd', i, end: 'b' };
+  }
+  if (S.verts.length > 1) {
+    for (let i = S.hors.length - 1; i >= 0; i--) {
+      const h = S.hors[i], A = vp(S.verts[0], h.a), B = vp(S.verts[1], h.b);
+      if (Math.hypot(p.x - A[0], p.y - A[1]) < tol) return { type: 'hEnd', i, which: 'a' };
+      if (Math.hypot(p.x - B[0], p.y - B[1]) < tol) return { type: 'hEnd', i, which: 'b' };
+    }
+    for (let i = S.hors.length - 1; i >= 0; i--) {
+      const h = S.hors[i];
+      if (distSeg(p, vp(S.verts[0], h.a), vp(S.verts[1], h.b)) < tol * 0.7) return { type: 'hBody', i };
+    }
+  }
+  for (let i = 0; i < S.verts.length; i++) {
+    const v = S.verts[i];
+    if (distSeg(p, [v.xt, 0], [v.xb, S.H]) < tol * 0.7) return { type: 'vBody', i };
+  }
+  return null;
+}
+
+// snap the moving end of a line to 45° relative to the fixed end
+function snapT(fixedPt, fixedIsV1, movV, rawT) {
+  const dx = fixedIsV1 ? 1 : -1;
+  const c = [ray45(fixedPt, dx, 1, movV), ray45(fixedPt, dx, -1, movV)].filter(x => x !== null);
+  if (!c.length) return rawT;
+  return c.reduce((best, t) => Math.abs(t - rawT) < Math.abs(best - rawT) ? t : best);
+}
+
+let drag = null;
+cv.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const p = ptr(e);
+  if (UI.tool === 'draw' && S.verts.length > 1) {
+    const tol = 40 * pxmm();
+    if (!UI.draw) {
+      const d0 = distSeg(p, [S.verts[0].xt, 0], [S.verts[0].xb, S.H]), d1 = distSeg(p, [S.verts[1].xt, 0], [S.verts[1].xb, S.H]);
+      const vi = d0 <= d1 ? 0 : 1;
+      if (Math.min(d0, d1) > tol) return;
+      UI.draw = { vi, t: projT(p, S.verts[vi]), cur: [p.x, p.y] };
+    } else {
+      const from = UI.draw, ovi = 1 - from.vi;
+      let t = projT(p, S.verts[ovi]);
+      if ($('snap45').checked) t = snapT(vp(S.verts[from.vi], from.t), from.vi === 0, S.verts[ovi], t);
+      pushUndo();
+      S.hors.push(from.vi === 0 ? { a: from.t, b: t } : { a: t, b: from.t });
+      UI.selH = S.hors.length - 1; UI.selV = -1; UI.draw = null;
+    }
+    syncUI(); render(); return;
+  }
+  const h = hitTest(p);
+  UI.selV = h && (h.type === 'vEnd' || h.type === 'vBody') ? h.i : -1;
+  UI.selH = h && (h.type === 'hEnd' || h.type === 'hBody') ? h.i : -1;
+  if (h) {
+    drag = { ...h, start: p, snapJ: snap(), pushed: false };
+    if (h.type === 'vBody') drag.orig = { ...S.verts[h.i] };
+    if (h.type === 'hBody') drag.orig = { ...S.hors[h.i] };
+    UI.viewLock = bounds();
+    cv.setPointerCapture(e.pointerId);
+  }
+  syncUI(); render();
+});
+
+cv.addEventListener('pointermove', e => {
+  const p = ptr(e);
+  if (UI.draw) {
+    const ovi = 1 - UI.draw.vi;
+    let t = projT(p, S.verts[ovi]);
+    if ($('snap45').checked) t = snapT(vp(S.verts[UI.draw.vi], UI.draw.t), UI.draw.vi === 0, S.verts[ovi], t);
+    UI.draw.cur = vp(S.verts[ovi], t); render(); return;
+  }
+  if (!drag) { const h = UI.tool === 'select' ? hitTest(p) : null; cv.style.cursor = UI.tool === 'draw' ? 'crosshair' : h ? 'pointer' : 'default'; return; }
+  if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
+  const S0 = drag;
+  if (S0.type === 'vEnd') { setEnd(S0.i, S0.end, p.x); S.layout = 'free'; }
+  else if (S0.type === 'vBody') { moveBody(S0.i, S0.orig, p.x - S0.start.x); S.layout = 'free'; }
+  else if (S0.type === 'centre') { S.centre = { x: p.x, y: p.y }; S.verts = genRadial(S.verts.length, S.margin); sanitize(); }
+  else if (S0.type === 'hEnd') {
+    const h = S.hors[S0.i], movIsA = S0.which === 'a';
+    const mv = S.verts[movIsA ? 0 : 1], fx = S.verts[movIsA ? 1 : 0];
+    let t = projT(p, mv);
+    if ($('snap45').checked) t = snapT(vp(fx, movIsA ? h.b : h.a), !movIsA, mv, t);
+    h[S0.which] = t;
+  } else if (S0.type === 'hBody') {
+    const dt = clamp((p.y - S0.start.y) / S.H, -Math.min(S0.orig.a, S0.orig.b), 1 - Math.max(S0.orig.a, S0.orig.b));
+    S.hors[S0.i].a = S0.orig.a + dt; S.hors[S0.i].b = S0.orig.b + dt;
+  }
+  syncUI(); render();
+});
+const endDrag = () => { if (drag) { drag = null; UI.viewLock = null; syncUI(); render(); } };
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+window.addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.type !== 'checkbox') return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+  else if (e.key === 'Escape') { UI.draw = null; render(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') delSel();
+});
+
+/* ---------- controls ---------- */
+function setTool(t) { UI.tool = t; UI.draw = null; $('tSel').classList.toggle('on', t === 'select'); $('tDraw').classList.toggle('on', t === 'draw'); cv.style.cursor = t === 'draw' ? 'crosshair' : 'default'; render(); }
+function delSel() { if (UI.selH >= 0) act(() => { S.hors.splice(UI.selH, 1); UI.selH = -1; }); }
+const nH = () => clamp(Math.round(+$('nH').value) || 5, 1, 60);
+
+$('tSel').onclick = () => setTool('select');
+$('tDraw').onclick = () => setTool('draw');
+$('bDel').onclick = delSel;
+$('bClear').onclick = () => act(() => { S.hors = []; UI.selH = -1; });
+$('bParallel').onclick = () => act(applyParallel);
+$('bRadial').onclick = () => act(applyRadial);
+$('oPar').onclick = () => act(() => { applyParallel(); orderedHors(nH(), $('alt').checked); });
+$('oRad').onclick = () => act(() => { applyRadial(); orderedHors(nH(), $('alt').checked); });
+$('oHor').onclick = () => act(() => orderedHors(nH(), $('alt').checked));
+$('rV').onclick = () => act(randomVerts);
+$('rH').onclick = () => act(() => randomHors(nH()));
+$('rA').onclick = () => act(() => { randomVerts(); randomHors(nH()); });
+$('bUndo').onclick = undo; $('bRedo').onclick = redo;
+
+$('cap').onchange = () => act(() => { S.cap = $('cap').checked; if (S.cap) sanitize(); });
+$('margin').onchange = () => act(() => { S.margin = clamp(+$('margin').value || 0, 0, S.W / 2 - 1); if (S.layout === 'radial') applyRadial(); else if (S.layout === 'parallel') applyParallel(); });
+$('nV').onchange = () => act(() => {
+  const n = clamp(Math.round(+$('nV').value) || 2, 2, 40);
+  S.verts = Array.from({ length: n }, () => ({ xt: 0, xb: 0 }));
+  if (S.layout === 'radial') applyRadial(); else applyParallel();
+});
+['cx', 'cy'].forEach(id => $(id).onchange = () => act(() => {
+  S.centre = { x: +$('cx').value, y: +$('cy').value };
+  S.verts = genRadial(S.verts.length, S.margin); S.layout = 'radial'; S.cap = false; sanitize();
+}));
+['W', 'H'].forEach(id => $(id).onchange = () => act(() => {
+  const nw = Math.max(10, +$('W').value || S.W), nh = Math.max(10, +$('H').value || S.H);
+  const fx = nw / S.W, fy = nh / S.H;
+  S.verts.forEach(v => { v.xt *= fx; v.xb *= fx; });
+  S.centre = { x: S.centre.x * fx, y: S.centre.y * fy };
+  S.W = nw; S.H = nh;
+  if (S.layout === 'radial') applyRadial(); else sanitize();
+}));
+$('vxt').onchange = () => { if (UI.selV >= 0) act(() => { setEnd(UI.selV, 't', +$('vxt').value); S.layout = 'free'; }); };
+$('vxb').onchange = () => { if (UI.selV >= 0) act(() => { setEnd(UI.selV, 'b', +$('vxb').value); S.layout = 'free'; }); };
+function nudge(sign) {
+  if (UI.selV < 0) return;
+  act(() => { moveBody(UI.selV, { ...S.verts[UI.selV] }, sign * (+$('step').value || 1)); S.layout = 'free'; });
+}
+$('nudL').onclick = () => nudge(-1); $('nudR').onclick = () => nudge(1);
+['colLine', 'colRect'].forEach(id => $(id).oninput = render);
+
+function syncUI() {
+  const set = (id, v) => { if (document.activeElement !== $(id)) $(id).value = typeof v === 'number' ? +v.toFixed(2) : v; };
+  set('W', S.W); set('H', S.H); set('nV', S.verts.length); set('margin', S.margin);
+  set('cx', S.centre.x); set('cy', S.centre.y); $('cap').checked = S.cap;
+  const sv = UI.selV >= 0 ? S.verts[UI.selV] : null;
+  $('selV').hidden = !sv;
+  if (sv) { $('selVn').textContent = UI.selV + 1; set('vxt', sv.xt); set('vxb', sv.xb); }
+}
+
+/* ---------- init ---------- */
+$('nH').value = 5;
+S.verts = genParallel(5, 0);
+orderedHors(4, false);
+syncUI();
+new ResizeObserver(render).observe(cv);
+render();
+</script>
+</body>
+</html>
