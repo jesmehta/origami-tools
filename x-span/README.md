@@ -61,13 +61,14 @@ spread. Changing the fields or "Reset" regenerates and discards hand edits.
 
 **Rhombus** — define by *angle θ* (angle of a side to the horizontal; `h =
 first section × tan θ`) or by *number of chains* (`2h = H ÷ chains`, so the
-vertical diagonals fill the height exactly; θ follows). Either way `h` is one
+vertical diagonals fill the height exactly; θ follows). Chains go in steps of
+0.5, so the last row can be half a rhombus. Either way `h` is one
 value for the whole grid. θ < 45° gives wide rhombi (vertical is the minor
 diagonal), θ > 45° tall ones. Switching what defines it keeps the picture unchanged.
 
 **Grid position** — *y offset* (0 = the first chain's top vertex is on the top
 edge; the grid is periodic, so it wraps at `2h`) and *chains cross on* V1,V3… /
-V2,V4…. In Grid mode, dragging up/down changes the offset. With an angle, the
+V2,V4…. **Reset** sets the offset back to 0. With an angle, the
 number of chains that fit is rarely whole; the grid is anchored by the offset and
 cropped at the bottom (the status bar shows the fractional count).
 
@@ -75,7 +76,14 @@ cropped at the bottom (the status bar shows the fractional count).
 beyond the edge). Irregular → Regular regenerates from the regular fields (undo
 gets the hand edits back).
 
-**Edit modes** — **Grid** (offset drag), **Verticals** (irregular only; hold
+**Grid mode mouse** — *drag a line* to set the angle: θ follows the direction
+from a fixed pivot, the top vertex of the 2nd vertical (its first vertex inside
+the rectangle), to the pointer, so the grid rotates about that point and the
+pivot stays a vertex (dragging switches the Rhombus definition to *angle*).
+*Drag empty space* to shift the grid up/down (the y offset). Lines take
+priority over empty space.
+
+**Edit modes** — **Grid** (angle / offset drag), **Verticals** (irregular only; hold
 **Shift** for the other of Grid/Verticals), **Measure** (distance between two
 points, snapping to corners / vertical ends / vertices; angle between two lines).
 
@@ -104,6 +112,9 @@ the selection.
   nothing is mirrored; a vertical is just where a vertex must lie.
 - **Angle = side to the horizontal**, either orientation allowed (no restriction
   to "vertical is the major diagonal").
+- **Angle drag pivots on the top of V2** (the far end of the first section), so
+  the pointer position reads as "where the neighbouring vertex on V1 goes"; the
+  yoff is recomputed so the pivot doesn't move.
 - **Grid anchored at the top, cropped at the bottom** rather than snapping θ, so
   the angle you type is the angle you get. "Number of chains" is the way to fill
   the height exactly.
@@ -134,6 +145,8 @@ the selection.
   every second vertical), constant-height / exact-θ toggle, same / alternating
   chains, half rhombi at leftover sections, Chains/Verticals/Measure modes,
   dimensions, randomize, SVG/PNG export.
+- **v2.1** — Chains in 0.5 steps; drag a line to set the angle (pivot on the top
+  of V2, wins over the y-offset drag); Reset y offset.
 - **v2** — Rebuilt around one continuous lattice. Regular and Irregular modes;
   regular verticals by number / distance / minor diagonal, rhombus by angle or
   number of chains; irregular free verticals with refracting lines; y offset and

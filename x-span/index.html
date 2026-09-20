@@ -97,22 +97,23 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       </select></label></div>
     <div class="row">
       <label>Angle θ <input type="number" id="th" min="0.5" max="89.5" step="0.5"> °</label>
-      <label>Chains <input type="number" id="nCh" min="1" max="200" step="1"></label>
+      <label>Chains <input type="number" id="nCh" min="0.5" max="200" step="0.5"></label>
     </div>
     <p class="note" id="derived"></p>
-    <p class="note">θ is the angle of a rhombus side to the horizontal (h = distance × tan θ, taken from the first section V1–V2). Number of chains: the vertical diagonals stack to fill the rectangle height exactly (2h = H ÷ chains), and θ follows. Every rhombus has the same vertical diagonal 2h.</p>
+    <p class="note">θ is the angle of a rhombus side to the horizontal (h = distance × tan θ, taken from the first section V1–V2). Number of chains (in steps of 0.5, so the last row can be half a rhombus): the vertical diagonals stack to fill the rectangle height exactly (2h = H ÷ chains), and θ follows. Every rhombus has the same vertical diagonal 2h.</p>
   </fieldset>
 
   <fieldset><legend>Grid position</legend>
     <div class="row">
       <label>y offset <input type="number" id="yo" step="0.5"> mm</label>
+      <button id="bYo" title="Set the y offset back to 0">Reset</button>
       <label>Chains cross on
         <select id="ph">
           <option value="0">V1, V3, V5…</option>
           <option value="1">V2, V4, V6…</option>
         </select></label>
     </div>
-    <p class="note">y offset shifts the whole grid vertically (0 = the first chain's top vertex sits on the top edge; drag in Grid mode). "Chains cross on" picks which verticals carry the crossing points of the chains; the other verticals carry the offset "1.5" rows.</p>
+    <p class="note">y offset shifts the whole grid vertically (0 = the first chain's top vertex sits on the top edge; drag empty space in Grid mode). "Chains cross on" picks which verticals carry the crossing points of the chains; the other verticals carry the offset "1.5" rows.</p>
   </fieldset>
 
   <fieldset><legend>Edit mode</legend>
@@ -170,6 +171,7 @@ const MAXSEG = 30000;                            // safety cap on generated segm
 const DEG = Math.PI / 180;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const fmt = n => +n.toFixed(4);
+const half = x => Math.round(x * 2) / 2;
 const $ = id => document.getElementById(id);
 const cv = $('cv');
 
@@ -188,7 +190,7 @@ const S = {
 };
 const UI = {
   mode: 'grid', shift: false, selV: -1, viewLock: null,
-  meas: [], mp: null, mcur: null, note: '', ghost: true,
+  meas: [], mp: null, mcur: null, note: '', ghost: true, ang: null,
   dim: { edge: false, ang: false, diag: false },
 };
 
@@ -386,6 +388,12 @@ function render() {
     } else if (UI.mp.line) s += ln(...UI.mp.line, `stroke="${mc}" stroke-width="3" opacity=".65" ${NS}`);
   }
 
+  if (UI.ang) {                                      // angle sweep guide: anchor, pointer ray, angle
+    const g = UI.ang, ac = '#1976d2', r0 = 5 * px;
+    s += ln(g.ax, g.ay, g.cur[0], g.cur[1], `stroke="${ac}" stroke-dasharray="5 4" stroke-width="1.5" ${NS}`);
+    s += `<circle cx="${fmt(g.ax)}" cy="${fmt(g.ay)}" r="${fmt(r0 * 1.2)}" fill="${ac}" opacity=".85"/>`;
+    s += T(g.ax + (g.cur[0] < g.ax ? -1 : 1) * 12 * px, g.ay - 8 * px, S.theta.toFixed(1) + '°', { c: ac, a: g.cur[0] < g.ax ? 'end' : 'start' });
+  }
   if (effMode(UI.shift) === 'verts') {               // vertical handles, irregular Verticals mode only
     const r = 5 * px;
     s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
@@ -403,7 +411,7 @@ function updateStatus(G) {
   let t;
   if (S.xs.length < 2) t = 'Need at least 2 verticals.';
   else if (em === 'measure') t = UI.mp ? 'Pick the second ' + (UI.mp.pt ? 'point.' : 'line.') : ($('mtD').checked ? 'Measure distance: click two points (snaps to corners, ends and vertices).' : 'Measure angle: click two lines.');
-  else if (em === 'grid') t = 'GRID: drag up/down to shift the whole grid vertically' + (S.kind === 'irregular' ? ' · hold Shift to edit verticals.' : '.');
+  else if (em === 'grid') t = 'GRID: drag a line to set the angle (pivots about the top of V2) · drag empty space to shift the grid up/down' + (S.kind === 'irregular' ? ' · hold Shift to edit verticals.' : '.');
   else t = 'VERTICALS: drag a vertical (or a square) left/right · click a point on the top or bottom edge to add one · Delete removes the selected · hold Shift for Grid.';
   let info = '';
   if (G.h > 1e-6) {
@@ -461,6 +469,15 @@ function hitVerts(p) {
     if (Math.abs(p.x - S.xs[i]) < tol * 0.7 && p.y >= 0 && p.y <= S.H) return { type: 'vBody', i };
   return null;
 }
+function hitLine(p) {
+  const tol = 9 * pxmm() * 0.7;
+  return lastG.segs.some(g => g.c && distSeg(p, [g.c[0], g.c[1]], [g.c[2], g.c[3]]) < tol);
+}
+// The angle sweep pivots on the top vertex of the 2nd vertical (its first vertex inside the rectangle); that point stays put.
+function angleAnchor() {
+  const h = gridH(), a1 = (1 + S.ph) % 2 === 0 ? 1 : 0, base = S.yoff + h * a1;
+  return { ax: S.xs[1], ay: base + 2 * h * Math.ceil((0 - base) / (2 * h) - 1e-9), a1 };
+}
 function edgeNear(p) {
   const tol = 14 * pxmm();
   if (p.x < -tol || p.x > S.W + tol) return null;
@@ -515,7 +532,8 @@ cv.addEventListener('pointerdown', e => {
   if (em === 'measure') { measurePress(p); render(); return; }
   if (em === 'grid') {
     UI.selV = -1;
-    drag = { type: 'grid', start: p, y0: S.yoff, snapJ: snap(), pushed: false };
+    drag = hitLine(p) && gridH() > 1e-6 ? { type: 'angle', ...angleAnchor(), snapJ: snap(), pushed: false }
+      : { type: 'grid', start: p, y0: S.yoff, snapJ: snap(), pushed: false };
     cv.setPointerCapture(e.pointerId); syncUI(); render(); return;
   }
   const h = hitVerts(p);                             // Verticals mode (irregular)
@@ -535,17 +553,21 @@ cv.addEventListener('pointermove', e => {
   if (UI.mp && UI.mp.pt) { UI.mcur = snapPoint(p); render(); return; }
   if (!drag) {
     const em = effMode(e.shiftKey);
-    cv.style.cursor = em === 'measure' ? 'crosshair' : em === 'grid' ? 'ns-resize'
+    cv.style.cursor = em === 'measure' ? 'crosshair' : em === 'grid' ? (hitLine(p) ? 'crosshair' : 'ns-resize')
       : hitVerts(p) ? 'pointer' : edgeNear(p) ? 'crosshair' : 'default';
     return;
   }
   if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
   const d = drag;
-  if (d.type === 'grid') S.yoff = normY(d.y0 + p.y - d.start.y);
+  if (d.type === 'angle') {                          // θ from the pointer's direction off the anchor; anchor stays a vertex
+    S.a = 'angle'; S.theta = clamp(Math.atan2(Math.abs(p.y - d.ay), Math.abs(p.x - d.ax)) / DEG, 0.5, 89.5);
+    S.yoff = normY(d.ay - gridH() * d.a1);
+    UI.ang = { ax: d.ax, ay: d.ay, cur: [p.x, p.y] };
+  } else if (d.type === 'grid') S.yoff = normY(d.y0 + p.y - d.start.y);
   else setX(d.i, d.x0 + p.x - d.start.x);
   syncUI(); render();
 });
-const endDrag = () => { if (drag) { drag = null; UI.viewLock = null; syncUI(); render(); } };
+const endDrag = () => { if (drag) { drag = null; UI.viewLock = null; UI.ang = null; syncUI(); render(); } };
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 
@@ -567,7 +589,7 @@ function setMode(m) {
   $('mVerts').classList.toggle('on', m === 'verts');
   $('mMeas').classList.toggle('on', m === 'measure');
   $('modeNote').textContent = m === 'grid'
-    ? 'Drag up/down to shift the whole grid vertically (or type the y offset).' + (S.kind === 'irregular' ? ' Hold Shift to move verticals.' : '')
+    ? 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (S.kind === 'irregular' ? ' Hold Shift to move verticals.' : '')
     : m === 'verts' ? 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift for Grid.'
     : 'Use the Dimensions panel to choose distance or angle.';
   render();
@@ -599,11 +621,12 @@ on('rM', 'onchange', () => act(() => { S.reg.m = Math.max(1, +$('rM').value || S
 on('aIn', 'onchange', () => act(() => {               // keep the picture unchanged when switching what defines it
   const h = gridH(), d = S.xs[1] - S.xs[0];
   S.a = $('aIn').value;
-  if (S.a === 'angle') S.theta = clamp(Math.atan(h / d) / DEG, 0.5, 89.5); else S.nCh = clamp(Math.round(S.H / (2 * h)) || 1, 1, 200);
+  if (S.a === 'angle') S.theta = clamp(Math.atan(h / d) / DEG, 0.5, 89.5); else S.nCh = clamp(half(S.H / (2 * h)) || 1, 0.5, 200);
 }));
 on('th', 'onchange', () => act(() => { S.theta = clamp(+$('th').value || S.theta, 0.5, 89.5); }));
-on('nCh', 'onchange', () => act(() => { S.nCh = clamp(Math.round(+$('nCh').value) || S.nCh, 1, 200); }));
+on('nCh', 'onchange', () => act(() => { S.nCh = clamp(half(+$('nCh').value) || S.nCh, 0.5, 200); }));
 on('yo', 'onchange', () => act(() => { S.yoff = normY(+$('yo').value || 0); }));
+on('bYo', 'onclick', () => act(() => { S.yoff = 0; }));
 on('ph', 'onchange', () => act(() => { S.ph = +$('ph').value; }));
 
 const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() => {
