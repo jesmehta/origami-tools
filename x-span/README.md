@@ -1,77 +1,88 @@
 # X Span Generator
 
 Offline, dependency-free single-file HTML tool (`index.html`, open directly —
-no build, no server). Verticals across a rectangle; between them, pairs of
-lines that fan up and down at the same angle and meet again only *on* a
-vertical, forming chains of rhombi whose vertical diagonals lie on the
-verticals.
+no build, no server). A lattice of rhombi inside a rectangle, where every
+rhombus vertex lies on a vertical line and the vertical lines are the rhombi's
+vertical diagonals. **Regular**: verticals evenly spread, straight lines.
+**Irregular**: verticals free (still vertical), the lines bend at each one.
 
 ## Initial need
 
 Same interaction and output conventions as the other tools here
-([mirror-pleats](../mirror-pleats/README.md), [hypar](../hypar/README.md)),
-for this geometry:
+([mirror-pleats](../mirror-pleats/README.md), [hypar](../hypar/README.md)).
 
-- user-defined rectangle;
-- user-defined number of verticals, always at 90°, distributed evenly or
-  placed manually;
-- user-defined number of "horizontal" lines;
-- the user gives **one** angle; everything else is computed so that the two
-  lines of a pair leave a point going up and down at the same angle and
-  always cross each other on a vertical, never in mid-space.
+v1 brief: user-defined rectangle, verticals (always 90°, even or manual),
+horizontal lines; the user gives **one** angle and the rest is computed so that
+the two lines of a pair leave a point going up and down at the same angle and
+cross each other only on a vertical, never in mid-space.
+
+v2 brief (current): split into two modes.
+- **Regular** — verticals evenly distributed (by number or by distance);
+  rhombus defined by angle or by number of chains. The rhombi tile contiguously,
+  so the angle is the angle of a whole grid. The verticals are not mirrors, only
+  intersection points for the grid. Alternative input: rhombus angle + minor
+  diagonal length (= 2 × the vertical spacing).
+- **Irregular** — verticals movable but vertical; the rhombi may differ from each
+  other but must still tile continuously (bottom vertex of a chain-1 rhombus =
+  top vertex of a chain-2 rhombus, with a "chain 1.5" row between, offset by half
+  a width). The lines refract at the verticals to reach the next point. Height
+  of the rhombi stays constant.
+
+## The lattice
+
+Everything is one construction. `h` is the half-height of every rhombus (vertical
+diagonal `2h`). Vertical *k* carries vertices at `y = yoff + h·(a_k + 2m)`, with
+`a_k = 1` on the verticals the **chains** cross on (V1, V3, V5… or V2, V4, V6…)
+and `a_k = 0` on the others, which carry the offset **"1.5" rows**. Every vertex
+is joined to the two vertices of the next vertical at `y ± h`.
+- Chain rows are stacked `2h` apart and touch vertex to vertex; the 1.5 rows sit
+  between them.
+- Regular: all sections equal `d`, so every line is straight at `tan θ = h/d`.
+- Irregular: only the x positions change, so the section angle is `atan(h/dₖ)`.
+  The rhombi become kites, but they still tile.
 
 ## Using it
 
-**Rectangle** — W × H in mm. Changing it rescales verticals and chains.
+**Rectangle** — W × H in mm.
 
-**Verticals** — count, spacing, first x (mm); "Fit edge to edge"; "Reset
-verticals". Always exactly vertical. Drag one, use the ◀ ▶ nudge, or type its x
-(select it first). They can't get closer than 1 mm to a neighbour.
+**Regular · verticals** — pick what defines them: *number*, *distance*, or
+*rhombus minor diagonal* (= 2 × distance; the horizontal diagonal spans two
+sections). Only the chosen field is editable; the others show the derived value.
+Number → first and last vertical on the rectangle edges. Distance / minor
+diagonal → verticals from x = 0 every `d`; the count is derived and one vertical
+just beyond the right edge is kept (grey) so the grid fills the rectangle.
 
-**Rhombus** — angle θ (numeric only), and how heights are decided when the
-verticals are *not* evenly spaced (with even spacing both give the same
-picture):
-- *Same height everywhere* — every vertical diagonal is `2·h`, `h = (x₂−x₁)·tanθ`
-  (first section). Angles adapt to each section's width.
-- *Exact θ in each first section* — the left half of every rhombus uses θ
-  exactly, so `h` and the diagonal length vary; the right half's angle adapts.
+**Irregular · verticals** — starts from an even spread (count / spacing / first
+x, "Fit edge to edge", "Reset") or from the regular layout you switched from.
+Then Verticals mode: drag a vertical or a square end handle left/right, click a
+point on the top/bottom edge to add one, Delete removes the selected (min 2),
+type an x, or ◀ ▶ nudge. Verticals stay ≥ 1 mm apart. "Randomize" jitters the
+spread. Changing the fields or "Reset" regenerates and discards hand edits.
 
-**Chains** — a chain is one up/down pair. It crosses (at one y) on every
-second vertical: crossing verticals `p, p+2, p+4…`, `p` being 0 or 1. Between
-two crossings the lines bend on the vertical in between, which is the vertical
-diagonal of a rhombus. A section left over at either end gets **half a
-rhombus** (lines fan out from the crossing to the edge vertical).
-- *Chains cross on* **the same verticals** — parallel bands, never touching
-  unless they overlap. **Alternating verticals** — odd chains cross on the
-  other verticals, so chains interlock into an X lattice. Changing it re-applies
-  to every chain, top to bottom.
-- Count + "Distribute evenly" (y = H·(i+½)/N), or place them by hand.
-- Select a chain to type its y, flip which verticals it crosses on, and read its
-  half-height.
+**Rhombus** — define by *angle θ* (angle of a side to the horizontal; `h =
+first section × tan θ`) or by *number of chains* (`2h = H ÷ chains`, so the
+vertical diagonals fill the height exactly; θ follows). Either way `h` is one
+value for the whole grid. θ < 45° gives wide rhombi (vertical is the minor
+diagonal), θ > 45° tall ones. Switching what defines it keeps the picture unchanged.
 
-**Edit modes** (buttons, or hold **Shift** for the other edit mode)
-- **Chains** — click a vertical to add a chain crossing on it (its parity follows
-  that vertical, its y is where you clicked). Drag a circle (crossing point) or
-  any line of a chain up/down. Delete removes the selected chain.
-- **Verticals** — drag a vertical or a square end handle left/right. Click a point
-  on the top or bottom edge to add one. Delete removes the selected (min 2).
-- **Measure** — *distance*: two points (snaps to corners, vertical ends, chain
-  vertices); *angle*: two lines. Snapshots; "Clear measurements".
+**Grid position** — *y offset* (0 = the first chain's top vertex is on the top
+edge; the grid is periodic, so it wraps at `2h`) and *chains cross on* V1,V3… /
+V2,V4…. In Grid mode, dragging up/down changes the offset. With an angle, the
+number of chains that fit is rarely whole; the grid is anchored by the offset and
+cropped at the bottom (the status bar shows the fractional count).
 
-**Ghost lines** — parts of a chain outside the rectangle (large `h`, or a chain
-near an edge) are drawn grey and dashed and cropped from the export. The status
-bar counts segments that leave it.
+**Grid type switch** — Regular → Irregular keeps the current verticals (minus one
+beyond the edge). Irregular → Regular regenerates from the regular fields (undo
+gets the hand edits back).
 
-**Status bar** — *Overlapping chains* (crossings between chains that cross on the
-same verticals — a problem), *interlocking crossings* (between alternating
-chains — by design, not flagged) and the smallest vertex gap on any vertical
-(green OK / red violation, threshold = min vertex gap).
+**Edit modes** — **Grid** (offset drag), **Verticals** (irregular only; hold
+**Shift** for the other of Grid/Verticals), **Measure** (distance between two
+points, snapping to corners / vertical ends / vertices; angle between two lines).
 
-**Dimensions** — section widths, line angles, vertical diagonal lengths,
-vertex gaps on verticals.
+**Ghost lines** — everything the rectangle crops off is drawn grey and dashed
+and not exported. The status bar counts segments that leave it.
 
-**Randomize** — verticals (jittered even spacing), chains (placed one at a time,
-rejected if they overlap a same-parity chain or break the min vertex gap), or both.
+**Dimensions** — section widths, line angles, vertical diagonal lengths.
 
 **Export** — SVG (true mm, 1:1) and PNG (px/mm). One line colour, one rectangle
 colour, stroke width in mm. Verticals lying on a rectangle edge are not exported
@@ -82,38 +93,48 @@ the selection.
 
 ## Decisions
 
-- **Zigzag, not straight lines.** Two straight lines at ±θ can only cross once.
-  To meet again on a vertical they must bend, and they bend on the vertical in
-  between: the rhombus is two sections wide, its vertical diagonal is the middle
-  vertical, its left/right corners are on the neighbouring verticals.
-- **One angle, computed rest.** With uneven spacing the same angle can't fit
-  every section, so the tool offers both readings (constant height / exact θ)
-  as a toggle until one is picked.
-- **A chain is defined by one y, plus a parity.** All crossing points of a chain
-  are at the same y; that is what makes the lines meet on verticals.
-- **Chain parity follows the vertical you click** (and is a flip button / the
-  global alternate toggle otherwise), instead of a separate field.
-- **Same conventions as [mirror-pleats](../mirror-pleats/README.md)** — modes with
-  Shift swap, ghost lines, dimensions, measure, randomize with a gap rule,
-  single-colour SVG/PNG export, 80-step undo. Plain SVG, no libraries.
-- Linear verticals only (no radial page), no ±45° cap: the angle here is the
-  rhombus angle, not a constraint on the verticals.
+- **One lattice, two ways of placing verticals.** The tiling condition (touching
+  vertex to vertex, all vertices on verticals) fixes every y once `h` is chosen;
+  only x is free. Regular is the equal-spacing case, so both modes share one
+  generator.
+- **Constant `h`.** Required by the brief for irregular; also what makes the
+  1.5 rows fall out for free. So v1's "exact θ in each section" toggle and
+  free-floating chains were dropped: they can't tile.
+- **Verticals refract, not mirror.** Mathematically the bend is the same, but
+  nothing is mirrored; a vertical is just where a vertex must lie.
+- **Angle = side to the horizontal**, either orientation allowed (no restriction
+  to "vertical is the major diagonal").
+- **Grid anchored at the top, cropped at the bottom** rather than snapping θ, so
+  the angle you type is the angle you get. "Number of chains" is the way to fill
+  the height exactly.
+- **Grid ends at the first/last vertical** (they normally sit on the rectangle
+  edges). The one extra vertical past the right edge in regular distance mode
+  exists only so the cropped grid reaches the edge.
+- **Same conventions as [mirror-pleats](../mirror-pleats/README.md)** — modes,
+  ghost lines, dimensions, measure, single-colour SVG/PNG export, 80-step undo.
+  Plain SVG, no libraries.
 
 ## Known limitations / watch out for
 
-- The height in both modes is taken from the **first section** (V1–V2). If that
-  section is unusually narrow or wide, every rhombus changes.
-- Adding/removing a vertical changes which verticals a chain crosses on (chains
-  store a parity, not vertical indices).
-- Chain y positions are absolute, so a chain whose rhombi are taller than the
-  rectangle simply shows ghost lines; nothing stops it.
-- The crossing check is skipped (shown "n/a") above ~700 visible segments.
-- Chains' parity after dragging one chain past another is not re-alternated; use
-  the "Chains cross on" dropdown to re-apply.
+- In irregular mode `h` comes from the **first section** (V1–V2) when defined by
+  angle. Move that vertical and every rhombus changes height. Define by number of
+  chains for an `h` that doesn't depend on the verticals.
+- Irregular mode has no verticals beyond the rectangle: if the layout doesn't
+  reach the right edge, the grid stops at the last vertical.
+- Adding/removing a vertical changes which verticals carry the chains (parity is
+  by position).
+- Segment count is capped (30 000). Tiny θ or spacing shows a warning instead.
+- A very small θ or a chains count much larger than the height allows gives
+  extremely dense lines; nothing stops it.
 - No mountain/valley assignment (single colour).
 
 ## Changelog
 
-- **v1** — Rectangle, even/manual verticals, chains of rhombi with constant-height
-  / exact-θ toggle, same-verticals / alternating chains, half rhombi at leftover
-  sections, Chains/Verticals/Measure modes, dimensions, randomize, SVG/PNG export.
+- **v1** — Rectangle, even/manual verticals, free chains of rhombi (crossings on
+  every second vertical), constant-height / exact-θ toggle, same / alternating
+  chains, half rhombi at leftover sections, Chains/Verticals/Measure modes,
+  dimensions, randomize, SVG/PNG export.
+- **v2** — Rebuilt around one continuous lattice. Regular and Irregular modes;
+  regular verticals by number / distance / minor diagonal, rhombus by angle or
+  number of chains; irregular free verticals with refracting lines; y offset and
+  chain parity; free chains, exact-θ toggle and chain randomize removed.
