@@ -31,7 +31,7 @@ const vertPanel = MODE === 'linear' ? `
     </div>
     <div class="row"><label><input type="checkbox" id="enf"> Enforce radial from centre</label></div>
     <div class="row"><button id="bReset">Reset verticals</button></div>
-    <p class="note">When enforced, existing and new verticals all pass through the centre (a new one is a single click on an edge; dragging rotates about the centre). Centre must be above or below the rectangle. Lines that don't fit inside the rectangle are dropped. Drag the ◆ in Verticals mode.</p>`;
+    <p class="note">When enforced, existing and new verticals all pass through the centre (a new one is a single click on an edge; dragging rotates about the centre). Centre must be above or below the rectangle. Verticals may enter and exit through any edge; ones that miss the rectangle are drawn grey. Drag the ◆ in Verticals mode.</p>`;
 
 document.getElementById('app').innerHTML = `
 <aside>
@@ -95,6 +95,7 @@ document.getElementById('app').innerHTML = `
   </fieldset>
 
   <fieldset><legend>Dimensions</legend>
+    <div class="row"><label><input type="checkbox" id="gh" checked> Show off-rectangle ghost lines (grey)</label></div>
     <div class="row"><label><input type="checkbox" id="dEdge"> Edge spacing (mm)</label></div>
     <div class="row"><label><input type="checkbox" id="dTilt"> Vertical tilt (°)</label></div>
     <div class="row"><label><input type="checkbox" id="dBase"> Drawn-line angle (°)</label></div>
@@ -149,6 +150,7 @@ const S = {
 const UI = {
   mode: 'lines', draw: null, selV: -1, selH: -1, viewLock: null,
   meas: [], mp: null, mcur: null, info: null, note: '',
+  ghost: true,
   dim: { edge: false, tilt: false, base: false, refl: false, vtx: false },
 };
 
@@ -179,19 +181,26 @@ function rayVert(o, d, v) {
   return { s };
 }
 
+// visible part of a vertical (an infinite line given by its x at y=0 and y=H); null if it misses the rectangle
+const vSeg = v => clipBox(v.xt, 0, v.xb, S.H);
+const vEnds = v => { const c = vSeg(v); return c ? [[c[0], c[1]], [c[2], c[3]]] : null; };
+const visT = v => { const c = vSeg(v); return c ? [c[1] / S.H, c[3] / S.H] : null; };
+// the whole line clipped to the current view (for ghosts and hit-testing)
+const vView = v => { const b = bounds(), d = v.xb - v.xt; return clipBox(v.xt - d * 100, -S.H * 100, v.xt + d * 100, S.H * 100, b.x0, b.y0, b.x1, b.y1); };
+
 // t on vertical v where a ±45° ray from P (x-direction dx, y-direction dy) lands
 function ray45(P, dx, dy, v) {
-  const q = dx * dy, D = v.xb - v.xt, den = S.H - q * D;
-  if (Math.abs(den) < 1e-9) return null;
+  const q = dx * dy, D = v.xb - v.xt, den = S.H - q * D, r = visT(v);
+  if (Math.abs(den) < 1e-9 || !r) return null;
   const t = (P[1] + q * (v.xt - P[0])) / den;
-  if (t < -1e-9 || t > 1 + 1e-9) return null;
+  if (t < r[0] - 1e-9 || t > r[1] + 1e-9) return null;
   if (dx * (vp(v, t)[0] - P[0]) <= 0) return null;
-  return clamp(t, 0, 1);
+  return clamp(t, r[0], r[1]);
 }
 
 function projT(p, v) {
-  const A = vp(v, 0), B = vp(v, 1), ex = B[0] - A[0], ey = B[1] - A[1];
-  return clamp(((p.x - A[0]) * ex + (p.y - A[1]) * ey) / (ex * ex + ey * ey), 0, 1);
+  const A = vp(v, 0), B = vp(v, 1), ex = B[0] - A[0], ey = B[1] - A[1], r = visT(v) || [0, 1];
+  return clamp(((p.x - A[0]) * ex + (p.y - A[1]) * ey) / (ex * ex + ey * ey), r[0], r[1]);
 }
 function distSeg(p, a, b) {
   const ex = b[0] - a[0], ey = b[1] - a[1], L = ex * ex + ey * ey || 1;
@@ -199,10 +208,10 @@ function distSeg(p, a, b) {
   return Math.hypot(p.x - a[0] - t * ex, p.y - a[1] - t * ey);
 }
 
-// Liang–Barsky crop to the rectangle
-function clipRect(x1, y1, x2, y2) {
+// Liang–Barsky crop to a box (default: the rectangle)
+function clipBox(x1, y1, x2, y2, bx0 = 0, by0 = 0, bx1 = S.W, by1 = S.H) {
   let t0 = 0, t1 = 1; const dx = x2 - x1, dy = y2 - y1;
-  const ps = [-dx, dx, -dy, dy], qs = [x1, S.W - x1, y1, S.H - y1];
+  const ps = [-dx, dx, -dy, dy], qs = [x1 - bx0, bx1 - x1, y1 - by0, by1 - y1];
   for (let i = 0; i < 4; i++) {
     if (Math.abs(ps[i]) < 1e-12) { if (qs[i] < 0) return null; continue; }
     const r = qs[i] / ps[i];
@@ -212,6 +221,7 @@ function clipRect(x1, y1, x2, y2) {
   if ((t1 - t0) * Math.hypot(dx, dy) < 1e-6) return null;
   return [x1 + t0 * dx, y1 + t0 * dy, x1 + t1 * dx, y1 + t1 * dy];
 }
+const clipRect = (x1, y1, x2, y2) => clipBox(x1, y1, x2, y2);
 const inRect = p => p[0] >= -1e-6 && p[0] <= S.W + 1e-6 && p[1] >= -1e-6 && p[1] <= S.H + 1e-6;
 
 // Everything for one drawn line: the base segment and its reflection chain in
@@ -304,6 +314,7 @@ function moveBody(i, orig, dx) {
   S.verts[i].xt = orig.xt + dx; S.verts[i].xb = orig.xb + dx;
 }
 function sanitize() {
+  if (MODE === 'radial') { if (S.enforce) gapRadial(); return; }
   const n = S.verts.length;
   if (S.cap) S.verts.forEach(v => { v.xb = clamp(v.xb, v.xt - S.H, v.xt + S.H); });
   for (const k of ['xt', 'xb']) {
@@ -311,31 +322,76 @@ function sanitize() {
     for (let i = n - 1; i >= 0; i--) S.verts[i][k] = Math.min(S.verts[i][k], i < n - 1 ? S.verts[i + 1][k] - GAP : S.W);
   }
 }
-// --- enforced-radial helpers: every vertical is the line through the centre ---
+// --- radial helpers. Verticals are infinite lines; they may cross the rectangle through any edge. ---
 const wideY = () => Math.abs(S.H - S.centre.y) > Math.abs(S.centre.y) ? S.H : 0;
-function enforceRadial() {
-  fixCentre();
-  const { x: cx, y: cy } = S.centre, yw = wideY();
-  S.verts.forEach(v => {
-    const k = ((yw === 0 ? v.xt : v.xb) - cx) / (yw - cy);   // keep the wide-edge end, swing the other onto the centre line
-    v.xt = clamp(cx + k * (0 - cy), 0, S.W); v.xb = clamp(cx + k * (S.H - cy), 0, S.W);
-  });
-  sanitize();
-}
 const radialAt = k => ({ xt: S.centre.x + k * (0 - S.centre.y), xb: S.centre.x + k * (S.H - S.centre.y) });
 const kOf = (x, y) => (x - S.centre.x) / (y - S.centre.y);
-// rotate vertical i about the centre toward slope k, stopping at the last valid position
+const uOf = k => (S.centre.y < 0 ? 1 : -1) * Math.atan(k);       // increases along the verticals array
+const GAPU = 0.2 * DEG;                                           // min angle between centre-lines
+// keep centre-lines at least GAPU apart, in array order
+function gapRadial() {
+  const sg = S.centre.y < 0 ? 1 : -1;
+  let prev = -Infinity;
+  S.verts.forEach(v => {
+    let u = sg * Math.atan(kOf(v.xt, 0)); if (u < prev + GAPU) u = prev + GAPU;
+    prev = u; Object.assign(v, radialAt(Math.tan(sg * u)));
+  });
+}
+// snap every existing vertical onto a line through the centre (via the midpoint of its span)
+function enforceRadial() {
+  fixCentre();
+  S.verts.forEach(v => Object.assign(v, radialAt(kOf((v.xt + v.xb) / 2, S.H / 2))));
+  gapRadial();
+}
+// rotate vertical i about the centre toward slope k1, stopping at the last valid position
 function setRadialK(i, k1) {
-  const rT = ordRange(i, 'xt'), rB = ordRange(i, 'xb');
-  const ok = k => { const a = radialAt(k); return a.xt >= rT.lo - 1e-9 && a.xt <= rT.hi + 1e-9 && a.xb >= rB.lo - 1e-9 && a.xb <= rB.hi + 1e-9; };
+  if (!isFinite(k1)) return;
+  const V = S.verts, kk = j => kOf(V[j].xt, 0);
+  const lo = i > 0 ? uOf(kk(i - 1)) + GAPU : -Infinity, hi = i < V.length - 1 ? uOf(kk(i + 1)) - GAPU : Infinity;
+  const ok = k => { const u = uOf(k); return u >= lo - 1e-12 && u <= hi + 1e-12 && Math.abs(Math.atan(k)) <= 89 * DEG; };
   let k = k1;
   if (!ok(k1)) {
-    let lo = kOf(S.verts[i].xt, 0), hi = k1;
-    if (!ok(lo)) return;
-    for (let n = 0; n < 24; n++) { const mid = (lo + hi) / 2; if (ok(mid)) lo = mid; else hi = mid; }
-    k = lo;
+    let a = kk(i), b = k1;
+    if (!ok(a)) return;
+    for (let n = 0; n < 24; n++) { const m = (a + b) / 2; if (ok(m)) a = m; else b = m; }
+    k = a;
   }
-  Object.assign(S.verts[i], radialAt(k));
+  Object.assign(V[i], radialAt(k));
+}
+// --- free (not through the centre) radial-page verticals: edge-to-edge lines, kept apart inside the rectangle ---
+function segDist(a, b) {
+  if (segsCross(a, b)) return 0;
+  const d = (x, y, sg) => distSeg({ x, y }, [sg[0], sg[1]], [sg[2], sg[3]]);
+  return Math.min(d(a[0], a[1], b), d(a[2], a[3], b), d(b[0], b[1], a), d(b[2], b[3], a));
+}
+function freeOK(i, cand) {
+  const c = vSeg(cand); if (!c) return false;
+  return S.verts.every((v, j) => { if (j === i) return true; const o = vSeg(v); return !o || segDist(c, o) >= GAP; });
+}
+function nearestOnRect(p) {
+  const x = clamp(p.x, 0, S.W), y = clamp(p.y, 0, S.H);
+  if (p.x >= 0 && p.x <= S.W && p.y >= 0 && p.y <= S.H) {
+    const d = [x, S.W - x, y, S.H - y], m = Math.min(...d);
+    return m === d[0] ? [0, y] : m === d[1] ? [S.W, y] : m === d[2] ? [x, 0] : [x, S.H];
+  }
+  return [x, y];
+}
+function lineFrom(A, B) {                                        // infinite line through two points, as intercepts at y=0 / y=H
+  const dy = B[1] - A[1]; if (Math.abs(dy) < 1e-6) return null;
+  const k = (B[0] - A[0]) / dy;
+  return { xt: A[0] + (0 - A[1]) * k, xb: A[0] + (S.H - A[1]) * k };
+}
+function setEndFree(i, end, p) {                                 // drag one visible end along the rectangle outline
+  const e = vEnds(S.verts[i]); if (!e) return;
+  const cand = lineFrom(nearestOnRect(p), e[end === 't' ? 1 : 0]);
+  if (cand && freeOK(i, cand)) Object.assign(S.verts[i], cand);
+}
+function moveBodyFree(i, orig, dx) {
+  const at = d => ({ xt: orig.xt + d, xb: orig.xb + d });
+  if (freeOK(i, at(dx))) { Object.assign(S.verts[i], at(dx)); return; }
+  let a = 0, b = dx;
+  for (let n = 0; n < 16; n++) { const m = (a + b) / 2; if (freeOK(i, at(m))) a = m; else b = m; }
+  Object.assign(S.verts[i], at(a));
 }
 const fixHors = () => { S.hors = S.hors.filter(h => h.k >= 0 && h.k + 1 < S.verts.length); };
 
@@ -347,7 +403,7 @@ function genLinear() {
   return Array.from({ length: n }, (_, i) => { const x = g.start + i * g.spacing; return { xt: x, xb: x }; });
 }
 function fixCentre() {
-  S.centre.x = clamp(S.centre.x, 0, S.W);
+  S.centre.x = clamp(S.centre.x, -2 * S.W, 3 * S.W);
   if (S.centre.y >= 0 && S.centre.y <= S.H) S.centre.y = S.centre.y < S.H / 2 ? -1 : S.H + 1;
 }
 function genRadial(jitter) {
@@ -358,9 +414,7 @@ function genRadial(jitter) {
     let th = (i - (g.n - 1) / 2) * g.step + g.offset;
     if (jitter) th += (Math.random() - 0.5) * g.step * 0.7;
     if (Math.abs(th) >= 89) { dropped++; continue; }
-    const tn = Math.tan(th * DEG), xt = cx + tn * (0 - cy), xb = cx + tn * (S.H - cy);
-    if (xt < -1e-6 || xt > S.W + 1e-6 || xb < -1e-6 || xb > S.W + 1e-6) { dropped++; continue; }
-    out.push({ xt: clamp(xt, 0, S.W), xb: clamp(xb, 0, S.W) });
+    out.push(radialAt(Math.tan(th * DEG)));
   }
   out.sort((a, b) => a.xt - b.xt);
   UI.dropped = dropped;
@@ -378,7 +432,7 @@ function orderedHors(m, alt) {
   if (S.verts.length < 2) { S.hors = out; return; }
   const V1 = S.verts[0], V2 = S.verts[1];
   for (let i = 0; i < m; i++) {
-    const a = (i + 0.5) / m, P = vp(V1, a), first = alt && i % 2 ? -1 : 1;
+    const r = visT(V1) || [0, 1], a = r[0] + (r[1] - r[0]) * (i + 0.5) / m, P = vp(V1, a), first = alt && i % 2 ? -1 : 1;
     let b = ray45(P, 1, first, V2);
     if (b === null) b = ray45(P, 1, -first, V2);
     if (b === null) b = a;
@@ -400,9 +454,10 @@ function randomVerts() {
 // the minimum vertex gap on every vertical
 function randomHors(m) {
   const keep = [], keptSegs = [], keptVtx = [];
-  for (let i = 0; i < m && S.verts.length > 1; i++) {
+  const r0 = S.verts.length > 1 && visT(S.verts[0]), r1 = S.verts.length > 1 && visT(S.verts[1]);
+  for (let i = 0; i < m && r0 && r1; i++) {
     for (let t = 0; t < 250; t++) {
-      const cand = { k: 0, a: Math.random(), b: Math.random() };
+      const cand = { k: 0, a: r0[0] + Math.random() * (r0[1] - r0[0]), b: r1[0] + Math.random() * (r1[1] - r1[0]) };
       const r = computeOne(cand, keep.length);
       const cs = r.segs.filter(g => g.c);
       if (cs.some(g => keptSegs.some(o => segsCross(g.c, o.c)))) continue;
@@ -426,7 +481,8 @@ function bounds() {
   }
   return { x0, y0, x1, y1 };
 }
-const edgeVert = v => (v.xt === 0 && v.xb === 0) || (v.xt === S.W && v.xb === S.W);
+// invisible verticals, or ones lying exactly on a rectangle edge, are not drawn/exported as lines
+const edgeVert = v => { const c = vSeg(v); return !c || (Math.abs(c[0] - c[2]) < 1e-6 && (c[0] < 1e-6 || c[0] > S.W - 1e-6)); };
 let lastAll = { segs: [], vtx: [] };
 
 function render() {
@@ -443,20 +499,31 @@ function render() {
   if (!drag) UI.info = analyze(lastAll);
   let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="2" ${NS}/>`;
 
-  if (MODE === 'radial' && (S.layout === 'gen' || S.enforce)) {
-    s += `<g stroke="#999" stroke-dasharray="4 4" stroke-width="1" ${NS} opacity=".55">`;
-    const topFar = Math.abs(S.centre.y) > Math.abs(S.H - S.centre.y);
-    V.forEach(v => { s += ln(S.centre.x, S.centre.y, topFar ? v.xt : v.xb, topFar ? 0 : S.H); });
-    s += '</g>';
+  UI.hiddenV = V.filter(v => !vSeg(v)).length;
+  UI.hiddenS = lastAll.segs.filter(g => !g.c).length;
+  if (UI.ghost) {                                   // grey ghosts: whatever is cropped away by the rectangle
+    let g = '';
+    if (MODE === 'radial') V.forEach(v => {
+      let c;
+      if (S.enforce) { const C = S.centre, M = [(v.xt + v.xb) / 2, S.H / 2]; c = clipBox(C.x, C.y, C.x + (M[0] - C.x) * 200, C.y + (M[1] - C.y) * 200, b.x0, b.y0, b.x1, b.y1); }
+      else c = vView(v);
+      if (c) g += ln(...c);
+    });
+    lastAll.segs.forEach(sg => {
+      if (sg.base) return;
+      const c = clipBox(sg.s[0], sg.s[1], sg.s[2], sg.s[3], b.x0, b.y0, b.x1, b.y1);
+      if (c) g += ln(...c);
+    });
+    s += `<g stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
   }
 
   s += `<g stroke="${lc}" stroke-width="1.1" fill="none" stroke-linecap="round" ${NS}>`;
-  V.forEach(v => { if (!edgeVert(v)) s += ln(v.xt, 0, v.xb, S.H); });
+  V.forEach(v => { if (!edgeVert(v)) s += ln(...vSeg(v)); });
   lastAll.segs.forEach(g => { if (g.c) s += ln(...g.c); });
   s += '</g>';
 
   const hl = `stroke="#1976d2" stroke-width="5" opacity=".3" ${NS}`;
-  if (UI.selV >= 0 && V[UI.selV]) s += ln(V[UI.selV].xt, 0, V[UI.selV].xb, S.H, hl);
+  if (UI.selV >= 0 && V[UI.selV]) { const sc = vSeg(V[UI.selV]) || vView(V[UI.selV]); if (sc) s += ln(...sc, hl); }
   if (UI.selH >= 0 && S.hors[UI.selH]) {
     const h = S.hors[UI.selH];
     if (V[h.k] && V[h.k + 1]) { const A = vp(V[h.k], h.a), B = vp(V[h.k + 1], h.b); s += ln(A[0], A[1], B[0], B[1], hl); }
@@ -465,17 +532,19 @@ function render() {
   // dimensions
   const D = UI.dim, ink = '#555';
   if (D.edge && V.length) {
-    ['xt', 'xb'].forEach(k => {
-      const y = k === 'xt' ? -10 * px : S.H + 10 * px, arr = [0, ...V.map(v => v[k]), S.W];
+    const tops = [], bots = [];
+    V.forEach(v => { const c = vSeg(v); if (!c) return; if (c[1] < 1e-6) tops.push(c[0]); if (c[3] > S.H - 1e-6) bots.push(c[2]); });
+    [[tops, true], [bots, false]].forEach(([xs, top]) => {
+      const y = top ? -10 * px : S.H + 10 * px, arr = [0, ...xs.sort((a, c) => a - c), S.W];
       for (let i = 0; i < arr.length - 1; i++) {
         const a = arr[i], c = arr[i + 1];
         if (c - a < 0.05) continue;
         s += `<g stroke="${ink}" stroke-width="1" ${NS}>${ln(a, y, c, y)}${ln(a, y - 3 * px, a, y + 3 * px)}${ln(c, y - 3 * px, c, y + 3 * px)}</g>`;
-        if ((c - a) / px > 26) s += T((a + c) / 2, k === 'xt' ? y - 4 * px : y + 13 * px, (c - a).toFixed(1));
+        if ((c - a) / px > 26) s += T((a + c) / 2, top ? y - 4 * px : y + 13 * px, (c - a).toFixed(1));
       }
     });
   }
-  if (D.tilt) V.forEach(v => { s += T(v.xt, 18 * px, ((Math.atan2(v.xb - v.xt, S.H) / DEG)).toFixed(1) + '°', { c: '#1976d2' }); });
+  if (D.tilt) V.forEach(v => { const c = vSeg(v); if (c) s += T(c[0], c[1] + 18 * px, ((Math.atan2(v.xb - v.xt, S.H) / DEG)).toFixed(1) + '°', { c: '#1976d2' }); });
   if (D.base || D.refl) lastAll.segs.forEach(g => {
     if (!g.c || (g.base ? !D.base : !D.refl)) return;
     const dx = g.c[2] - g.c[0], dy = g.c[3] - g.c[1];
@@ -518,7 +587,7 @@ function render() {
   const r = 5 * px, em = effMode(UI.shift);
   if (em === 'verts') {
     s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
-    V.forEach((v, i) => [[v.xt, 0], [v.xb, S.H]].forEach(p => {
+    V.forEach((v, i) => (vEnds(v) || []).forEach(p => {
       s += `<rect x="${fmt(p[0] - r)}" y="${fmt(p[1] - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`;
     }));
     s += '</g>';
@@ -543,8 +612,12 @@ function render() {
     s += `<circle cx="${P[0]}" cy="${P[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".7"/>`;
     if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#1976d2" stroke-dasharray="5 4" stroke-width="1.5" ${NS}`);
   }
-  if (UI.vghost) s += ln(UI.vghost.xt, 0, UI.vghost.xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`);
-  if (UI.vdraw) {
+  if (UI.vghost) { const gc = vSeg(UI.vghost); if (gc) s += ln(...gc, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`); }
+  if (UI.vdraw && UI.vdraw.pt) {
+    const f = UI.vdraw, q = f.cur || f.pt;
+    s += ln(f.pt[0], f.pt[1], q[0], q[1], `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`);
+    s += `<circle cx="${f.pt[0]}" cy="${f.pt[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".8"/>`;
+  } else if (UI.vdraw) {
     const f = UI.vdraw, x2 = UI.vdraw.cur === undefined ? f.x : UI.vdraw.cur;
     const [xt, xb] = f.edge === 't' ? [f.x, x2] : [x2, f.x];
     s += ln(xt, 0, xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`);
@@ -564,7 +637,8 @@ function updateStatus() {
   if (S.verts.length < 2) t = 'Need at least 2 verticals.';
   else if (em === 'measure') t = UI.mp ? 'Pick the second ' + (UI.mp.pt ? 'point.' : 'line.') : ($('mtD').checked ? 'Measure distance: click two points (snaps to corners, ends and vertices).' : 'Measure angle: click two lines.');
   else if (em === 'lines') t = UI.draw ? 'Click an adjacent vertical to finish the line (Esc cancels).' : 'LINES: click a vertical to start a line · drag a circle or a line to move it · hold Shift to edit verticals.';
-  else t = UI.vdraw ? 'Click a point on the opposite edge to finish the vertical (Esc cancels).'
+  else t = UI.vdraw ? 'Click a point on another edge to finish the vertical (Esc cancels).'
+    : MODE === 'radial' ? (S.enforce ? 'VERTICALS: drag to rotate about the centre · click any edge point to add a line through the centre · Delete removes the selected · hold Shift to edit lines.' : 'VERTICALS: drag a body or an end (slides along the outline) · click an edge point then another edge point to add one · Delete removes the selected · hold Shift to edit lines.')
     : 'VERTICALS: drag a body to move it whole, a square to move one end · click an edge point then the opposite edge to add one · Delete removes the selected · hold Shift to edit lines.';
   let info = '';
   const i = UI.info;
@@ -573,7 +647,8 @@ function updateStatus() {
     info = `<br><span class="${bad ? 'bad' : 'ok'}">Crossings: ${i.cross < 0 ? 'n/a' : i.cross} · min vertex gap: ${isFinite(i.minGap) ? i.minGap.toFixed(1) + ' mm' : '–'}</span>`;
   }
   if (UI.note) info += `<br>${UI.note}`;
-  if (MODE === 'radial' && UI.dropped) info += `<br>${UI.dropped} radial line(s) don't fit in the rectangle and were dropped.`;
+  if (UI.ghost && (UI.hiddenV || UI.hiddenS)) info += `<br>Grey = outside the rectangle: ${UI.hiddenV} vertical(s) miss it, ${UI.hiddenS} reflected segment(s) fall wholly outside.`;
+  if (MODE === 'radial' && UI.dropped) info += `<br>${UI.dropped} radial line(s) were dropped (angle beyond ±89°).`;
   $('status').innerHTML = t + info;
 }
 
@@ -581,7 +656,7 @@ function updateStatus() {
 function buildSVG(bg) {
   const sw = +$('sw').value || 0.2, m = sw / 2, W = S.W, H = S.H;
   let l = '';
-  S.verts.forEach(v => { if (!edgeVert(v)) l += `<line x1="${fmt(v.xt)}" y1="0" x2="${fmt(v.xb)}" y2="${H}"/>`; });
+  S.verts.forEach(v => { if (!edgeVert(v)) { const c = vSeg(v); l += `<line x1="${fmt(c[0])}" y1="${fmt(c[1])}" x2="${fmt(c[2])}" y2="${fmt(c[3])}"/>`; } });
   computeAll().segs.forEach(g => { if (g.c) l += `<line x1="${fmt(g.c[0])}" y1="${fmt(g.c[1])}" x2="${fmt(g.c[2])}" y2="${fmt(g.c[3])}"/>`; });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(W + sw)}mm" height="${fmt(H + sw)}mm" viewBox="${-m} ${-m} ${fmt(W + sw)} ${fmt(H + sw)}">` +
     (bg ? `<rect x="${-m}" y="${-m}" width="${fmt(W + sw)}" height="${fmt(H + sw)}" fill="#fff"/>` : '') +
@@ -629,13 +704,13 @@ function hitVerts(p) {
   const tol = 9 * pxmm();
   if (MODE === 'radial' && Math.hypot(p.x - S.centre.x, p.y - S.centre.y) < tol * 1.3) return { type: 'centre' };
   for (let i = 0; i < S.verts.length; i++) {
-    const v = S.verts[i];
-    if (Math.hypot(p.x - v.xt, p.y) < tol) return { type: 'vEnd', i, end: 't' };
-    if (Math.hypot(p.x - v.xb, p.y - S.H) < tol) return { type: 'vEnd', i, end: 'b' };
+    const e = vEnds(S.verts[i]); if (!e) continue;
+    if (Math.hypot(p.x - e[0][0], p.y - e[0][1]) < tol) return { type: 'vEnd', i, end: 't' };
+    if (Math.hypot(p.x - e[1][0], p.y - e[1][1]) < tol) return { type: 'vEnd', i, end: 'b' };
   }
   for (let i = 0; i < S.verts.length; i++) {
-    const v = S.verts[i];
-    if (distSeg(p, [v.xt, 0], [v.xb, S.H]) < tol * 0.7) return { type: 'vBody', i };
+    const c = MODE === 'radial' ? vView(S.verts[i]) : vSeg(S.verts[i]);   // radial: the ghost extension is grabbable too
+    if (c && distSeg(p, [c[0], c[1]], [c[2], c[3]]) < tol * 0.7) return { type: 'vBody', i };
   }
   return null;
 }
@@ -643,7 +718,8 @@ function nearestVertical(p, tol, only) {
   let best = -1, bd = tol;
   S.verts.forEach((v, i) => {
     if (only && !only.includes(i)) return;
-    const d = distSeg(p, [v.xt, 0], [v.xb, S.H]);
+    const c = vSeg(v); if (!c) return;
+    const d = distSeg(p, [c[0], c[1]], [c[2], c[3]]);
     if (d < bd) { bd = d; best = i; }
   });
   return best;
@@ -665,7 +741,7 @@ function drawTarget(p) {
 // measure helpers
 function snapPoint(p) {
   const tol = 12 * pxmm(), pts = [[0, 0], [S.W, 0], [0, S.H], [S.W, S.H]];
-  S.verts.forEach(v => pts.push([v.xt, 0], [v.xb, S.H]));
+  S.verts.forEach(v => { const e = vEnds(v); if (e) pts.push(e[0], e[1]); });
   lastAll.segs.forEach(g => { if (g.c) pts.push([g.c[0], g.c[1]], [g.c[2], g.c[3]]); });
   if (MODE === 'radial') pts.push([S.centre.x, S.centre.y]);
   let best = null, bd = tol;
@@ -674,7 +750,7 @@ function snapPoint(p) {
 }
 function pickLine(p) {
   const tol = 9 * pxmm(), L = [[0, 0, S.W, 0], [S.W, 0, S.W, S.H], [S.W, S.H, 0, S.H], [0, S.H, 0, 0]];
-  S.verts.forEach(v => L.push([v.xt, 0, v.xb, S.H]));
+  S.verts.forEach(v => { const c = vSeg(v); if (c) L.push(c); });
   lastAll.segs.forEach(g => { if (g.c) L.push(g.c); });
   let best = null, bd = tol;
   L.forEach(l => { const d = distSeg(p, [l[0], l[1]], [l[2], l[3]]); if (d < bd) { bd = d; best = l; } });
@@ -731,16 +807,22 @@ cv.addEventListener('pointerdown', e => {
     syncUI(); render(); return;
   }
 
-  if (S.enforce && MODE === 'radial' && !UI.vdraw && !hitVerts(p)) {   // enforced: one click on an edge = line through the centre
-    const edge = edgeNear(p);
-    if (edge) {
-      const a = radialAt(kOf(p.x, edge === 't' ? 0 : S.H)), j = snap();
-      if (a.xt >= 0 && a.xt <= S.W && a.xb >= 0 && a.xb <= S.W) { if (addVertical(a.xt, a.xb)) pushUndo(j); }
-      else UI.note = 'A line through the centre from there would leave the rectangle.';
-      UI.vghost = null; syncUI(); render(); return;
+  if (MODE === 'radial') {                           // radial: verticals may enter/exit through any edge
+    if (UI.vdraw) {                                  // free mode, second click
+      const nv = lineFrom(UI.vdraw.pt, nearestOnRect(p)), j = snap();
+      if (nv ? addVerticalFree(nv) : (UI.note = 'That line would be horizontal.', false)) pushUndo(j);
+      UI.vdraw = null; syncUI(); render(); return;
     }
-  }
-  if (UI.vdraw) {                                    // second click: finish the new vertical on the opposite edge
+    if (!hitVerts(p)) {
+      const pn = perimNear(p);
+      if (pn) {
+        UI.selH = -1;
+        if (S.enforce) { const j = snap(); if (addVerticalEnforced(kOf(pn[0], pn[1]))) pushUndo(j); UI.vghost = null; }
+        else { UI.vdraw = { pt: pn }; UI.note = ''; }
+        syncUI(); render(); return;
+      }
+    }
+  } else if (UI.vdraw) {                             // linear: second click on the opposite edge
     const from = UI.vdraw, x2 = vdrawX(p.x);
     const j = snap();
     if (from.edge === 't' ? addVertical(from.x, x2) : addVertical(x2, from.x)) pushUndo(j);
@@ -748,9 +830,9 @@ cv.addEventListener('pointerdown', e => {
   }
   const h = hitVerts(p);                             // Verticals mode
   UI.selH = -1; UI.selV = h && h.type !== 'centre' ? h.i : -1;
-  if (!h) {                                          // empty click near the top/bottom edge starts a new vertical
+  if (!h && MODE === 'linear') {                     // empty click near the top/bottom edge starts a new vertical
     const edge = edgeNear(p);
-    if (edge && !(S.enforce && MODE === 'radial')) { UI.vdraw = { edge, x: clamp(p.x, 0, S.W) }; UI.note = ''; }
+    if (edge) { UI.vdraw = { edge, x: clamp(p.x, 0, S.W) }; UI.note = ''; }
   }
   if (h) {
     drag = { ...h, start: p, snapJ: snap(), pushed: false };
@@ -770,26 +852,26 @@ cv.addEventListener('pointermove', e => {
     const { ai, t } = drawTarget(p);
     UI.draw.cur = vp(S.verts[ai], t); render(); return;
   }
-  if (UI.vdraw) { UI.vdraw.cur = vdrawX(p.x); render(); return; }
+  if (UI.vdraw) { UI.vdraw.cur = MODE === 'radial' ? nearestOnRect(p) : vdrawX(p.x); render(); return; }
   if (!drag && S.enforce && MODE === 'radial' && effMode(e.shiftKey) === 'verts') {
-    const edge = edgeNear(p), g = edge && !hitVerts(p) ? radialAt(kOf(p.x, edge === 't' ? 0 : S.H)) : null;
-    UI.vghost = g && g.xt >= 0 && g.xt <= S.W && g.xb >= 0 && g.xb <= S.W ? g : null; render();
+    const pn = hitVerts(p) ? null : perimNear(p);
+    UI.vghost = pn ? radialAt(kOf(pn[0], pn[1])) : null; render();
   }
   if (!drag) {
     const em = effMode(e.shiftKey);
     const h = em === 'lines' ? hitLines(p) : em === 'verts' ? hitVerts(p) : null;
     cv.style.cursor = em === 'measure' ? 'crosshair' : h ? 'pointer'
       : em === 'lines' && nearestVertical(p, 14 * pxmm()) >= 0 ? 'crosshair'
-      : em === 'verts' && edgeNear(p) ? 'crosshair' : 'default';
+      : em === 'verts' && (MODE === 'radial' ? perimNear(p) : edgeNear(p)) ? 'crosshair' : 'default';
     return;
   }
   if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
   const d = drag;
   if (d.type === 'vEnd') {
-    if (S.enforce && MODE === 'radial') setRadialK(d.i, kOf(p.x, d.end === 't' ? 0 : S.H)); else setEnd(d.i, d.end, p.x);
+    if (MODE === 'radial') { if (S.enforce) setRadialK(d.i, kOf(p.x, p.y)); else setEndFree(d.i, d.end, p); } else setEnd(d.i, d.end, p.x);
     S.layout = 'free';
   } else if (d.type === 'vBody') {
-    if (S.enforce && MODE === 'radial') setRadialK(d.i, kOf(p.x, p.y)); else moveBody(d.i, d.orig, p.x - d.start.x);
+    if (MODE === 'radial') { if (S.enforce) setRadialK(d.i, kOf(p.x, p.y)); else moveBodyFree(d.i, d.orig, p.x - d.start.x); } else moveBody(d.i, d.orig, p.x - d.start.x);
     S.layout = 'free';
   } else if (d.type === 'centre') {
     S.centre = { x: p.x, y: p.y };
@@ -829,7 +911,7 @@ function setMode(m) {
   $('mMeas').classList.toggle('on', m === 'measure');
   $('modeNote').textContent = m === 'lines'
     ? 'Click a vertical to start a line, click an adjacent one to finish. Drag circles/lines to move them. Hold Shift to move verticals.'
-    : m === 'verts' ? 'Drag a vertical to move it whole, or a square end handle. To add a vertical, click a point on the top or bottom edge, then a point on the opposite edge. Delete removes the selected vertical. Hold Shift to edit lines.' : 'Use the Dimensions panel to choose distance or angle.';
+    : m === 'verts' ? (MODE === 'radial' ? 'Drag a vertical (or a square end handle). To add one, click a point on any edge' + (S.enforce ? ' (it passes through the centre).' : ', then a point on another edge.') + ' Delete removes the selected vertical. Hold Shift to edit lines.' : 'Drag a vertical to move it whole, or a square end handle. To add a vertical, click a point on the top or bottom edge, then a point on the opposite edge. Delete removes the selected vertical. Hold Shift to edit lines.') : 'Use the Dimensions panel to choose distance or angle.';
   render();
 }
 function delSel() {
@@ -853,13 +935,32 @@ function edgeNear(p) {
   if (Math.abs(p.y - S.H) < tol) return 'b';
   return null;
 }
+function perimNear(p) {
+  const q = nearestOnRect(p);
+  return Math.hypot(p.x - q[0], p.y - q[1]) < 14 * pxmm() ? q : null;
+}
+function addVerticalEnforced(k) {
+  const V = S.verts, u = uOf(k), us = V.map(v => uOf(kOf(v.xt, 0))), i = us.filter(x => x < u).length;
+  if ((i > 0 && u - us[i - 1] < GAPU) || (i < V.length && us[i] - u < GAPU)) { UI.note = 'Too close to an existing vertical.'; return false; }
+  return insertVertical(radialAt(k), i);
+}
+function addVerticalFree(nv) {
+  const c = vSeg(nv);
+  if (!c) { UI.note = 'That line misses the rectangle.'; return false; }
+  if (S.verts.some(v => { const o = vSeg(v); return o && segDist(c, o) < GAP; })) { UI.note = 'That vertical would cross or touch another (min gap ' + GAP + ' mm).'; return false; }
+  const mid = v => (v.xt + v.xb) / 2;
+  return insertVertical(nv, S.verts.filter(v => mid(v) < mid(nv)).length);
+}
 // insert a vertical (top x, bottom x) in sorted position; lines it splits are trimmed to it
 function addVertical(xt, xb) {
   const V = S.verts, i = V.filter(v => v.xt < xt).length;
   const fits = (k, x) => (i === 0 || x >= V[i - 1][k] + GAP) && (i === V.length || x <= V[i][k] - GAP);
   if (!fits('xt', xt) || !fits('xb', xb)) { UI.note = 'That vertical would cross or touch a neighbour (min gap ' + GAP + ' mm).'; return false; }
   if (S.cap && Math.abs(xb - xt) > S.H + 1e-9) { UI.note = 'Exceeds the ±45° cap.'; return false; }
-  const nv = { xt, xb }, nh = [];
+  return insertVertical({ xt, xb }, i);
+}
+function insertVertical(nv, i) {
+  const V = S.verts, nh = [];
   S.hors.forEach(h => {
     if (h.k >= i) nh.push({ ...h, k: h.k + 1 });
     else if (h.k === i - 1) {                        // this line spans the new vertical: trim it to the new one
@@ -893,6 +994,7 @@ on('bUndo', 'onclick', undo); on('bRedo', 'onclick', redo);
 on('mClear', 'onclick', () => { UI.meas = []; UI.mp = null; render(); });
 on('mg', 'onchange', () => { S.minGap = Math.max(0, +$('mg').value || 0); render(); });
 on('enf', 'onchange', () => act(() => { S.enforce = $('enf').checked; if (S.enforce) enforceRadial(); }));
+on('gh', 'onchange', () => { UI.ghost = $('gh').checked; render(); });
 on('cap', 'onchange', () => act(() => { S.cap = $('cap').checked; if (S.cap) sanitize(); }));
 
 const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() => {
@@ -912,14 +1014,24 @@ else { genField('gStep', 'step', 0.5, 90); genField('gOff', 'offset', -89, 89); 
   S.W = nw; S.H = nh;
   if (S.layout === 'gen') regen(false); else sanitize();
 })));
-on('vxt', 'onchange', () => { if (UI.selV >= 0) act(() => { if (S.enforce && MODE === 'radial') setRadialK(UI.selV, kOf(+$('vxt').value, 0)); else setEnd(UI.selV, 't', +$('vxt').value); S.layout = 'free'; }); });
-on('vxb', 'onchange', () => { if (UI.selV >= 0) act(() => { if (S.enforce && MODE === 'radial') setRadialK(UI.selV, kOf(+$('vxb').value, S.H)); else setEnd(UI.selV, 'b', +$('vxb').value); S.layout = 'free'; }); });
+const setX = (which, x) => {
+  const i = UI.selV, y = which === 'xt' ? 0 : S.H;
+  if (MODE === 'radial') {
+    if (S.enforce) setRadialK(i, kOf(x, y));
+    else { const cand = { xt: S.verts[i].xt, xb: S.verts[i].xb, [which]: x }; if (freeOK(i, cand)) Object.assign(S.verts[i], cand); else UI.note = 'That would cross or touch a neighbour.'; }
+  } else setEnd(i, which === 'xt' ? 't' : 'b', x);
+  S.layout = 'free';
+};
+on('vxt', 'onchange', () => { if (UI.selV >= 0) act(() => setX('xt', +$('vxt').value)); });
+on('vxb', 'onchange', () => { if (UI.selV >= 0) act(() => setX('xb', +$('vxb').value)); });
 const nudge = sign => {
   if (UI.selV < 0) return;
   act(() => {
     const st = sign * (+$('step').value || 1), v = S.verts[UI.selV];
-    if (S.enforce && MODE === 'radial') { const yw = wideY(); setRadialK(UI.selV, kOf((yw === 0 ? v.xt : v.xb) + st, yw)); }
-    else moveBody(UI.selV, { ...v }, st);
+    if (MODE === 'radial') {
+      if (S.enforce) { const yw = wideY(); setRadialK(UI.selV, kOf((yw === 0 ? v.xt : v.xb) + st, yw)); }
+      else moveBodyFree(UI.selV, { ...v }, st);
+    } else moveBody(UI.selV, { ...v }, st);
     S.layout = 'free';
   });
 };

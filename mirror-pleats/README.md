@@ -25,15 +25,21 @@ panel and the vertical generator differ.
 **Verticals**
 - Linear: count, spacing (mm), first x (mm); "Fit edge to edge"; ±45° cap.
 - Radial: count, step (°) between subsequent verticals, rotation (°), centre
-  (x, y). The centre must sit above or below the rectangle; lines that don't
-  fit inside the rectangle are dropped (status bar says how many).
+  (x, y). The centre must sit above or below the rectangle. Verticals are
+  infinite lines, so they may **enter and exit the rectangle through any edge**
+  (top, bottom, left or right); only lines beyond ±89° are dropped. One that
+  misses the rectangle entirely is kept (it still acts as a mirror) and drawn
+  as a grey ghost, so the count always matches what you see.
 - Radial has an **Enforce radial from centre** toggle (on by default). On: all
   verticals pass through the centre. Switching it on snaps existing verticals
   (each keeps its end on the edge farther from the centre and swings the other
   end onto the centre line); a new vertical is a single click on an edge;
   dragging an end or body, the numeric fields and ◀ ▶ rotate about the centre;
   moving the centre carries the verticals with it. Off: verticals are free
-  lines, added with the two-click edge-to-edge method.
+  lines; add one by clicking a point on any edge then a point on another edge,
+  and dragging an end slides it along the rectangle outline (a body drag moves
+  the line sideways). Free verticals may not cross or touch inside the
+  rectangle.
 - Ends can never cross a neighbour (min 1 mm), so verticals never intersect.
 
 **Edit modes** (buttons, or hold **Shift** for the other edit mode)
@@ -62,6 +68,12 @@ the rectangle only at the end. A trail that leaves the rectangle and re-enters
 is therefore drawn where it's inside. The first and last verticals also
 mirror **outward**: the trail continues as a ray past them, cropped by the
 rectangle (one step; there is no further virtual mirror beyond).
+
+**Ghost lines** — everything the rectangle crops away is drawn grey and dashed
+(reflected segments outside it, and on the radial page each vertical's
+extension toward the centre). The status bar counts verticals that miss the
+rectangle and reflected segments that fall wholly outside. Toggle with "Show
+off-rectangle ghost lines".
 
 **Dimensions** (toggles) — edge spacing, vertical tilt, drawn-line angle,
 reflected-line angles, vertex gaps along each vertical.
@@ -94,6 +106,9 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
   ambiguous between "start a line" and "move the vertical", so verticals and
   lines are edited in separate modes with Shift as a momentary swap.
 - **"45°" means 45° to the horizontal**, also in radial mode.
+- **Verticals are infinite lines** stored by their x at y=0 and y=H (which may
+  lie outside the rectangle); the visible part is that line cropped to the
+  rectangle. That is what lets radial verticals use any edge.
 
 ## Known limitations
 
@@ -104,6 +119,8 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
   fields or "Reset verticals" regenerates it.
 - The crossing check is skipped (shown "n/a") above ~700 visible segments.
 - Randomize only places lines in section 1.
+- Radial centre must stay above or below the rectangle (a centre beside it
+  would make near-horizontal verticals).
 
 ## Changelog
 
@@ -115,3 +132,5 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
 - **v3** — Add verticals by drawing edge-to-edge (and delete); first/last
   vertical reflect outward, cropped by the rectangle.
 - **v4** — Radial: "Enforce radial from centre" toggle (existing + new verticals).
+- **v5** — Radial: verticals may enter/exit through any edge (enforced and free
+  modes); grey ghost lines for everything outside the rectangle.
