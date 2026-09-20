@@ -19,6 +19,11 @@ design and fabrication.
   dimensions/measuring, SVG/PNG export. See
   [mirror-pleats/README.md](mirror-pleats/README.md).
 
+- **[Hypar Generator](hypar/index.html)** — drag out a regular (or
+  free-cornered convex) polygon, get concentric offset contours and corner
+  diagonals to the centre, with an optional centre cut. SVG/PNG export. See
+  [hypar/README.md](hypar/README.md).
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
