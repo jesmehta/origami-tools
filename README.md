@@ -12,9 +12,11 @@ design and fabrication.
   for how it works and the design decisions behind it.
 
 - **[Mirror Pleats](mirror-pleats/index.html)** — draw verticals across a
-  rectangle, draw lines in the first section, and each vertical mirrors them
-  onward to build a trail of V-pleats. Linear or radial verticals, ordered and
-  random layouts, SVG/PNG export. See
+  rectangle, draw lines between them, and each vertical mirrors those lines
+  onward to build a trail of V-pleats. Separate
+  [linear](mirror-pleats/linear.html) and
+  [radial](mirror-pleats/radial.html) pages, ordered and random layouts,
+  dimensions/measuring, SVG/PNG export. See
   [mirror-pleats/README.md](mirror-pleats/README.md).
 
 ## License
