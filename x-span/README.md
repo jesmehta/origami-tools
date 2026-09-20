@@ -3,8 +3,17 @@
 Offline, dependency-free single-file HTML tool (`index.html`, open directly —
 no build, no server). A lattice of rhombi inside a rectangle, where every
 rhombus vertex lies on a vertical line and the vertical lines are the rhombi's
-vertical diagonals. **Regular**: verticals evenly spread, straight lines.
-**Irregular**: verticals free (still vertical), the lines bend at each one.
+vertical diagonals. Four grid types:
+
+| Type | Verticals | Height `h` |
+|---|---|---|
+| **Regular** | evenly spread | constant (straight lines) |
+| **Const H · move W** | free (still vertical) | constant |
+| **Const W · move H** | evenly spread | one per chain row |
+| **Move both** | free | one per chain row |
+
+Wherever the spacing or the height changes, the lines bend (refract) so the
+tiling stays continuous.
 
 ## Initial need
 
@@ -28,18 +37,32 @@ v2 brief (current): split into two modes.
   a width). The lines refract at the verticals to reach the next point. Height
   of the rhombi stays constant.
 
+v3 brief: a second family of irregular grids. Keep "constant H, movable W" (the
+old Irregular mode), and add "constant W, movable H" (the height varies from chain
+to chain while the verticals stay evenly spaced) and "movable both", as three
+separate named modes, with the inputs (sliders etc.) they need. Heights are set by
+dragging the levels on the canvas, per-chain sliders and a profile; the angle and
+chain-count definitions still work; the chains stay anchored at the top and are
+cropped at the bottom (no forced fill). Also: chains may be entered in 0.5 steps,
+lines can be dragged to set the angle (pivot on the top of the 2nd vertical,
+higher priority than the y-offset drag), and the y offset can be reset.
+
 ## The lattice
 
-Everything is one construction. `h` is the half-height of every rhombus (vertical
-diagonal `2h`). Vertical *k* carries vertices at `y = yoff + h·(a_k + 2m)`, with
-`a_k = 1` on the verticals the **chains** cross on (V1, V3, V5… or V2, V4, V6…)
-and `a_k = 0` on the others, which carry the offset **"1.5" rows**. Every vertex
-is joined to the two vertices of the next vertical at `y ± h`.
-- Chain rows are stacked `2h` apart and touch vertex to vertex; the 1.5 rows sit
-  between them.
-- Regular: all sections equal `d`, so every line is straight at `tan θ = h/d`.
-- Irregular: only the x positions change, so the section angle is `atan(h/dₖ)`.
-  The rhombi become kites, but they still tile.
+Everything is one construction. Chain row *j* runs between **touch levels**
+`t_j` and `t_{j+1} = t_j + 2·h_j` (`t_0` = the y offset); `h_j` is its
+half-height (vertical diagonal `2h_j`) and `c_j = t_j + h_j` is where its rhombi
+cross. The **touch verticals** (V2, V4… or V1, V3…, see *Chains cross on*) carry
+the vertices `t_j`; the other verticals carry the crossings `c_j`. Every crossing
+`c_j` is joined to `t_j` and `t_{j+1}` on the neighbouring verticals.
+- Chain rows stack and touch vertex to vertex; the **"1.5" rows** appear between
+  them for free (their vertices are the crossings `c_{j-1}`, `c_j` with a touch
+  level in between).
+- Constant `h` and equal sections `d`: every line is straight at `tan θ = h/d`.
+- Uneven sections: the section angle is `atan(h/dₖ)`, rhombi become kites, the
+  tiling holds.
+- Variable `h_j`: the 1.5 rows become kites whose top half is `h_{j-1}` and bottom
+  half is `h_j`.
 
 ## Using it
 
@@ -52,7 +75,7 @@ Number → first and last vertical on the rectangle edges. Distance / minor
 diagonal → verticals from x = 0 every `d`; the count is derived and one vertical
 just beyond the right edge is kept (grey) so the grid fills the rectangle.
 
-**Irregular · verticals** — starts from an even spread (count / spacing / first
+**Free verticals** (Const H · move W, Move both) — start from an even spread (count / spacing / first
 x, "Fit edge to edge", "Reset") or from the regular layout you switched from.
 Then Verticals mode: drag a vertical or a square end handle left/right, click a
 point on the top/bottom edge to add one, Delete removes the selected (min 2),
@@ -72,18 +95,36 @@ V2,V4…. **Reset** sets the offset back to 0. With an angle, the
 number of chains that fit is rarely whole; the grid is anchored by the offset and
 cropped at the bottom (the status bar shows the fractional count).
 
-**Grid type switch** — Regular → Irregular keeps the current verticals (minus one
-beyond the edge). Irregular → Regular regenerates from the regular fields (undo
-gets the hand edits back).
+**Chain heights** (Const W · move H, Move both) — each chain row has its own
+half-height `h_j` (top to bottom). Set them by
+- dragging a circle on a touch vertex up/down: the chain above grows and the
+  chain below shrinks by the same amount, everything else stays put (for the first
+  chain the y offset moves too, so the chain below keeps its place);
+- a slider + number per chain row now on the canvas;
+- **Apply profile** (first h → last h over the rows now shown, linear / ease in /
+  ease out / ease in-out), **Randomize**, **Fit to height** (scales all heights so
+  the chains now shown, to the nearest half, end exactly at the bottom edge),
+  **All equal**.
+
+Rows past the last defined one repeat its height. Heights are stored as ratios of
+the reference `h` (from *angle θ* or *number of chains*), so changing θ, the chain
+count or dragging a line scales all heights together and keeps their proportions.
+Smallest height 0.3 mm.
+
+**Grid type switch** — Regular → a free-vertical type keeps the current verticals
+(minus one beyond the edge). Going back to an evenly spread type regenerates from
+the regular fields (undo gets hand edits back). Heights are remembered per
+session, so switching to a variable-height type again restores them.
 
 **Grid mode mouse** — *drag a line* to set the angle: θ follows the direction
 from a fixed pivot, the top vertex of the 2nd vertical (its first vertex inside
 the rectangle), to the pointer, so the grid rotates about that point and the
 pivot stays a vertex (dragging switches the Rhombus definition to *angle*).
-*Drag empty space* to shift the grid up/down (the y offset). Lines take
-priority over empty space.
+*Drag empty space* to shift the grid up/down (the y offset). Priority: height
+circle (variable-height types) > line > empty space. With variable heights the
+angle drag scales all heights together and the pivot stays a vertex.
 
-**Edit modes** — **Grid** (angle / offset drag), **Verticals** (irregular only; hold
+**Edit modes** — **Grid** (angle / offset drag), **Verticals** (free-vertical types only; hold
 **Shift** for the other of Grid/Verticals), **Measure** (distance between two
 points, snapping to corners / vertical ends / vertices; angle between two lines).
 
@@ -105,9 +146,18 @@ the selection.
   vertex to vertex, all vertices on verticals) fixes every y once `h` is chosen;
   only x is free. Regular is the equal-spacing case, so both modes share one
   generator.
-- **Constant `h`.** Required by the brief for irregular; also what makes the
-  1.5 rows fall out for free. So v1's "exact θ in each section" toggle and
-  free-floating chains were dropped: they can't tile.
+- **Heights are per chain row, not per vertex.** The tiling condition only needs
+  the levels on each vertical to interleave (touch, cross, touch…), so more
+  freedom is possible, but per-row is what "chains" means, is easy to edit, and
+  the 1.5 rows still fall out for free (as kites).
+- **Ratios, not absolute heights.** Storing `h_j = h_ref × ratio_j` keeps the
+  angle / chain-count definitions and the angle drag working unchanged.
+- **Anchored at the top, no forced fill.** Changing one height shifts everything
+  below it; "Fit to height" is the explicit way to fill H.
+- **Four named types instead of two switches** (per the brief): Regular, Const H ·
+  move W, Const W · move H, Move both; one lattice generator underneath.
+- v1's "exact θ in each section" toggle and free-floating chains were dropped in
+  v2: they can't tile.
 - **Verticals refract, not mirror.** Mathematically the bend is the same, but
   nothing is mirrored; a vertical is just where a vertex must lie.
 - **Angle = side to the horizontal**, either orientation allowed (no restriction
@@ -127,11 +177,17 @@ the selection.
 
 ## Known limitations / watch out for
 
-- In irregular mode `h` comes from the **first section** (V1–V2) when defined by
-  angle. Move that vertical and every rhombus changes height. Define by number of
-  chains for an `h` that doesn't depend on the verticals.
-- Irregular mode has no verticals beyond the rectangle: if the layout doesn't
-  reach the right edge, the grid stops at the last vertical.
+- With free verticals, the reference `h` comes from the **first section** (V1–V2)
+  when defined by angle. Move that vertical and every rhombus changes height.
+  Define by number of chains for an `h` that doesn't depend on the verticals.
+- With *number of chains* and variable heights, `2h_ref × chains` = H only while
+  all heights are equal; use **Fit to height** afterwards.
+- Free-vertical types have no verticals beyond the rectangle: if the layout
+  doesn't reach the right edge, the grid stops at the last vertical.
+- Only rows j ≥ 0 have height handles/sliders; rows above the y offset (when it is
+  > 0) repeat row 1's height.
+- Sliders exist for the rows on the canvas, so moving the grid down / shrinking
+  heights adds rows and their sliders.
 - Adding/removing a vertical changes which verticals carry the chains (parity is
   by position).
 - Segment count is capped (30 000). Tiny θ or spacing shows a warning instead.
@@ -145,6 +201,10 @@ the selection.
   every second vertical), constant-height / exact-θ toggle, same / alternating
   chains, half rhombi at leftover sections, Chains/Verticals/Measure modes,
   dimensions, randomize, SVG/PNG export.
+- **v3** — Grid types Regular / Const H · move W / Const W · move H / Move both.
+  Variable heights: one h per chain row, height circles on the canvas, sliders,
+  profile / randomize / fit to height / all equal. General touch-level lattice
+  replaces the constant-h one (constant-h output unchanged).
 - **v2.1** — Chains in 0.5 steps; drag a line to set the angle (pivot on the top
   of V2, wins over the y-offset drag); Reset y offset.
 - **v2** — Rebuilt around one continuous lattice. Regular and Irregular modes;
