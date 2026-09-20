@@ -27,6 +27,13 @@ panel and the vertical generator differ.
 - Radial: count, step (°) between subsequent verticals, rotation (°), centre
   (x, y). The centre must sit above or below the rectangle; lines that don't
   fit inside the rectangle are dropped (status bar says how many).
+- Radial has an **Enforce radial from centre** toggle (on by default). On: all
+  verticals pass through the centre. Switching it on snaps existing verticals
+  (each keeps its end on the edge farther from the centre and swings the other
+  end onto the centre line); a new vertical is a single click on an edge;
+  dragging an end or body, the numeric fields and ◀ ▶ rotate about the centre;
+  moving the centre carries the verticals with it. Off: verticals are free
+  lines, added with the two-click edge-to-edge method.
 - Ends can never cross a neighbour (min 1 mm), so verticals never intersect.
 
 **Edit modes** (buttons, or hold **Shift** for the other edit mode)
@@ -107,3 +114,4 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
   random layouts avoid crossings and enforce a min vertex gap.
 - **v3** — Add verticals by drawing edge-to-edge (and delete); first/last
   vertical reflect outward, cropped by the rectangle.
+- **v4** — Radial: "Enforce radial from centre" toggle (existing + new verticals).

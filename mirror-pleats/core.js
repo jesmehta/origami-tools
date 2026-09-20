@@ -29,8 +29,9 @@ const vertPanel = MODE === 'linear' ? `
       <label>Centre x <input type="number" id="cx" step="1"></label>
       <label>y <input type="number" id="cy" step="1"></label>
     </div>
+    <div class="row"><label><input type="checkbox" id="enf"> Enforce radial from centre</label></div>
     <div class="row"><button id="bReset">Reset verticals</button></div>
-    <p class="note">Centre must be above or below the rectangle. Lines that don't fit inside the rectangle are dropped. Drag the ◆ in Verticals mode.</p>`;
+    <p class="note">When enforced, existing and new verticals all pass through the centre (a new one is a single click on an edge; dragging rotates about the centre). Centre must be above or below the rectangle. Lines that don't fit inside the rectangle are dropped. Drag the ◆ in Verticals mode.</p>`;
 
 document.getElementById('app').innerHTML = `
 <aside>
@@ -141,6 +142,7 @@ const S = {
   layout: 'gen',        // 'gen' (generated from parameters) | 'free' (hand-edited)
   centre: { x: 100, y: -72 },
   cap: MODE === 'linear',
+  enforce: MODE === 'radial',
   minGap: 4,
   gen: MODE === 'linear' ? { n: 5, spacing: 40, start: 20 } : { n: 7, step: 8, offset: 0 },
 };
@@ -152,7 +154,7 @@ const UI = {
 
 /* ---------- undo ---------- */
 const undoS = [], redoS = [];
-const snap = () => JSON.stringify({ W: S.W, H: S.H, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, gen: S.gen, minGap: S.minGap });
+const snap = () => JSON.stringify({ W: S.W, H: S.H, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, enforce: S.enforce, gen: S.gen, minGap: S.minGap });
 function restore(j) { Object.assign(S, JSON.parse(j)); UI.selV = UI.selH = -1; UI.draw = null; UI.vdraw = null; syncUI(); render(); }
 function pushUndo(j) { undoS.push(j || snap()); if (undoS.length > 80) undoS.shift(); redoS.length = 0; }
 function act(fn) { pushUndo(); UI.note = ''; fn(); syncUI(); render(); }
@@ -309,6 +311,32 @@ function sanitize() {
     for (let i = n - 1; i >= 0; i--) S.verts[i][k] = Math.min(S.verts[i][k], i < n - 1 ? S.verts[i + 1][k] - GAP : S.W);
   }
 }
+// --- enforced-radial helpers: every vertical is the line through the centre ---
+const wideY = () => Math.abs(S.H - S.centre.y) > Math.abs(S.centre.y) ? S.H : 0;
+function enforceRadial() {
+  fixCentre();
+  const { x: cx, y: cy } = S.centre, yw = wideY();
+  S.verts.forEach(v => {
+    const k = ((yw === 0 ? v.xt : v.xb) - cx) / (yw - cy);   // keep the wide-edge end, swing the other onto the centre line
+    v.xt = clamp(cx + k * (0 - cy), 0, S.W); v.xb = clamp(cx + k * (S.H - cy), 0, S.W);
+  });
+  sanitize();
+}
+const radialAt = k => ({ xt: S.centre.x + k * (0 - S.centre.y), xb: S.centre.x + k * (S.H - S.centre.y) });
+const kOf = (x, y) => (x - S.centre.x) / (y - S.centre.y);
+// rotate vertical i about the centre toward slope k, stopping at the last valid position
+function setRadialK(i, k1) {
+  const rT = ordRange(i, 'xt'), rB = ordRange(i, 'xb');
+  const ok = k => { const a = radialAt(k); return a.xt >= rT.lo - 1e-9 && a.xt <= rT.hi + 1e-9 && a.xb >= rB.lo - 1e-9 && a.xb <= rB.hi + 1e-9; };
+  let k = k1;
+  if (!ok(k1)) {
+    let lo = kOf(S.verts[i].xt, 0), hi = k1;
+    if (!ok(lo)) return;
+    for (let n = 0; n < 24; n++) { const mid = (lo + hi) / 2; if (ok(mid)) lo = mid; else hi = mid; }
+    k = lo;
+  }
+  Object.assign(S.verts[i], radialAt(k));
+}
 const fixHors = () => { S.hors = S.hors.filter(h => h.k >= 0 && h.k + 1 < S.verts.length); };
 
 /* ---------- generators ---------- */
@@ -415,7 +443,7 @@ function render() {
   if (!drag) UI.info = analyze(lastAll);
   let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="2" ${NS}/>`;
 
-  if (MODE === 'radial' && S.layout === 'gen') {
+  if (MODE === 'radial' && (S.layout === 'gen' || S.enforce)) {
     s += `<g stroke="#999" stroke-dasharray="4 4" stroke-width="1" ${NS} opacity=".55">`;
     const topFar = Math.abs(S.centre.y) > Math.abs(S.H - S.centre.y);
     V.forEach(v => { s += ln(S.centre.x, S.centre.y, topFar ? v.xt : v.xb, topFar ? 0 : S.H); });
@@ -515,6 +543,7 @@ function render() {
     s += `<circle cx="${P[0]}" cy="${P[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".7"/>`;
     if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#1976d2" stroke-dasharray="5 4" stroke-width="1.5" ${NS}`);
   }
+  if (UI.vghost) s += ln(UI.vghost.xt, 0, UI.vghost.xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`);
   if (UI.vdraw) {
     const f = UI.vdraw, x2 = UI.vdraw.cur === undefined ? f.x : UI.vdraw.cur;
     const [xt, xb] = f.edge === 't' ? [f.x, x2] : [x2, f.x];
@@ -702,6 +731,15 @@ cv.addEventListener('pointerdown', e => {
     syncUI(); render(); return;
   }
 
+  if (S.enforce && MODE === 'radial' && !UI.vdraw && !hitVerts(p)) {   // enforced: one click on an edge = line through the centre
+    const edge = edgeNear(p);
+    if (edge) {
+      const a = radialAt(kOf(p.x, edge === 't' ? 0 : S.H)), j = snap();
+      if (a.xt >= 0 && a.xt <= S.W && a.xb >= 0 && a.xb <= S.W) { if (addVertical(a.xt, a.xb)) pushUndo(j); }
+      else UI.note = 'A line through the centre from there would leave the rectangle.';
+      UI.vghost = null; syncUI(); render(); return;
+    }
+  }
   if (UI.vdraw) {                                    // second click: finish the new vertical on the opposite edge
     const from = UI.vdraw, x2 = vdrawX(p.x);
     const j = snap();
@@ -712,7 +750,7 @@ cv.addEventListener('pointerdown', e => {
   UI.selH = -1; UI.selV = h && h.type !== 'centre' ? h.i : -1;
   if (!h) {                                          // empty click near the top/bottom edge starts a new vertical
     const edge = edgeNear(p);
-    if (edge) { UI.vdraw = { edge, x: clamp(p.x, 0, S.W) }; UI.note = ''; }
+    if (edge && !(S.enforce && MODE === 'radial')) { UI.vdraw = { edge, x: clamp(p.x, 0, S.W) }; UI.note = ''; }
   }
   if (h) {
     drag = { ...h, start: p, snapJ: snap(), pushed: false };
@@ -733,6 +771,10 @@ cv.addEventListener('pointermove', e => {
     UI.draw.cur = vp(S.verts[ai], t); render(); return;
   }
   if (UI.vdraw) { UI.vdraw.cur = vdrawX(p.x); render(); return; }
+  if (!drag && S.enforce && MODE === 'radial' && effMode(e.shiftKey) === 'verts') {
+    const edge = edgeNear(p), g = edge && !hitVerts(p) ? radialAt(kOf(p.x, edge === 't' ? 0 : S.H)) : null;
+    UI.vghost = g && g.xt >= 0 && g.xt <= S.W && g.xb >= 0 && g.xb <= S.W ? g : null; render();
+  }
   if (!drag) {
     const em = effMode(e.shiftKey);
     const h = em === 'lines' ? hitLines(p) : em === 'verts' ? hitVerts(p) : null;
@@ -743,9 +785,16 @@ cv.addEventListener('pointermove', e => {
   }
   if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
   const d = drag;
-  if (d.type === 'vEnd') { setEnd(d.i, d.end, p.x); S.layout = 'free'; }
-  else if (d.type === 'vBody') { moveBody(d.i, d.orig, p.x - d.start.x); S.layout = 'free'; }
-  else if (d.type === 'centre') { S.centre = { x: p.x, y: p.y }; regen(false); }
+  if (d.type === 'vEnd') {
+    if (S.enforce && MODE === 'radial') setRadialK(d.i, kOf(p.x, d.end === 't' ? 0 : S.H)); else setEnd(d.i, d.end, p.x);
+    S.layout = 'free';
+  } else if (d.type === 'vBody') {
+    if (S.enforce && MODE === 'radial') setRadialK(d.i, kOf(p.x, p.y)); else moveBody(d.i, d.orig, p.x - d.start.x);
+    S.layout = 'free';
+  } else if (d.type === 'centre') {
+    S.centre = { x: p.x, y: p.y };
+    if (S.layout === 'gen') regen(false); else if (S.enforce) enforceRadial(); else fixCentre();
+  }
   else if (d.type === 'hEnd') {
     const h = S.hors[d.i], movA = d.which === 'a';
     const mv = S.verts[movA ? h.k : h.k + 1], fx = S.verts[movA ? h.k + 1 : h.k];
@@ -774,7 +823,7 @@ window.addEventListener('keyup', e => { if (e.key === 'Shift') { UI.shift = fals
 
 /* ---------- controls ---------- */
 function setMode(m) {
-  UI.mode = m; UI.draw = null; UI.vdraw = null; UI.mp = null;
+  UI.mode = m; UI.draw = null; UI.vdraw = null; UI.vghost = null; UI.mp = null;
   $('mLines').classList.toggle('on', m === 'lines');
   $('mVerts').classList.toggle('on', m === 'verts');
   $('mMeas').classList.toggle('on', m === 'measure');
@@ -843,6 +892,7 @@ on('rA', 'onclick', () => act(() => { randomVerts(); randomHors(nH()); }));
 on('bUndo', 'onclick', undo); on('bRedo', 'onclick', redo);
 on('mClear', 'onclick', () => { UI.meas = []; UI.mp = null; render(); });
 on('mg', 'onchange', () => { S.minGap = Math.max(0, +$('mg').value || 0); render(); });
+on('enf', 'onchange', () => act(() => { S.enforce = $('enf').checked; if (S.enforce) enforceRadial(); }));
 on('cap', 'onchange', () => act(() => { S.cap = $('cap').checked; if (S.cap) sanitize(); }));
 
 const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() => {
@@ -862,9 +912,17 @@ else { genField('gStep', 'step', 0.5, 90); genField('gOff', 'offset', -89, 89); 
   S.W = nw; S.H = nh;
   if (S.layout === 'gen') regen(false); else sanitize();
 })));
-on('vxt', 'onchange', () => { if (UI.selV >= 0) act(() => { setEnd(UI.selV, 't', +$('vxt').value); S.layout = 'free'; }); });
-on('vxb', 'onchange', () => { if (UI.selV >= 0) act(() => { setEnd(UI.selV, 'b', +$('vxb').value); S.layout = 'free'; }); });
-const nudge = sign => { if (UI.selV >= 0) act(() => { moveBody(UI.selV, { ...S.verts[UI.selV] }, sign * (+$('step').value || 1)); S.layout = 'free'; }); };
+on('vxt', 'onchange', () => { if (UI.selV >= 0) act(() => { if (S.enforce && MODE === 'radial') setRadialK(UI.selV, kOf(+$('vxt').value, 0)); else setEnd(UI.selV, 't', +$('vxt').value); S.layout = 'free'; }); });
+on('vxb', 'onchange', () => { if (UI.selV >= 0) act(() => { if (S.enforce && MODE === 'radial') setRadialK(UI.selV, kOf(+$('vxb').value, S.H)); else setEnd(UI.selV, 'b', +$('vxb').value); S.layout = 'free'; }); });
+const nudge = sign => {
+  if (UI.selV < 0) return;
+  act(() => {
+    const st = sign * (+$('step').value || 1), v = S.verts[UI.selV];
+    if (S.enforce && MODE === 'radial') { const yw = wideY(); setRadialK(UI.selV, kOf((yw === 0 ? v.xt : v.xb) + st, yw)); }
+    else moveBody(UI.selV, { ...v }, st);
+    S.layout = 'free';
+  });
+};
 on('nudL', 'onclick', () => nudge(-1)); on('nudR', 'onclick', () => nudge(1));
 ['colLine', 'colRect'].forEach(id => on(id, 'oninput', render));
 Object.keys(UI.dim).forEach(k => {
@@ -877,7 +935,7 @@ function syncUI() {
   const set = (id, v) => { const el = $(id); if (el && document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
   set('W', S.W); set('H', S.H); set('gN', S.gen.n); set('mg', S.minGap);
   if (MODE === 'linear') { set('gSp', S.gen.spacing); set('gSt', S.gen.start); if ($('cap')) $('cap').checked = S.cap; }
-  else { set('gStep', S.gen.step); set('gOff', S.gen.offset); set('cx', S.centre.x); set('cy', S.centre.y); }
+  else { if ($('enf')) $('enf').checked = S.enforce; set('gStep', S.gen.step); set('gOff', S.gen.offset); set('cx', S.centre.x); set('cy', S.centre.y); }
   const sv = UI.selV >= 0 ? S.verts[UI.selV] : null;
   $('selV').hidden = !sv;
   if (sv) { $('selVn').textContent = UI.selV + 1; set('vxt', sv.xt); set('vxb', sv.xb); }
