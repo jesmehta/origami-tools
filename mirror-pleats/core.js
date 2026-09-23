@@ -137,15 +137,15 @@ const cv = $('cv');
 
 /* ---------- state ---------- */
 const S = {
-  W: 200, H: 120,
+  W: 297, H: 210,
   verts: [],            // {xt, xb}: x at top edge (y=0) and bottom edge (y=H)
   hors: [],             // {k, a, b}: line between V_k (at a) and V_k+1 (at b); a,b in 0..1 top→bottom
   layout: 'gen',        // 'gen' (generated from parameters) | 'free' (hand-edited)
-  centre: { x: 100, y: -72 },
+  centre: { x: 148.5, y: -126 },
   cap: MODE === 'linear',
   enforce: MODE === 'radial',
   minGap: 4,
-  gen: MODE === 'linear' ? { n: 5, spacing: 40, start: 20 } : { n: 7, step: 8, offset: 0 },
+  gen: MODE === 'linear' ? { n: 7, spacing: 40, start: 20 } : { n: 7, step: 8, offset: 0 },
 };
 const UI = {
   mode: 'lines', draw: null, selV: -1, selH: -1, viewLock: null,

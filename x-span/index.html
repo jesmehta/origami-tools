@@ -210,12 +210,12 @@ const cv = $('cv');
 
 /* ---------- state ---------- */
 const S = {
-  W: 200, H: 120,
+  W: 297, H: 210,
   kind: 'regular',      // 'regular' | 'movW' (const H, free verticals) | 'movH' (const W, variable heights) | 'both'
   xs: [],               // x of each vertical, sorted (regular: derived from `reg`; irregular: the state)
   layout: 'gen',        // irregular: 'gen' (from the fields) | 'free' (hand-edited)
-  reg: { v: 'count', n: 5, d: 50, m: 100 },
-  gen: { n: 5, spacing: 50, start: 0 },
+  reg: { v: 'count', n: 7, d: 50, m: 100 },
+  gen: { n: 7, spacing: 50, start: 0 },
   a: 'angle',           // what defines the rhombus: 'angle' | 'chains'
   theta: 25, nCh: 2,
   ratio: [1],           // variable heights: h of chain row j = reference h × ratio[j] (rows past the end repeat the last)
