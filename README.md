@@ -3,6 +3,9 @@
 A collection of small, self-contained tools for origami/folding-based
 design and fabrication.
 
+Open **[index.html](index.html)** for a browsable landing page with a
+thumbnail and link for each tool below.
+
 ## Tools
 
 - **[V-Pleat Fold Pattern Visualiser](vPleat-visualiser/index.html)** —

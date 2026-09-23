@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Origami Tools</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --border:#d8dbe0; --text:#1f2430; --muted:#6b7280; --accent:#2563eb;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding:2.5rem 1.5rem;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{max-width:1100px;margin:0 auto 2rem;}
+  header h1{font-size:1.6rem;margin:0 0 .4rem;}
+  header p{color:var(--muted);margin:0;font-size:.95rem;}
+  .grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.25rem;}
+  a.card{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;transition:box-shadow .15s,transform .15s;}
+  a.card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-2px);}
+  a.card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#fff;border-bottom:1px solid var(--border);display:block;}
+  .card-body{padding:.9rem 1rem 1.1rem;}
+  .card-body h2{font-size:1.02rem;margin:0 0 .35rem;}
+  .card-body p{margin:0;font-size:.85rem;color:var(--muted);line-height:1.4;}
+  footer{max-width:1100px;margin:2.5rem auto 0;font-size:.8rem;color:var(--muted);}
+  footer a{color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <h1>Origami Tools</h1>
+  <p>Small, self-contained tools for origami/folding-based design and fabrication — each a single HTML file, no build step, no server.</p>
+</header>
+
+<div class="grid">
+  <a class="card" href="vPleat-visualiser/index.html">
+    <img src="assets/thumbnails/vpleat.jpg" alt="V-Pleat Fold Pattern Visualiser thumbnail">
+    <div class="card-body">
+      <h2>V-Pleat Fold Pattern Visualiser</h2>
+      <p>Turn a hand-drawn curve into a flat, laser/CNC-ready V-pleat fold pattern.</p>
+    </div>
+  </a>
+
+  <a class="card" href="mirror-pleats/linear.html">
+    <img src="assets/thumbnails/mirror-pleats-linear.jpg" alt="Mirror Pleats Linear thumbnail">
+    <div class="card-body">
+      <h2>Mirror Pleats · Linear</h2>
+      <p>Verticals in a straight line; each line drawn between them mirrors onward into a trail of V-pleats.</p>
+    </div>
+  </a>
+
+  <a class="card" href="mirror-pleats/radial.html">
+    <img src="assets/thumbnails/mirror-pleats-radial.jpg" alt="Mirror Pleats Radial thumbnail">
+    <div class="card-body">
+      <h2>Mirror Pleats · Radial</h2>
+      <p>Same mirrored-pleat trail, with verticals fanning out from a centre point instead.</p>
+    </div>
+  </a>
+
+  <a class="card" href="hypar/index.html">
+    <img src="assets/thumbnails/hypar.jpg" alt="Hypar Generator thumbnail">
+    <div class="card-body">
+      <h2>Hypar Generator</h2>
+      <p>Any convex polygon becomes concentric offset contours plus corner-to-centre diagonals.</p>
+    </div>
+  </a>
+
+  <a class="card" href="x-span/index.html">
+    <img src="assets/thumbnails/x-span.jpg" alt="X Span Generator thumbnail">
+    <div class="card-body">
+      <h2>X Span Generator</h2>
+      <p>A lattice of rhombi across a rectangle, tiled continuously even as spacing or height changes.</p>
+    </div>
+  </a>
+</div>
+
+<footer>
+  See <a href="README.md">README.md</a> for more detail on each tool. GPL-3.0 — see <a href="LICENSE">LICENSE</a>.
+</footer>
+</body>
+</html>
