@@ -3,7 +3,7 @@
 // geometry (see model.js / constraints.js).
 import { pairedCutGeometry, pairedCutInnerSurface } from "./model.js";
 import { section } from "./constraints.js";
-import { CREASE_ROLES, SIX_CREASE_PATTERNS, sixCreaseStatus } from "./pattern6.js";
+import { CREASE_ROLES, sixCreaseStatus } from "./pattern6.js";
 
 const COLORS = {
   cut: "#111111",
@@ -248,9 +248,6 @@ export function renderHierarchy(doc, viewState) {
 export function renderPatternPanel(cut) {
   if (!cut) return "";
   const status = sixCreaseStatus(cut);
-  const options = SIX_CREASE_PATTERNS.map(
-    (p) => `<option value="${p.id}" ${cut.patternId === p.id ? "selected" : ""}>${p.id}. ${p.label}</option>`
-  ).join("");
   const roleRows = CREASE_ROLES.map((role) => {
     const val = cut.assignments[role] ?? "";
     const opts = ["", "flat", "mountain", "valley"]
@@ -258,17 +255,18 @@ export function renderPatternPanel(cut) {
       .join("");
     return `<div class="role-row"><label>${role}</label><select class="role-select" data-role="${role}">${opts}</select></div>`;
   }).join("");
+  const statusClass = status.state.startsWith("conflict")
+    ? "status-conflict"
+    : status.autoCompletionAvailable
+    ? "status-unique"
+    : "status-ambiguous";
+  const acceptButton = status.autoCompletionAvailable
+    ? `<button id="pattern-accept-suggestion">Fill in remaining creases (pattern #${status.matchIndices[0] + 1})</button>`
+    : "";
   return `
     <div class="pattern-panel">
-      <label>Pattern
-        <select id="pattern-select"><option value="">(none)</option>${options}</select>
-      </label>
-      <div class="pattern-status status-${status.state.replace(/\s+/g, "-")}">${status.state}</div>
-      ${
-        status.state === "pattern needs definition"
-          ? `<p class="pattern-warning">The M/V rule table for this pattern is not yet defined (see TODO.md). Auto-suggestion is disabled; assign each of the six creases manually below.</p>`
-          : ""
-      }
+      <div class="pattern-status ${statusClass}">${status.assignedCount}/6 assigned — ${status.state}</div>
+      ${acceptButton}
       <div class="role-list">${roleRows}</div>
     </div>`;
 }

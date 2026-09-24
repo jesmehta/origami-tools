@@ -76,26 +76,36 @@ second) and fold-first (drag the crease handle, or use the Draw Crease
 flow once cuts exist) end up setting the same `d` parameter, so "editing
 either updates the other" is automatic.
 
-## Principle 2: six candidate creases, and the gate
+## Principle 2: six candidate creases, and pattern inference
 
 A **six-crease cut** (`src/pattern6.js`) stores a bent cut `A -> B -> C`
 and six roles — `AP, AQ, BP, BQ, CP, CQ` — each independently
-`flat | mountain | valley | (unset)`. `P`/`Q` are *our* convention (not
-given by the source brief): left/right of the `A->B->C` polyline by signed
-cross product (`sideOfPoint`).
+`flat | mountain | valley | (unset)`. `P`/`Q` are left/right of the
+`A->B->C` polyline by signed cross product (`sideOfPoint`), confirmed with
+the requester as the intended convention.
 
-The brief names eight flat-fold configurations (1-3 / 2-2 split x P/Q
-orientation x M/V inversion = 2x2x2) but — by its own "Mathematical
-specification gate" — doesn't enumerate which six-role assignment produces
-each one, nor prove any of them flat-foldable. **This tool does not invent
-that table.** The pattern selector (`SIX_CREASE_PATTERNS`) is structural
-metadata only; `SIX_CREASE_RULE_TABLE` is `null`; `ghostSuggestions()` is a
-documented no-op that reports why (see [TODO.md](TODO.md)). Selecting a
-pattern shows an honest **"pattern needs definition"** status, and the six
-roles must be assigned manually. A drawn crease line is linked to a role by
-proximity to `A`/`B`/`C` plus which side it falls on
-(`classifyDrawnCrease`, 3mm tolerance) — geometry and fold-type assignment
-are tracked separately, so drawing a line doesn't imply a fold type.
+The brief's own "Mathematical specification gate" said not to invent the
+six-role assignment for each of the eight flat-fold configurations it
+names — that table has since been supplied by the requester (2026-09-24)
+and lives in `SIX_CREASE_RULE_TABLE`. Before accepting it, it was
+cross-checked for two invariants it should have if it's a real flat-fold
+family: every row has exactly 4 active (M/V) roles and 2 flat ones, and the
+8 rows pair up into 4 exact mountain<->valley inversions of each other —
+both hold (see `test/pattern6.test.js`; one row was corrected in a
+back-and-forth with the requester before it did).
+
+There is **no pattern-selector dropdown** — the requester's intent is
+inference from partial input, not pre-selection: assign as many of the six
+roles as you know (Properties panel, or draw a line near `A`/`B`/`C` with
+the Draw Crease tool — `classifyDrawnCrease`, 3mm tolerance, links geometry
+to a role without implying a fold type). `matchPatterns()` narrows the 8
+known rows down to the ones still consistent with what's assigned; the
+Properties panel shows the live count. Once exactly one row remains
+consistent, a "Fill in remaining creases" button appears
+(`ghostSuggestions` / `acceptGhostSuggestion`) — it's never applied
+automatically, per "make invalid state visible, don't silently fix it": if
+assignments are contradictory (zero rows match) that's reported as a
+conflict, not corrected.
 
 ## Interaction model
 
@@ -125,7 +135,7 @@ fixing geometry."
 | `src/geom.js` | Vector/geometry primitives |
 | `src/model.js` | Document schema, factories, derived geometry |
 | `src/constraints.js` | Paired-cut math, nesting validity, array/mirror transforms, array linking |
-| `src/pattern6.js` | Six-crease cut model, eight-pattern selector, the gated rule table |
+| `src/pattern6.js` | Six-crease cut model, the 8-row rule table, pattern-matching/inference |
 | `src/history.js` | Snapshot-based undo/redo |
 | `src/export.js` | Save/load JSON, fabrication SVG export + self-check |
 | `src/render.js` | Pure document+view -> SVG/HTML string rendering |
@@ -196,6 +206,14 @@ valid, and round-trips through save/load):
 
 - **v1** — Initial implementation: paired-cut editor (draw, drag, lock,
   numeric edit, section view, nesting, array, mirror, undo/redo), the
-  six-crease data model with the eight-pattern selector left in an honest
-  "needs definition" state pending the M/V rule table, SVG fabrication
-  export with an export/reimport self-check, JSON save/load, pan/zoom.
+  six-crease data model with the eight-pattern rule table left unpopulated
+  pending verified data, SVG fabrication export with an export/reimport
+  self-check, JSON save/load, pan/zoom.
+- **v1.1** — The eight-pattern M/V rule table supplied and verified
+  (4-active/2-flat and mountain<->valley-inversion-pairing invariants both
+  hold); replaced the pattern-selector dropdown with live inference —
+  `matchPatterns()` narrows the 8 rows by whatever's been assigned so far,
+  and a "fill in remaining creases" action appears once exactly one row is
+  still consistent. Fixed a pan/zoom gap (spec required it, initial pass
+  missed it) and a mirror-tool bug where the mirrored copy silently shared
+  the original's id instead of getting its own.

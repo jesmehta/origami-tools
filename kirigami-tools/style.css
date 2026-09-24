@@ -217,11 +217,28 @@ body {
   margin-bottom: 6px;
   font-size: 11px;
 }
-.pattern-status.status-pattern-needs-definition {
+.pattern-status.status-conflict {
+  background: #fde2e1;
+  color: #9c2b25;
+}
+.pattern-status.status-unique {
+  background: #d9f2e3;
+  color: #1a7f37;
+}
+.pattern-status.status-ambiguous {
   background: #fff3cd;
   color: #7a5b00;
 }
-.pattern-warning { font-size: 11px; color: #7a5b00; }
+#pattern-accept-suggestion {
+  display: block;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #eaf7ee;
+  cursor: pointer;
+  font-size: 12px;
+}
 .role-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .role-row label { width: 40px; font-family: monospace; }
 

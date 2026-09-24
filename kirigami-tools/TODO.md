@@ -1,33 +1,34 @@
 # TODO / open items
 
-## Blocking: the six-crease M/V rule table (principle 2)
+## Resolved: the six-crease M/V rule table (principle 2)
 
-`src/pattern6.js` implements the six-crease data model (AP, AQ, BP, BQ, CP,
-CQ around a cut A-B-C) and the eight-pattern *selector* (1-3 / 2-2
-distribution x P/Q orientation x M/V inversion), but `SIX_CREASE_RULE_TABLE`
-is intentionally left `null`. The source prompt's principle 2 names the
-eight configurations without enumerating which mountain/valley/flat
-assignment across the six roles actually produces each one, and doesn't
-prove any of them flat-foldable — see the "Mathematical specification gate"
-paragraph in `kirigami_design_tool_codex_prompt.md`.
+~~Blocking~~ — the eight-row table was supplied by the requester on
+2026-09-24 (`src/pattern6.js: SIX_CREASE_RULE_TABLE`), after one
+back-and-forth to fix a transcription error (row 8 originally duplicated
+row 3; the requester resent the correct row). Before accepting it, it was
+cross-checked for two structural invariants any real flat-fold family
+sharing this shape should have: every row has exactly 4 active
+(mountain/valley) roles and 2 flat, and the 8 rows pair up into 4 exact
+mountain<->valley inversions of each other. Both hold — see
+`test/pattern6.test.js`.
 
-Per agreement with the requester (2026-09-23): leave this as an honest gap
-for now. The UI lets a user manually assign each of the six roles
-(flat/mountain/valley) and shows a "pattern needs definition" status when a
-pattern is selected; ghost-suggestion/auto-completion stays disabled.
+The UI is inference-first, not selection-first, per explicit direction
+from the requester: there's no "pick a pattern" dropdown. The user assigns
+whatever six-role data they know; `matchPatterns()` narrows the 8 rows to
+the ones still consistent; once exactly one remains, a "fill in remaining
+creases" action appears (`ghostSuggestions` / `acceptGhostSuggestion`,
+never auto-applied). A fully-manual assignment that matches none of the 8
+rows is reported as a conflict, not silently accepted.
 
-**When the eight assignments are supplied:**
-1. Populate `SIX_CREASE_RULE_TABLE` in `src/pattern6.js` (pattern id ->
-   `{AP, AQ, BP, BQ, CP, CQ}`).
-2. Wire `ghostSuggestions()` into the canvas so selecting a pattern ghosts
-   the five unassigned roles once one is drawn, matching principle 1's
-   "infer ghosted crease suggestions" requirement.
-3. Add test cases per pattern (flat-foldability sanity: Kawasaki/Maekawa-
-   style checks if applicable) to `test/pattern6.test.js`.
-4. Also worth confirming at that point: whether our P/Q side convention
-   (`sideOfPoint` in `pattern6.js`, left/right of A->B->C) matches what the
-   requester has in mind, since the source principle didn't pin this down
-   either — it's currently *our* assumption, not given.
+Verified live in-browser (2026-09-24, Playwright walkthrough): drawing a
+six-crease cut, assigning roles one at a time via the Properties panel
+narrows the live "N patterns still consistent" count correctly (8 -> 2 ->
+1), the "Fill in remaining creases" button appears only once unique and
+correctly fills the rest, and a contradictory pair (e.g. AP:mountain +
+AQ:mountain) shows the conflict state with the accept button correctly
+absent. Not yet exercised live: attaching real crease *geometry* to a role
+via the Draw Crease tool for all six roles on one cut (only assignment via
+the Properties panel dropdowns has been walked through end to end).
 
 ## Other known gaps (see also README "Known limitations")
 

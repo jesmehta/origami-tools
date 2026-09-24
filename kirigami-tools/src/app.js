@@ -22,7 +22,7 @@ import {
   createSixCreaseCut,
   classifyDrawnCrease,
   setAssignment,
-  setPattern,
+  acceptGhostSuggestion,
 } from "./pattern6.js";
 import { createHistory, pushHistory, undo, redo, canUndo, canRedo } from "./history.js";
 import { exportSVG, verifyExportedSVG, saveDocument, loadDocument } from "./export.js";
@@ -820,11 +820,15 @@ function bindPropertyHandlers() {
     }
   } else {
     el("p-delete").addEventListener("click", deleteSelection);
-    const patternSelect = el("pattern-select");
-    if (patternSelect) {
-      patternSelect.addEventListener("change", (e) => {
-        const next = setPattern(unit, e.target.value ? Number(e.target.value) : null);
-        commit({ ...doc(), units: doc().units.map((u) => (u.id === unit.id ? next : u)) });
+    const acceptBtn = el("pattern-accept-suggestion");
+    if (acceptBtn) {
+      acceptBtn.addEventListener("click", () => {
+        const result = acceptGhostSuggestion(unit);
+        if (!result.ok) {
+          setStatus(result.reason);
+          return;
+        }
+        commit({ ...doc(), units: doc().units.map((u) => (u.id === unit.id ? result.cut : u)) });
       });
     }
     document.querySelectorAll(".role-select").forEach((select) => {

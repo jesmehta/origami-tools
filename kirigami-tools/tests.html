@@ -21,7 +21,7 @@
 
 <script type="module">
   import { createDocument, createPairedCutUnit } from "./src/model.js";
-  import { createSixCreaseCut, setAssignment, setPattern } from "./src/pattern6.js";
+  import { createSixCreaseCut, setAssignment } from "./src/pattern6.js";
   import { renderCanvas, renderSectionView, renderHierarchy, renderPatternPanel } from "./src/render.js";
   import { exportSVG, verifyExportedSVG } from "./src/export.js";
 
@@ -90,12 +90,21 @@
     return html.includes(parent.id) && html.includes(child.id) && html.indexOf(parent.id) < html.indexOf(child.id);
   });
 
-  check("renderPatternPanel shows the honest 'pattern needs definition' state", () => {
+  check("renderPatternPanel shows how many of the 8 patterns are still consistent", () => {
     const doc = createDocument();
     let cut = createSixCreaseCut(doc, { A: { x: 0, y: 0 }, B: { x: 20, y: 0 }, C: { x: 40, y: 0 } });
-    cut = setPattern(cut, 3);
     const html = renderPatternPanel(cut);
-    return html.includes("pattern needs definition") && html.includes("not yet defined");
+    return html.includes("0/6 assigned") && html.includes("unconstrained (8 patterns possible)");
+  });
+
+  check("renderPatternPanel offers to fill in the rest once assignments are unique", () => {
+    const doc = createDocument();
+    let cut = createSixCreaseCut(doc, { A: { x: 0, y: 0 }, B: { x: 20, y: 0 }, C: { x: 40, y: 0 } });
+    cut = setAssignment(cut, "AP", "flat");
+    cut = setAssignment(cut, "BP", "valley");
+    cut = setAssignment(cut, "CP", "flat");
+    const html = renderPatternPanel(cut);
+    return html.includes("pattern-accept-suggestion") && html.includes("unique match");
   });
 
   check("renderPatternPanel reflects a manually assigned role", () => {

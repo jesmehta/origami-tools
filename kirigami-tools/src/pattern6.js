@@ -1,39 +1,35 @@
-// Principle 2: six candidate creases around a cut A-B-C, and the eight-
-// pattern selector.
+// Principle 2: six candidate creases around a cut A-B-C, and inference of
+// the full six-role assignment from a partial one via the verified rule
+// table (see notes.md / TODO.md for provenance).
 //
-// MATHEMATICAL SPECIFICATION GATE (see kirigami_design_tool_codex_prompt.md):
-// the source principle names eight flat-fold configurations (1-3 / 2-2
-// distribution x P/Q orientation x M/V inversion) but does not enumerate
-// which of the 3^6 mountain/valley/flat assignments across {AP,AQ,BP,BQ,
-// CP,CQ} actually produces each one, nor prove any of them flat-foldable.
-// SIX_CREASE_RULE_TABLE is therefore intentionally left unpopulated below.
-// Do not fill it in by guessing. See TODO.md.
+// The UX this implements (per the requester, 2026-09-24): there is no
+// "pick a pattern first" step. The user assigns as many of the six roles
+// (AP, AQ, BP, BQ, CP, CQ) as they know; matchPatterns() narrows the 8
+// known patterns down to the ones still consistent with what's assigned so
+// far, and once exactly one remains, its remaining roles can be accepted
+// as a suggestion (acceptGhostSuggestion) -- never silently auto-applied.
 import { makeId, cloneUnit } from "./model.js";
 import { sub, dot, length } from "./geom.js";
 
 export const CREASE_ROLES = ["AP", "AQ", "BP", "BQ", "CP", "CQ"];
 export const FOLD_TYPES = ["flat", "mountain", "valley"];
 
-// Structural metadata for the eight configurations (distribution x
-// orientation x inversion = 2x2x2). This is *shape* bookkeeping only --
-// it does not imply the M/V assignment is known.
-export const SIX_CREASE_PATTERNS = [
-  { id: 1, distribution: "1-3", orientation: "P", inverted: false },
-  { id: 2, distribution: "1-3", orientation: "P", inverted: true },
-  { id: 3, distribution: "1-3", orientation: "Q", inverted: false },
-  { id: 4, distribution: "1-3", orientation: "Q", inverted: true },
-  { id: 5, distribution: "2-2", orientation: "P", inverted: false },
-  { id: 6, distribution: "2-2", orientation: "P", inverted: true },
-  { id: 7, distribution: "2-2", orientation: "Q", inverted: false },
-  { id: 8, distribution: "2-2", orientation: "Q", inverted: true },
-].map((p) => ({
-  ...p,
-  label: `${p.distribution} split, ${p.orientation}-side primary${p.inverted ? " (inverted)" : ""}`,
-}));
-
-// Rule table: pattern id -> { AP: 'mountain'|'valley'|'flat', ... }.
-// INTENTIONALLY NULL. Populate only from a verified derivation, not a guess.
-export const SIX_CREASE_RULE_TABLE = null;
+// The eight verified six-role assignments. Provenance: supplied by the
+// requester 2026-09-24, cross-checked here (before it was accepted) for
+// two invariants that all eight satisfy: exactly 4 of the 6 roles are
+// active (mountain/valley) and 2 are flat, and the eight rows pair up
+// into four exact mountain<->valley inversions of each other:
+// (1,3), (2,4), (5,6), (7,8). See notes.md for the original table.
+export const SIX_CREASE_RULE_TABLE = [
+  { AP: "flat", BP: "valley", CP: "flat", AQ: "valley", BQ: "mountain", CQ: "valley" },
+  { AP: "mountain", BP: "valley", CP: "flat", AQ: "flat", BQ: "mountain", CQ: "valley" },
+  { AP: "flat", BP: "mountain", CP: "flat", AQ: "mountain", BQ: "valley", CQ: "mountain" },
+  { AP: "valley", BP: "mountain", CP: "flat", AQ: "flat", BQ: "valley", CQ: "mountain" },
+  { AP: "valley", BP: "mountain", CP: "valley", AQ: "flat", BQ: "valley", CQ: "flat" },
+  { AP: "mountain", BP: "valley", CP: "mountain", AQ: "flat", BQ: "mountain", CQ: "flat" },
+  { AP: "flat", BP: "valley", CP: "mountain", AQ: "valley", BQ: "mountain", CQ: "flat" },
+  { AP: "flat", BP: "mountain", CP: "valley", AQ: "mountain", BQ: "valley", CQ: "flat" },
+];
 
 export function createSixCreaseCut(doc, { A, B, C, parentId = null } = {}) {
   return {
@@ -43,16 +39,15 @@ export function createSixCreaseCut(doc, { A, B, C, parentId = null } = {}) {
     A: { ...A },
     B: { ...B },
     C: { ...C },
-    patternId: null,
     assignments: Object.fromEntries(CREASE_ROLES.map((r) => [r, null])),
     creaseRefs: Object.fromEntries(CREASE_ROLES.map((r) => [r, null])),
   };
 }
 
 // Which side (P or Q) a point falls on, relative to the cut polyline A-B-C.
-// Convention (ours, not given by the source principle): P is the left-hand
-// side when walking A -> B -> C, Q is the right-hand side, decided by the
-// segment nearest to the point.
+// Convention (confirmed with the requester): P is the left-hand side when
+// walking A -> B -> C, Q is the right-hand side, decided by the segment
+// nearest to the point.
 export function sideOfPoint(cut, p) {
   const segs = [
     [cut.A, cut.B],
@@ -118,42 +113,68 @@ export function setAssignment(cut, role, foldType) {
   return next;
 }
 
-export function setPattern(cut, patternId) {
-  const next = cloneUnit(cut);
-  next.patternId = patternId;
-  return next;
+// Which of the 8 known patterns are still consistent with the roles
+// assigned so far (null = unconstrained). Returns [{index, row}], index
+// 0-based into SIX_CREASE_RULE_TABLE.
+export function matchPatterns(cut) {
+  return SIX_CREASE_RULE_TABLE.map((row, index) => ({ index, row })).filter(({ row }) =>
+    CREASE_ROLES.every((role) => {
+      const assigned = cut.assignments[role];
+      return assigned === null || assigned === row[role];
+    })
+  );
 }
 
-// Honest status: never auto-completes. Reports what's been manually
-// assigned and flags that ghost-suggestion is disabled pending the rule
-// table (see SIX_CREASE_RULE_TABLE above).
+// Honest status: reports how many of the 8 known patterns remain
+// consistent with what's been assigned, not a pre-selected pattern.
 export function sixCreaseStatus(cut) {
   const assignedRoles = CREASE_ROLES.filter((r) => cut.assignments[r] !== null);
-  const pattern = cut.patternId ? SIX_CREASE_PATTERNS.find((p) => p.id === cut.patternId) : null;
+  const matches = matchPatterns(cut);
+  let state;
+  if (matches.length === 0) {
+    state = "conflict: no known pattern matches the assigned creases";
+  } else if (assignedRoles.length === 0) {
+    state = `unconstrained (${matches.length} patterns possible)`;
+  } else if (matches.length === 1 && assignedRoles.length < CREASE_ROLES.length) {
+    state = "unique match — remaining creases can be filled in";
+  } else if (matches.length === 1) {
+    state = "fully assigned, matches a known pattern";
+  } else {
+    state = `ambiguous: ${matches.length} patterns still consistent`;
+  }
   return {
     assignedCount: assignedRoles.length,
     assignedRoles,
-    pattern,
-    autoCompletionAvailable: false,
-    state:
-      cut.patternId && SIX_CREASE_RULE_TABLE === null
-        ? "pattern needs definition"
-        : assignedRoles.length === 6
-        ? "fully assigned (manual)"
-        : "partial (manual)",
+    matchCount: matches.length,
+    matchIndices: matches.map((m) => m.index),
+    autoCompletionAvailable: matches.length === 1 && assignedRoles.length < CREASE_ROLES.length,
+    state,
   };
 }
 
-// Ghost suggestion hook. Deliberately inert until SIX_CREASE_RULE_TABLE is
-// supplied and verified -- see the prompt's "Mathematical specification
-// gate" and TODO.md.
+// Suggests the remaining roles when assignments narrow the rule table down
+// to exactly one consistent pattern. Never applied automatically -- see
+// acceptGhostSuggestion, which the caller must invoke explicitly.
 export function ghostSuggestions(cut) {
-  if (SIX_CREASE_RULE_TABLE === null) {
-    return {
-      suggested: null,
-      reason: "Pattern rule table not yet defined; auto-completion is disabled. See TODO.md.",
-    };
+  const matches = matchPatterns(cut);
+  if (matches.length === 0) {
+    return { suggested: null, matches, reason: "No known pattern is consistent with the assigned creases (conflict)." };
   }
-  const rule = SIX_CREASE_RULE_TABLE[cut.patternId];
-  return { suggested: rule ?? null, reason: rule ? null : "No rule for this pattern id." };
+  if (matches.length > 1) {
+    return { suggested: null, matches, reason: `${matches.length} patterns still consistent — assign another crease to narrow it down.` };
+  }
+  return { suggested: matches[0].row, matches, reason: null };
+}
+
+// Fills every unassigned role from the uniquely-matched pattern. Rejects
+// if the match isn't unique yet (ambiguous or conflicting), so it never
+// silently guesses.
+export function acceptGhostSuggestion(cut) {
+  const { suggested, reason } = ghostSuggestions(cut);
+  if (!suggested) return { ok: false, reason: reason || "No unique pattern to accept." };
+  let next = cut;
+  for (const role of CREASE_ROLES) {
+    if (next.assignments[role] === null) next = setAssignment(next, role, suggested[role]);
+  }
+  return { ok: true, cut: next };
 }
