@@ -34,6 +34,13 @@ thumbnail and link for each tool below.
   while the tiling stays continuous. Measure, dimensions, SVG/PNG export. See
   [x-span/README.md](x-span/README.md).
 
+- **[Kirigami Design Tool](kirigami-tools/index.html)** — a 2D editor for
+  cut/fold pop-up patterns: paired parallel cuts with a conserved-length
+  sliding crease, plus a six-candidate-crease representation around a bent
+  cut. Parametric document model, locks, nesting, array/mirror, undo/redo,
+  true-scale SVG fabrication export, JSON save/load. See
+  [kirigami-tools/README.md](kirigami-tools/README.md).
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).

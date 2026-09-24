@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Kirigami tool — rendering sanity checks</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 800px; margin: 24px auto; padding: 0 16px; }
+  .pass { color: #1a7f37; }
+  .fail { color: #cf222e; font-weight: 600; }
+  li { margin-bottom: 4px; font-family: monospace; font-size: 13px; }
+  #summary { font-size: 15px; margin-top: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Kirigami tool — rendering sanity checks</h1>
+<p>Zero-dependency checks for the render.js layer, which node:test can't reach
+  since it needs no real DOM (see test/ for the model/constraint/export unit
+  tests, run via <code>npm test</code>). Open this file directly in a browser.</p>
+<ul id="results"></ul>
+<div id="summary"></div>
+
+<script type="module">
+  import { createDocument, createPairedCutUnit } from "./src/model.js";
+  import { createSixCreaseCut, setAssignment, setPattern } from "./src/pattern6.js";
+  import { renderCanvas, renderSectionView, renderHierarchy, renderPatternPanel } from "./src/render.js";
+  import { exportSVG, verifyExportedSVG } from "./src/export.js";
+
+  const results = document.getElementById("results");
+  let pass = 0, fail = 0;
+
+  function check(name, fn) {
+    let ok, detail = "";
+    try {
+      ok = fn();
+      if (ok !== true) detail = typeof ok === "string" ? ok : "returned falsy";
+    } catch (err) {
+      ok = false;
+      detail = err.message;
+    }
+    const li = document.createElement("li");
+    li.className = ok === true ? "pass" : "fail";
+    li.textContent = (ok === true ? "PASS " : "FAIL ") + name + (detail ? " — " + detail : "");
+    results.appendChild(li);
+    if (ok === true) pass++; else fail++;
+  }
+
+  const baseView = { selection: new Set(), hoverEdge: null, draft: null, invalidUnitIds: new Set(), viewBox: { x: -10, y: -10, w: 230, h: 317 } };
+
+  check("renderCanvas produces a well-formed <svg> for an empty document", () => {
+    const doc = createDocument();
+    const svg = renderCanvas(doc, baseView);
+    return svg.startsWith("<svg") && svg.trim().endsWith("</svg>");
+  });
+
+  check("renderCanvas draws a paired-cut unit's cut and crease lines", () => {
+    const doc = createDocument();
+    const unit = createPairedCutUnit(doc, { origin: { x: 100, y: 100 }, cutLength: 40, spacing: 20, creaseOffset: 5 });
+    doc.units.push(unit);
+    const svg = renderCanvas(doc, { ...baseView, selection: new Set([unit.id]) });
+    return svg.includes('class="unit paired-cut"') && svg.includes('class="crease-line"') && (svg.match(/<line/g) || []).length >= 5;
+  });
+
+  check("renderCanvas marks an invalid unit with the invalid halo colour", () => {
+    const doc = createDocument();
+    const unit = createPairedCutUnit(doc, { cutLength: 0.5, spacing: 5 }); // degenerate
+    doc.units.push(unit);
+    const svg = renderCanvas(doc, { ...baseView, invalidUnitIds: new Set([unit.id]) });
+    return svg.includes("#e74c3c");
+  });
+
+  check("renderSectionView shows a=b totals matching the unit's cut length", () => {
+    const doc = createDocument();
+    const unit = createPairedCutUnit(doc, { cutLength: 30, creaseOffset: 4 });
+    const html = renderSectionView(unit);
+    return html.includes("a=11.00mm") && html.includes("b=19.00mm") && html.includes("total conserved: 30.00mm");
+  });
+
+  check("renderSectionView shows an empty-state message with no unit", () => {
+    const html = renderSectionView(null);
+    return html.includes("Select a paired-cut unit");
+  });
+
+  check("renderHierarchy lists nested units indented under their parent", () => {
+    const doc = createDocument();
+    const parent = createPairedCutUnit(doc, { cutLength: 80, spacing: 40 });
+    doc.units.push(parent);
+    const child = createPairedCutUnit(doc, { cutLength: 20, spacing: 10, parentId: parent.id });
+    doc.units.push(child);
+    const html = renderHierarchy(doc, { ...baseView, selection: new Set() });
+    return html.includes(parent.id) && html.includes(child.id) && html.indexOf(parent.id) < html.indexOf(child.id);
+  });
+
+  check("renderPatternPanel shows the honest 'pattern needs definition' state", () => {
+    const doc = createDocument();
+    let cut = createSixCreaseCut(doc, { A: { x: 0, y: 0 }, B: { x: 20, y: 0 }, C: { x: 40, y: 0 } });
+    cut = setPattern(cut, 3);
+    const html = renderPatternPanel(cut);
+    return html.includes("pattern needs definition") && html.includes("not yet defined");
+  });
+
+  check("renderPatternPanel reflects a manually assigned role", () => {
+    const doc = createDocument();
+    let cut = createSixCreaseCut(doc, { A: { x: 0, y: 0 }, B: { x: 20, y: 0 }, C: { x: 40, y: 0 } });
+    cut = setAssignment(cut, "AP", "mountain");
+    const html = renderPatternPanel(cut);
+    return html.includes('data-role="AP"') && html.includes('value="mountain" selected');
+  });
+
+  check("exportSVG + verifyExportedSVG agree in the browser DOM environment too", () => {
+    const doc = createDocument();
+    const unit = createPairedCutUnit(doc, { origin: { x: 50, y: 50 }, cutLength: 20, spacing: 10 });
+    doc.units.push(unit);
+    const svg = exportSVG(doc, { includeCuts: true, includeMountain: true, includeValley: true });
+    const result = verifyExportedSVG(svg, doc);
+    return result.ok === true || JSON.stringify(result.problems);
+  });
+
+  document.getElementById("summary").textContent = `${pass} passed, ${fail} failed`;
+  document.getElementById("summary").className = fail ? "fail" : "pass";
+</script>
+</body>
+</html>

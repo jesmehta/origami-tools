@@ -1,0 +1,234 @@
+:root {
+  --border: #d7dadf;
+  --bg: #f5f6f8;
+  --panel-bg: #ffffff;
+  --text: #202225;
+  --accent: #2ecc71;
+  --danger: #e74c3c;
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+#app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #1c1f24;
+  color: white;
+}
+
+#app-header h1 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.status-bar {
+  font-size: 12px;
+  color: #cfd3d8;
+  min-height: 16px;
+}
+
+#app-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr 300px;
+  min-height: 0;
+}
+
+#left-panel, #right-panel {
+  overflow-y: auto;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  padding: 8px;
+}
+
+#right-panel {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #fbfbfc;
+}
+
+.panel h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+  margin: 0 0 8px 0;
+}
+
+.panel label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.panel label input[type="number"],
+.panel label select {
+  width: 110px;
+}
+
+.panel label input[type="checkbox"] {
+  width: auto;
+  margin-right: auto;
+}
+
+.tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tool-btn {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.tool-btn.active {
+  background: #eaf7ee;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-row button, #array-apply, #export-btn, #save-btn {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.snap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 8px;
+}
+
+.snap-grid label { justify-content: flex-start; gap: 4px; }
+
+#canvas-area {
+  background: #e9ebee;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  min-width: 0;
+}
+
+#canvas-host {
+  flex: 1;
+  min-width: 0;
+}
+
+#canvas-host svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+#canvas-host.pan-tool svg {
+  cursor: grab;
+}
+
+.hierarchy-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.hierarchy-node {
+  padding: 4px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.hierarchy-node:hover { background: #f0f1f3; }
+.hierarchy-node.selected { background: #eaf7ee; outline: 1px solid var(--accent); }
+.hierarchy-node.invalid .hierarchy-label { color: var(--danger); }
+
+.hierarchy-id { color: #999; margin-left: auto; font-size: 10px; }
+.hierarchy-empty, .section-empty { font-size: 12px; color: #888; }
+
+#properties-panel h3 { font-size: 13px; margin: 0 0 8px 0; }
+#properties-panel label { font-size: 12px; }
+.badge-invalid {
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.section-diagram { font-size: 11px; }
+.section-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.section-label { width: 70px; color: #666; }
+.section-values { white-space: nowrap; }
+.section-total { font-size: 11px; color: #444; margin-top: 4px; }
+.section-readout { margin-top: 8px; font-size: 11px; color: #444; }
+
+.pattern-panel { font-size: 12px; }
+.pattern-panel label { display: block; margin-bottom: 8px; }
+.pattern-status {
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #eee;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.pattern-status.status-pattern-needs-definition {
+  background: #fff3cd;
+  color: #7a5b00;
+}
+.pattern-warning { font-size: 11px; color: #7a5b00; }
+.role-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.role-row label { width: 40px; font-family: monospace; }
+
+.file-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.hint { font-size: 12px; color: #888; }

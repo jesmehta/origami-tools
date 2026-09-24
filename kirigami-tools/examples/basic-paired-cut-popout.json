@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "sheet": {
+    "width": 210,
+    "height": 297,
+    "units": "mm"
+  },
+  "grid": {
+    "majorSpacing": 10,
+    "minorSpacing": 2,
+    "visible": true,
+    "snap": {
+      "grid": true,
+      "endpoint": true,
+      "midpoint": true,
+      "intersection": true,
+      "cut": true,
+      "crease": true,
+      "center": true
+    }
+  },
+  "units": [
+    {
+      "id": "u1",
+      "type": "pairedCut",
+      "parentId": null,
+      "origin": {
+        "x": 105,
+        "y": 148.5
+      },
+      "rotation": 0,
+      "cutLength": 60,
+      "spacing": 30,
+      "creaseOffset": 12,
+      "flapLength": 25,
+      "mountainValley": "mountain",
+      "popDirection": 1,
+      "locks": {
+        "cuts": false,
+        "crease": false
+      },
+      "arrayOf": null,
+      "name": null
+    }
+  ],
+  "nextId": 2,
+  "topology3D": null
+}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kirigami Design Tool</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <header id="app-header">
+    <h1>Kirigami Design Tool</h1>
+    <div id="status-bar" class="status-bar"></div>
+  </header>
+
+  <div id="app-body">
+    <aside id="left-panel">
+      <section class="panel">
+        <h2>Tools</h2>
+        <div class="tool-list">
+          <button class="tool-btn" data-tool="select" title="Select / edit">Select</button>
+          <button class="tool-btn" data-tool="pairedCut" title="Draw a paired parallel cut (principle 1)">Paired Cut</button>
+          <button class="tool-btn" data-tool="sixCrease" title="Draw an A-B-C cut (principle 2)">Six-Crease Cut</button>
+          <button class="tool-btn" data-tool="drawCrease" title="Draw a crease for the selected six-crease cut">Draw Crease</button>
+          <button class="tool-btn" data-tool="mirror" title="Mirror the selection about a drawn axis">Mirror</button>
+          <button class="tool-btn" data-tool="pan" title="Drag to pan; scroll to zoom (zoom also works in any tool)">Pan</button>
+        </div>
+        <div class="btn-row">
+          <button id="undo-btn">Undo</button>
+          <button id="redo-btn">Redo</button>
+          <button id="zoom-fit-btn">Zoom to fit sheet</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Sheet</h2>
+        <label>Preset
+          <select id="sheet-preset">
+            <option value="">(custom)</option>
+            <option value="a4-portrait">A4 portrait</option>
+            <option value="a4-landscape">A4 landscape</option>
+            <option value="a3-portrait">A3 portrait</option>
+            <option value="letter">US Letter</option>
+          </select>
+        </label>
+        <label>Width (mm) <input type="number" id="sheet-width" step="1" /></label>
+        <label>Height (mm) <input type="number" id="sheet-height" step="1" /></label>
+      </section>
+
+      <section class="panel">
+        <h2>Grid &amp; snap</h2>
+        <label><input type="checkbox" id="grid-visible" /> show grid</label>
+        <label>Major spacing (mm) <input type="number" id="grid-major" step="1" /></label>
+        <label>Minor spacing (mm) <input type="number" id="grid-minor" step="1" /></label>
+        <div class="snap-grid">
+          <label><input type="checkbox" id="snap-grid" /> grid</label>
+          <label><input type="checkbox" id="snap-endpoint" /> endpoint</label>
+          <label><input type="checkbox" id="snap-midpoint" /> midpoint</label>
+          <label><input type="checkbox" id="snap-intersection" /> intersection</label>
+          <label><input type="checkbox" id="snap-cut" /> cut</label>
+          <label><input type="checkbox" id="snap-crease" /> crease</label>
+          <label><input type="checkbox" id="snap-center" /> centre</label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Array</h2>
+        <label>Direction X <input type="number" id="array-dx" value="1" step="0.1" /></label>
+        <label>Direction Y <input type="number" id="array-dy" value="0" step="0.1" /></label>
+        <label>Spacing (mm) <input type="number" id="array-spacing" value="60" step="1" /></label>
+        <label>Count <input type="number" id="array-count" value="3" step="1" min="1" /></label>
+        <button id="array-apply">Apply array to selection</button>
+      </section>
+    </aside>
+
+    <main id="canvas-area">
+      <div id="canvas-host"></div>
+    </main>
+
+    <aside id="right-panel">
+      <section class="panel">
+        <h2>Hierarchy</h2>
+        <div id="hierarchy-panel"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Properties</h2>
+        <div id="properties-panel"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Section profile</h2>
+        <div id="section-view"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Export SVG</h2>
+        <label><input type="checkbox" id="export-cuts" checked /> cuts</label>
+        <label><input type="checkbox" id="export-mountain" checked /> mountain folds</label>
+        <label><input type="checkbox" id="export-valley" checked /> valley folds</label>
+        <label><input type="checkbox" id="export-reference" /> reference lines</label>
+        <label><input type="checkbox" id="export-boundary" /> sheet boundary</label>
+        <label><input type="checkbox" id="export-registration" /> registration marks</label>
+        <button id="export-btn">Export SVG</button>
+      </section>
+
+      <section class="panel">
+        <h2>Document</h2>
+        <button id="save-btn">Save .json</button>
+        <label class="file-label">Load .json
+          <input type="file" id="load-input" accept="application/json" />
+        </label>
+      </section>
+    </aside>
+  </div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

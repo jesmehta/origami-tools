@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "sheet": {
+    "width": 297,
+    "height": 210,
+    "units": "mm"
+  },
+  "grid": {
+    "majorSpacing": 10,
+    "minorSpacing": 2,
+    "visible": true,
+    "snap": {
+      "grid": true,
+      "endpoint": true,
+      "midpoint": true,
+      "intersection": true,
+      "cut": true,
+      "crease": true,
+      "center": true
+    }
+  },
+  "units": [
+    {
+      "id": "u1",
+      "type": "pairedCut",
+      "parentId": null,
+      "origin": {
+        "x": 60,
+        "y": 105
+      },
+      "rotation": 0,
+      "cutLength": 40,
+      "spacing": 20,
+      "creaseOffset": 6,
+      "flapLength": 15,
+      "mountainValley": "mountain",
+      "popDirection": 1,
+      "locks": {
+        "cuts": false,
+        "crease": false
+      },
+      "arrayOf": null,
+      "name": null
+    },
+    {
+      "id": "u2",
+      "type": "pairedCut",
+      "parentId": null,
+      "origin": {
+        "x": 120,
+        "y": 105
+      },
+      "rotation": 0,
+      "cutLength": 40,
+      "spacing": 20,
+      "creaseOffset": 6,
+      "flapLength": 15,
+      "mountainValley": "mountain",
+      "popDirection": 1,
+      "locks": {
+        "cuts": false,
+        "crease": false
+      },
+      "arrayOf": {
+        "sourceId": "u1",
+        "index": 1
+      },
+      "name": null
+    },
+    {
+      "id": "u3",
+      "type": "pairedCut",
+      "parentId": null,
+      "origin": {
+        "x": 180,
+        "y": 105
+      },
+      "rotation": 0,
+      "cutLength": 40,
+      "spacing": 20,
+      "creaseOffset": 6,
+      "flapLength": 15,
+      "mountainValley": "mountain",
+      "popDirection": 1,
+      "locks": {
+        "cuts": false,
+        "crease": false
+      },
+      "arrayOf": {
+        "sourceId": "u1",
+        "index": 2
+      },
+      "name": null
+    },
+    {
+      "id": "u4",
+      "type": "pairedCut",
+      "parentId": null,
+      "origin": {
+        "x": 240,
+        "y": 105
+      },
+      "rotation": 0,
+      "cutLength": 40,
+      "spacing": 20,
+      "creaseOffset": 6,
+      "flapLength": 15,
+      "mountainValley": "mountain",
+      "popDirection": 1,
+      "locks": {
+        "cuts": false,
+        "crease": false
+      },
+      "arrayOf": {
+        "sourceId": "u1",
+        "index": 3
+      },
+      "name": null
+    }
+  ],
+  "nextId": 5,
+  "topology3D": null
+}
