@@ -41,6 +41,7 @@ document.getElementById('app').innerHTML = `
   <a class="ot-back" href="../index.html">← Origami tools</a>
   <h1>Mirror Pleats · ${MODE === 'linear' ? 'Linear' : 'Radial'}</h1>
   <p class="sw">Switch: ${MODE === 'linear' ? '<b>Linear</b> · <a href="radial.html">Radial</a>' : '<a href="linear.html">Linear</a> · <b>Radial</b>'}</p>
+  ${OT.projectFieldset()}
 
   <fieldset><legend>Sheet</legend>
     <div class="row">
@@ -800,7 +801,7 @@ function buildSVG(bg) {
     `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
     `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
 }
-OT.wireExport({ base: `mirror-pleats-${MODE}`, svg: buildSVG, size: () => [S.W + 2 * S.m, S.H + 2 * S.m] });
+OT.wireExport({ base: `mirror-pleats-${MODE}`, svg: buildSVG, size: () => [S.W + 2 * S.m, S.H + 2 * S.m], project: () => projectDoc() });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {
@@ -1266,4 +1267,15 @@ orderedHors(4, false);
 syncUI();
 setMode('lines');
 OT.wireGrid(render);
+// Project files: the model S (as undo snapshots it). Missing fields fall back to the start-up defaults; a load is one undo step.
+const S0 = snap();
+const projectDoc = OT.wireProject({
+  tool: `mirror-pleats-${MODE}`, version: 1, templates: `templates/${MODE}.txt`,
+  get: () => JSON.parse(snap()),
+  set: st => act(() => {
+    Object.assign(S, JSON.parse(S0), st);
+    UI.selV = UI.selH = -1; UI.draw = UI.vdraw = UI.mp = null; UI.meas = [];
+    fixHors();
+  }),
+});
 new ResizeObserver(render).observe(cv);

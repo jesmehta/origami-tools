@@ -127,6 +127,12 @@ are time-stamped (`mirror-pleats-radial_2026_0925_143012.svg`). One colour for a
 exactly on a rectangle edge are not exported twice. Dimensions/measurements are
 not exported.
 
+**Project** — Save… / Load… a `.json` (geometry + grid & snap settings), or
+load an exported `.svg` (it carries the same data), or drop either onto the
+page; *Templates…* lists `templates/linear.txt` / `templates/radial.txt`.
+Linear and radial projects don't load into each other. Loading is one undo step;
+fields missing from an older file take the start-up defaults.
+
 Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
 
 ## Decisions

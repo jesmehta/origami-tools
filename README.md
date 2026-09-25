@@ -105,6 +105,14 @@ not use it (yet).
     the grid y offset (grid lines, sheet edges/centre).
   - hypar: new-polygon centre, ◆, corners — regular: rotation snaps to the
     snap angles about the centre; free: edge angles from both neighbours.
+- Projects: a *Project* panel with **Save…** (`<tool>_<stamp>.json`),
+  **Load…** (a .json, or an .svg these tools exported — the project is
+  embedded in every exported SVG as `<metadata id="ot-project">`), a
+  *Templates…* dropdown (when the tool has a `templates/` folder), and
+  drag-and-drop of a .json/.svg onto the page. A project holds the geometry and
+  the Grid & snap settings; colours, stroke width and PNG density come from the
+  page's current settings. A load is one undo step. Rolling out tool by tool:
+  mirror-pleats first.
 
 ## License
 

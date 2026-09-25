@@ -37,6 +37,8 @@ tool's `<head>`, before the tool's own script.
 | Grid | `OT.gridFieldset(polar)` → HTML · `OT.gridCfg()` · `OT.wireGrid(render)` · `OT.gridSVG(pageBox, origin, polar)` | `gridSVG` also records `OT._grid = { origin, polar }` for snapping; clipped to the page with a `<clipPath>`. |
 | Snapping | `OT.snapping(e)` · `OT.snapOnLine(p, A, d, o)` → s · `OT.snap2D(p, o)` → [x, y] · `OT.snapDir(C, p, tol)` → degrees · `OT.snap1D(v, values, tol)` · `OT.gridLines(axis, v)` · `OT.snapMark(px)` · `OT.SNAP_DEG` | `o = { tol, points, anchors, grid }`. See [MATH.md § Snapping](MATH.md#snapping). `OT.lastSnap` holds the snapped point for the orange marker. |
 
+| Projects | `OT.projectFieldset()` → HTML · `OT.wireProject({ tool, version, base, templates, get(), set(state, doc) })` → `doc()` · `OT.parseProject(text)` · `OT.embedProject(svg, doc)` · `OT.gridState()` / `OT.setGridState(g)` | File = `{ format, tool, version, savedAt, grid, state }`. `tool` must match the page (`mirror-pleats-linear` ≠ `-radial`). Pass `project: doc` to `wireExport` to embed it in SVGs. Templates: an index file of `label, file.json` lines. |
+
 `OT.PAGE_DEFAULTS` mirrors the first lines of `page-sizes.txt` — keep them in step.
 
 ## Tool anatomy (mirror-pleats, x-span, hypar share this shape)

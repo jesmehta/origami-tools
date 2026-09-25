@@ -60,11 +60,12 @@ OT.jszip = () => window.JSZip ? Promise.resolve(window.JSZip) : new Promise((res
   document.head.appendChild(s);
 });
 /* Wire the #xSvg / #xPng / #xZip buttons. opts.base: file-name prefix; opts.svg(bg): the SVG string
-   (bg = white background for the PNG); opts.size(): [w, h] of that SVG in mm. PNG density from #ppm. */
+   (bg = white background for the PNG); opts.size(): [w, h] of that SVG in mm; opts.project(): optional project
+   doc embedded in the SVG (see OT.wireProject). PNG density from #ppm. */
 OT.wireExport = opts => {
   const $ = id => document.getElementById(id);
   const png = () => { const [w, h] = opts.size(); return OT.svgToPng(opts.svg(true), w, h, +$('ppm').value || 6); };
-  const svgBlob = () => new Blob([opts.svg(false)], { type: 'image/svg+xml' });
+  const svgBlob = () => new Blob([OT.embedProject(opts.svg(false), opts.project && opts.project())], { type: 'image/svg+xml' });
   $('xSvg').onclick = () => OT.download(svgBlob(), `${opts.base}_${OT.stamp()}.svg`);
   $('xPng').onclick = async () => { const st = OT.stamp(); OT.download(await png(), `${opts.base}_${st}.png`); };
   $('xZip').onclick = async () => {
@@ -271,3 +272,78 @@ OT.snap1D = (v, values, tol) => { let best = v, bd = tol; values.forEach(x => { 
 OT.gridLines = (axis, v) => { const g = gridCtx(); if (!g || g.polar) return []; const o = g.origin[axis], k = Math.round((v - o) / g.step); return [o + (k - 1) * g.step, o + k * g.step, o + (k + 1) * g.step]; };
 // Small orange ring at OT.lastSnap (px = mm per screen pixel)
 OT.snapMark = px => OT.lastSnap ? `<circle cx="${+OT.lastSnap[0].toFixed(3)}" cy="${+OT.lastSnap[1].toFixed(3)}" r="${7 * px}" fill="none" stroke="#e65100" stroke-width="1.2" vector-effect="non-scaling-stroke"/>` : '';
+
+/* ---------- projects: save / load / templates ----------
+   A project file is JSON: { format, tool, version, savedAt, grid, state }. `state` is the tool's model (geometry
+   and layout — the same object undo snapshots); `grid` is the Grid & snap panel. Colours, stroke width and PNG
+   density are deliberately not saved: they come from the page's current settings. Exported SVGs carry the same
+   JSON in <metadata id="ot-project">, so an exported .svg loads back as a project. */
+OT.PROJECT_FORMAT = 1;
+OT.projectFieldset = () => `
+  <fieldset><legend data-tip="Save the drawing — its geometry plus the grid &amp; snap settings — as a .json to load later or reuse as a starting point. Colours and stroke width are not saved; they come from the current settings. Exported SVGs carry the same data, so an exported .svg can be loaded too. You can also drop a .json / .svg onto the page.">Project</legend>
+    <div class="row">
+      <button id="pjSave">Save…</button>
+      <button id="pjLoad">Load…</button>
+      <select id="pjTpl" hidden><option value="">Templates…</option></select>
+    </div>
+    <input type="file" id="pjFile" accept=".json,.svg,application/json,image/svg+xml" hidden>
+  </fieldset>`;
+OT.gridState = () => {
+  const g = OT.gridCfg(), snap = document.getElementById('snapOn');
+  return { on: g.on, step: g.step, ring: g.ring, spoke: g.spoke, snap: !snap || snap.checked };
+};
+OT.setGridState = g => {
+  if (!g) return;
+  const put = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) { if (el.type === 'checkbox') el.checked = !!v; else el.value = v; } };
+  put('grOn', g.on); put('grStep', g.step); put('grRing', g.ring); put('grSpoke', g.spoke); put('snapOn', g.snap);
+};
+// Pull a project out of file text: plain JSON, or an SVG exported by these tools
+OT.parseProject = text => {
+  text = text.trim();
+  if (text.startsWith('<')) {
+    const m = text.match(/<metadata id="ot-project"><!\[CDATA\[([\s\S]*?)\]\]><\/metadata>/);
+    if (!m) throw new Error('This SVG has no project data (it was not exported by these tools, or predates project saving).');
+    text = m[1];
+  }
+  const doc = JSON.parse(text);
+  if (!doc || typeof doc !== 'object' || !doc.state) throw new Error('Not a project file.');
+  return doc;
+};
+// Insert the project JSON into an exported SVG string
+OT.embedProject = (svg, doc) => doc ? svg.replace(/(<svg[^>]*>)/, `$1<metadata id="ot-project"><![CDATA[${JSON.stringify(doc)}]]></metadata>`) : svg;
+/* Wire the Project panel. o: { tool (e.g. 'x-span'), version, base (file-name prefix), get() → state,
+   set(state, doc) (apply it; the tool makes it one undo step), templates: URL of an index file whose lines are
+   "label, file.json" relative to it (optional) }. Returns doc() for embedding in exports. */
+OT.wireProject = o => {
+  const $ = id => document.getElementById(id);
+  const doc = () => ({ format: OT.PROJECT_FORMAT, tool: o.tool, version: o.version || 1, savedAt: new Date().toISOString(), grid: OT.gridState(), state: o.get() });
+  const apply = (text, from) => {
+    let d;
+    try { d = OT.parseProject(text); } catch (e) { alert(`${from}: ${e.message}`); return; }
+    if (d.tool !== o.tool) { alert(`${from} is a "${d.tool}" project; this page is "${o.tool}".`); return; }
+    if ((d.version || 1) > (o.version || 1)) alert(`${from} was saved by a newer version of this tool; loading what can be understood.`);
+    OT.setGridState(d.grid);
+    o.set(JSON.parse(JSON.stringify(d.state)), d);
+  };
+  const readFile = f => { const r = new FileReader(); r.onload = () => apply(String(r.result), f.name); r.readAsText(f); };
+  $('pjSave').onclick = () => OT.download(new Blob([JSON.stringify(doc(), null, 1)], { type: 'application/json' }), `${o.base || o.tool}_${OT.stamp()}.json`);
+  $('pjLoad').onclick = () => $('pjFile').click();
+  $('pjFile').onchange = e => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ''; };
+  addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (!f || !/\.(json|svg)$/i.test(f.name)) return; e.preventDefault(); readFile(f); });
+  if (o.templates) (async () => {
+    try {
+      const url = new URL(o.templates, location.href), r = await fetch(url); if (!r.ok) return;
+      const list = (await r.text()).split(/\r?\n/).map(l => l.replace(/#.*/, '').split(',').map(x => x.trim())).filter(f => f.length >= 2 && f[0] && f[1]);
+      if (!list.length) return;
+      const sel = $('pjTpl');
+      list.forEach(([label, file]) => { const op = document.createElement('option'); op.value = new URL(file, url).href; op.textContent = label; sel.appendChild(op); });
+      sel.hidden = false;
+      sel.onchange = async () => {
+        const href = sel.value; sel.value = ''; if (!href) return;
+        try { const t = await fetch(href); if (!t.ok) throw new Error(t.status); apply(await t.text(), 'Template'); } catch (e) { alert('Could not load the template: ' + e.message); }
+      };
+    } catch (e) { /* no templates (e.g. opened from file://) */ }
+  })();
+  return doc;
+};
