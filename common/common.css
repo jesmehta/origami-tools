@@ -21,3 +21,5 @@ fieldset.ot-shut > :not(legend),.ot-folded{display:none !important}
 div.ot-foldall button{all:unset;cursor:pointer;font-size:11px;color:#666}
 div.ot-foldall button:hover,div.ot-foldall button:focus-visible{color:#000;text-decoration:underline}
 html{accent-color:#4e7a3e}
+/* mild texture on the canvas background (svg#cv outranks each tool's #cv background shorthand) */
+svg#cv{background-image:url(canvas-texture.svg)}
