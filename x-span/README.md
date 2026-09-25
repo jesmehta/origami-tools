@@ -215,3 +215,7 @@ the selection.
   regular verticals by number / distance / minor diagonal, rhombus by angle or
   number of chains; irregular free verticals with refracting lines; y offset and
   chain parity; free chains, exact-θ toggle and chain randomize removed.
+- **v4** — Shared origami-tools features (see the top-level README): backlink,
+  thinner lines, tooltips, time-stamped SVG/PNG/ZIP export, sheet presets +
+  margin (the rectangle is now the area inside the margin), square grid from
+  the sheet centre, snapping of verticals, θ, chain heights and y offset.

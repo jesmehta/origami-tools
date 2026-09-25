@@ -280,3 +280,7 @@ mm dimensions and geometry.
   (centred/top-left aligned) with a fit/overflow status line, plus two
   independent "reduce to fit" strategies (proportional export-scale vs.
   strip-width-only) and an auto-fit button, on the Array & Export tab.
+- **v4** — Shared origami-tools features (see the top-level README): backlink,
+  thinner lines, tooltips, time-stamped ZIP and file names, page-size presets
+  with ⇄ swap, a 5–15 mm page margin the pattern must fit inside. Fixed:
+  exported SVG lines carried no stroke (styling lived only in page CSS).

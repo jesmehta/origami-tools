@@ -82,3 +82,8 @@ path.
 
 - **v1** — Regular/irregular convex polygon, contours, first/last-crossing
   diagonals with ghost, centre-cut toggle, SVG/PNG export.
+- **v2** — Shared origami-tools features (see the top-level README): backlink,
+  thinner lines, tooltips, time-stamped SVG/PNG/ZIP export. New: a sheet
+  (presets, 270 × 270 default) with a margin that crops everything and is
+  exported as a cut; export is now the whole sheet. Square grid; snapping of
+  corners, ◆ and new-polygon centre (rotation / edge angles to 15°/22.5°).
