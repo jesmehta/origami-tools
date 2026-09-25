@@ -8,18 +8,18 @@ const DEG = Math.PI / 180;
 
 /* ---------- sidebar ---------- */
 const vertPanel = MODE === 'linear' ? `
-  <fieldset><legend>Verticals · linear</legend>
+  <fieldset><legend data-tip="Verticals are the mirrors. Count, spacing and first x generate an even set; hand edits make the layout free.">Verticals · linear</legend>
     <div class="row">
       <label>Count <input type="number" id="gN" min="2" max="40" step="1"></label>
       <label>Spacing <input type="number" id="gSp" min="1" step="0.5"> mm</label>
       <label>First x <input type="number" id="gSt" step="0.5"> mm</label>
     </div>
     <div class="row">
-      <button id="bFit">Fit edge to edge</button>
+      <button id="bFit" data-tip="Spread the verticals so the first and last sit on the left and right edges.">Fit edge to edge</button>
       <button id="bReset">Reset verticals</button>
     </div>
-    <div class="row"><label><input type="checkbox" id="cap"> Cap verticals at ±45°</label></div>` : `
-  <fieldset><legend>Verticals · radial</legend>
+    <div class="row"><label data-tip="Limit each vertical's tilt to 45° either side of upright."><input type="checkbox" id="cap"> Cap verticals at ±45°</label></div>` : `
+  <fieldset><legend data-tip="Verticals fanned from the ◆ centre, spaced by Step degrees and turned by Rotate. Verticals may enter and exit through any edge; ones that miss the rectangle are drawn grey. Drag the ◆ in Verticals mode.">Verticals · radial</legend>
     <div class="row">
       <label>Count <input type="number" id="gN" min="2" max="40" step="1"></label>
       <label>Step <input type="number" id="gStep" min="0.5" step="0.5"> °</label>
@@ -29,9 +29,8 @@ const vertPanel = MODE === 'linear' ? `
       <label>Centre x <input type="number" id="cx" step="1"></label>
       <label>y <input type="number" id="cy" step="1"></label>
     </div>
-    <div class="row"><label><input type="checkbox" id="enf"> Enforce radial from centre</label></div>
-    <div class="row"><button id="bReset">Reset verticals</button></div>
-    <p class="note">When enforced, existing and new verticals all pass through the centre (a new one is a single click on an edge; dragging rotates about the centre). Centre must be above or below the rectangle. Verticals may enter and exit through any edge; ones that miss the rectangle are drawn grey. Drag the ◆ in Verticals mode.</p>`;
+    <div class="row"><label data-tip="On: existing and new verticals all pass through the centre (a new one is a single click on an edge; dragging rotates about the centre). Off: free edge-to-edge lines. The centre must be above or below the rectangle."><input type="checkbox" id="enf"> Enforce radial from centre</label></div>
+    <div class="row"><button id="bReset">Reset verticals</button></div>`;
 
 document.getElementById('app').innerHTML = `
 <aside>
@@ -52,8 +51,8 @@ document.getElementById('app').innerHTML = `
       <label>top x <input type="number" id="vxt" step="0.5"></label>
       <label>bottom x <input type="number" id="vxb" step="0.5"></label>
       <span>
-        <button id="nudL" title="Move whole line left">◀</button>
-        <button id="nudR" title="Move whole line right">▶</button>
+        <button id="nudL" data-tip="Move the whole line left by the step">◀</button>
+        <button id="nudR" data-tip="Move the whole line right by the step">▶</button>
         <input type="number" id="step" value="1" min="0.1" step="0.5" style="width:52px"> mm
       </span>
     </div>
@@ -63,17 +62,16 @@ document.getElementById('app').innerHTML = `
     <div class="row">
       <button id="mLines" class="on">Lines</button>
       <button id="mVerts">Verticals</button>
-      <button id="mMeas">Measure</button>
+      <button id="mMeas" data-tip="Click two points (distance) or two lines (angle); pick which in Dimensions.">Measure</button>
     </div>
-    <p class="note" id="modeNote"></p>
     <div class="row"><label><input type="checkbox" id="snap45"> Snap lines to 45° while drawing/dragging</label></div>
     <div class="row">
-      <button id="bDel">Delete selected</button>
+      <button id="bDel" data-tip="Delete / Backspace">Delete selected</button>
       <button id="bClear">Clear lines</button>
     </div>
   </fieldset>
 
-  <fieldset><legend>Ordered layout</legend>
+  <fieldset><legend data-tip="Evenly distributed lines snapped to 45°, optionally alternating up/down.">Ordered layout</legend>
     <div class="row">
       <label>Lines <input type="number" id="nH" min="1" max="60" step="1"></label>
       <label><input type="checkbox" id="alt"> alternate ↑↓</label>
@@ -82,17 +80,15 @@ document.getElementById('app').innerHTML = `
       <button id="oAll">Ordered ${MODE}</button>
       <button id="oHor">Re-order lines only</button>
     </div>
-    <p class="note">Evenly distributed lines snapped to 45°.</p>
   </fieldset>
 
-  <fieldset><legend>Randomize</legend>
+  <fieldset><legend data-tip="Random lines are placed one at a time and rejected if they cross another trail or come closer than the min vertex gap on any vertical.">Randomize</legend>
     <div class="row">
       <button id="rV">Verticals</button>
       <button id="rH">Lines</button>
       <button id="rA">Both</button>
     </div>
     <div class="row"><label>Min vertex gap <input type="number" id="mg" min="0" step="0.5"> mm</label></div>
-    <p class="note">Random lines are placed one at a time and rejected if they cross another trail or come closer than the gap on any vertical.</p>
   </fieldset>
 
   <fieldset><legend>Dimensions</legend>
@@ -106,8 +102,7 @@ document.getElementById('app').innerHTML = `
       <label><input type="radio" name="mt" id="mtD" value="dist" checked> Measure distance (2 points)</label>
       <label><input type="radio" name="mt" value="angle"> Measure angle (2 lines)</label>
     </div>
-    <div class="row"><button id="mClear">Clear measurements</button></div>
-    <p class="note">Measurements are snapshots; they don't follow later edits.</p>
+    <div class="row"><button id="mClear" data-tip="Measurements are snapshots; they don't follow later edits.">Clear measurements</button></div>
   </fieldset>
 
   <fieldset><legend>Export</legend>
@@ -910,9 +905,6 @@ function setMode(m) {
   $('mLines').classList.toggle('on', m === 'lines');
   $('mVerts').classList.toggle('on', m === 'verts');
   $('mMeas').classList.toggle('on', m === 'measure');
-  $('modeNote').textContent = m === 'lines'
-    ? 'Click a vertical to start a line, click an adjacent one to finish. Drag circles/lines to move them. Hold Shift to move verticals.'
-    : m === 'verts' ? (MODE === 'radial' ? 'Drag a vertical (or a square end handle). To add one, click a point on any edge' + (S.enforce ? ' (it passes through the centre).' : ', then a point on another edge.') + ' Delete removes the selected vertical. Hold Shift to edit lines.' : 'Drag a vertical to move it whole, or a square end handle. To add a vertical, click a point on the top or bottom edge, then a point on the opposite edge. Delete removes the selected vertical. Hold Shift to edit lines.') : 'Use the Dimensions panel to choose distance or angle.';
   render();
 }
 function delSel() {
@@ -1044,7 +1036,14 @@ Object.keys(UI.dim).forEach(k => {
 });
 document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI.mp = null; render(); });
 
+function modeTips() {
+  $('mLines').dataset.tip = 'Click a vertical to start a line, click an adjacent one to finish. Drag circles/lines to move them. Hold Shift to move verticals.';
+  $('mVerts').dataset.tip = MODE === 'radial'
+    ? 'Drag a vertical (or a square end handle). To add one, click a point on any edge' + (S.enforce ? ' (it passes through the centre).' : ', then a point on another edge.') + ' Delete removes the selected vertical. Hold Shift to edit lines.'
+    : 'Drag a vertical to move it whole, or a square end handle. To add a vertical, click a point on the top or bottom edge, then a point on the opposite edge. Delete removes the selected vertical. Hold Shift to edit lines.';
+}
 function syncUI() {
+  modeTips();
   const set = (id, v) => { const el = $(id); if (el && document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
   set('W', S.W); set('H', S.H); set('gN', S.gen.n); set('mg', S.minGap);
   if (MODE === 'linear') { set('gSp', S.gen.spacing); set('gSt', S.gen.start); if ($('cap')) $('cap').checked = S.cap; }

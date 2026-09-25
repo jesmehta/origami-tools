@@ -53,15 +53,14 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
 
   <fieldset><legend>Grid type</legend>
     <div class="row">
-      <button id="kReg" class="on">Regular</button>
-      <button id="kMW" title="Constant height, movable verticals">Const H · move W</button>
-      <button id="kMH" title="Constant vertical spacing, variable heights">Const W · move H</button>
-      <button id="kMB" title="Movable verticals and variable heights">Move both</button>
+      <button id="kReg" class="on" data-tip="Verticals evenly spread; the rhombi tile into a grid of straight lines.">Regular</button>
+      <button id="kMW" data-tip="Constant height, verticals free (still vertical): the rhombi still tile, but the lines bend at each vertical.">Const H · move W</button>
+      <button id="kMH" data-tip="Constant vertical spacing, each chain row has its own height: the lines bend where the height changes.">Const W · move H</button>
+      <button id="kMB" data-tip="Verticals free and each chain row has its own height.">Move both</button>
     </div>
-    <p class="note" id="kindNote"></p>
   </fieldset>
 
-  <fieldset id="panReg"><legend>Verticals · evenly spread</legend>
+  <fieldset id="panReg"><legend data-tip="Number: first and last vertical on the rectangle edges. Distance / minor diagonal (= 2 × distance): verticals from x = 0 at that spacing; a last vertical beyond the right edge is kept (grey) so the grid fills the rectangle.">Verticals · evenly spread</legend>
     <div class="row"><label>Define by
       <select id="vIn">
         <option value="count">Number of verticals</option>
@@ -73,10 +72,9 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <label>Distance <input type="number" id="rD" min="0.5" step="0.5"> mm</label>
       <label>Minor diag. <input type="number" id="rM" min="1" step="1"> mm</label>
     </div>
-    <p class="note">Number: first and last vertical on the rectangle edges. Distance / minor diagonal (= 2 × distance): verticals from x = 0 at that spacing; a last vertical beyond the right edge is kept (grey) so the grid fills the rectangle.</p>
   </fieldset>
 
-  <fieldset id="panIrr" hidden><legend>Verticals · free</legend>
+  <fieldset id="panIrr" hidden><legend data-tip="Always exactly vertical. Start from an even spread, then drag / type / add / delete verticals in Verticals mode. The lines bend (refract) at each vertical so every rhombus vertex lands on one.">Verticals · free</legend>
     <div class="row">
       <label>Count <input type="number" id="gN" min="2" max="40" step="1"></label>
       <label>Spacing <input type="number" id="gSp" min="1" step="0.5"> mm</label>
@@ -91,15 +89,14 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <b>V<span id="selVn"></span></b>
       <label>x <input type="number" id="vx" step="0.5"> mm</label>
       <span>
-        <button id="nudL" title="Move left">◀</button>
-        <button id="nudR" title="Move right">▶</button>
+        <button id="nudL" data-tip="Move left by the step">◀</button>
+        <button id="nudR" data-tip="Move right by the step">▶</button>
         <input type="number" id="step" value="1" min="0.1" step="0.5" style="width:52px"> mm
       </span>
     </div>
-    <p class="note">Always exactly vertical. Start from an even spread, then drag / type / add / delete verticals in Verticals mode. The lines bend (refract) at each vertical so every rhombus vertex lands on one.</p>
   </fieldset>
 
-  <fieldset><legend>Rhombus</legend>
+  <fieldset><legend data-tip="θ is the angle of a rhombus side to the horizontal (h = distance × tan θ, taken from the first section V1–V2). Number of chains (in steps of 0.5, so the last row can be half a rhombus): the vertical diagonals stack to fill the rectangle height exactly (2h = H ÷ chains), and θ follows. With constant heights every rhombus has the same vertical diagonal 2h; with variable heights this is the reference h that each chain row scales.">Rhombus</legend>
     <div class="row"><label>Define by
       <select id="aIn">
         <option value="angle">Angle θ</option>
@@ -110,11 +107,9 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <label>Chains <input type="number" id="nCh" min="0.5" max="200" step="0.5"></label>
     </div>
     <p class="note" id="derived"></p>
-    <p class="note">θ is the angle of a rhombus side to the horizontal (h = distance × tan θ, taken from the first section V1–V2). Number of chains (in steps of 0.5, so the last row can be half a rhombus): the vertical diagonals stack to fill the rectangle height exactly (2h = H ÷ chains), and θ follows. With constant heights every rhombus has the same vertical diagonal 2h; with variable heights this is the reference h that each chain row scales.</p>
   </fieldset>
 
-  <fieldset id="panH" hidden><legend>Chain heights</legend>
-    <p class="note">One half-height h per chain row, top to bottom (the rhombus vertical diagonal is 2h). Drag the circles on the canvas up/down, or use the sliders. Rows below the last one keep its height. The Rhombus angle / chains setting scales all heights together.</p>
+  <fieldset id="panH" hidden><legend data-tip="One half-height h per chain row, top to bottom (the rhombus vertical diagonal is 2h). Drag the circles on the canvas up/down, or use the sliders. Rows below the last one keep its height. The Rhombus angle / chains setting scales all heights together.">Chain heights</legend>
     <div id="hRows"></div>
     <div class="row">
       <label>First h <input type="number" id="gh0" min="0.3" step="0.5"> mm</label>
@@ -122,34 +117,31 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <label>Curve <select id="gcv"><option value="linear">linear</option><option value="in">ease in</option><option value="out">ease out</option><option value="inout">ease in-out</option></select></label>
     </div>
     <div class="row">
-      <button id="bProf">Apply profile</button>
+      <button id="bProf" data-tip="First → last h over the rows now on the canvas, following the chosen curve.">Apply profile</button>
       <button id="bHRand">Randomize</button>
-      <button id="bHFit">Fit to height</button>
+      <button id="bHFit" data-tip="Scale all heights so the chains now shown end exactly at the bottom edge.">Fit to height</button>
       <button id="bHReset">All equal</button>
     </div>
-    <p class="note">Profile: first → last h over the rows now on the canvas. Fit to height: scales all heights so the chains now shown end exactly at the bottom edge.</p>
   </fieldset>
 
   <fieldset><legend>Grid position</legend>
     <div class="row">
-      <label>y offset <input type="number" id="yo" step="0.5"> mm</label>
-      <button id="bYo" title="Set the y offset back to 0">Reset</button>
-      <label>Chains cross on
+      <label data-tip="Shifts the whole grid vertically (0 = the first chain's top vertex sits on the top edge). You can also drag empty space in Grid mode.">y offset <input type="number" id="yo" step="0.5"> mm</label>
+      <button id="bYo" data-tip="Set the y offset back to 0">Reset</button>
+      <label data-tip="Which verticals carry the crossing points of the chains; the other verticals carry the offset '1.5' rows.">Chains cross on
         <select id="ph">
           <option value="0">V1, V3, V5…</option>
           <option value="1">V2, V4, V6…</option>
         </select></label>
     </div>
-    <p class="note">y offset shifts the whole grid vertically (0 = the first chain's top vertex sits on the top edge; drag empty space in Grid mode). "Chains cross on" picks which verticals carry the crossing points of the chains; the other verticals carry the offset "1.5" rows.</p>
   </fieldset>
 
   <fieldset><legend>Edit mode</legend>
     <div class="row">
       <button id="mGrid" class="on">Grid</button>
       <button id="mVerts">Verticals</button>
-      <button id="mMeas">Measure</button>
+      <button id="mMeas" data-tip="Click two points (distance) or two lines (angle); pick which in Dimensions.">Measure</button>
     </div>
-    <p class="note" id="modeNote"></p>
     <div class="row"><button id="bDel">Delete selected vertical</button></div>
   </fieldset>
 
@@ -162,8 +154,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <label><input type="radio" name="mt" id="mtD" value="dist" checked> Measure distance (2 points)</label>
       <label><input type="radio" name="mt" value="angle"> Measure angle (2 lines)</label>
     </div>
-    <div class="row"><button id="mClear">Clear measurements</button></div>
-    <p class="note">Measurements are snapshots; they don't follow later edits.</p>
+    <div class="row"><button id="mClear" data-tip="Measurements are snapshots; they don't follow later edits.">Clear measurements</button></div>
   </fieldset>
 
   <fieldset><legend>Export</legend>
@@ -202,12 +193,6 @@ const fmt = n => +n.toFixed(4);
 const half = x => Math.round(x * 2) / 2;
 const isFreeX = () => S.kind === 'movW' || S.kind === 'both';   // verticals movable
 const isVarH = () => S.kind === 'movH' || S.kind === 'both';    // heights variable per chain row
-const KIND_NOTE = {
-  regular: 'Verticals evenly spread; the rhombi tile into a grid of straight lines.',
-  movW: 'Constant height, verticals free (still vertical): the rhombi still tile, but the lines bend at each vertical.',
-  movH: 'Constant vertical spacing, each chain row has its own height: the lines bend where the height changes.',
-  both: 'Verticals free and each chain row has its own height.',
-};
 const $ = id => document.getElementById(id);
 const cv = $('cv');
 
@@ -695,10 +680,6 @@ function setMode(m) {
   $('mGrid').classList.toggle('on', m === 'grid');
   $('mVerts').classList.toggle('on', m === 'verts');
   $('mMeas').classList.toggle('on', m === 'measure');
-  $('modeNote').textContent = m === 'grid'
-    ? 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (isFreeX() ? ' Hold Shift to move verticals.' : '')
-    : m === 'verts' ? 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift for Grid.'
-    : 'Use the Dimensions panel to choose distance or angle.';
   render();
 }
 function delSel() {
@@ -806,7 +787,8 @@ function syncUI() {
   const free = isFreeX(), reg = !free, X = S.xs, h = gridH(), d = X.length > 1 ? X[1] - X[0] : 0;
   set('W', S.W); set('H', S.H);
   [['kReg', 'regular'], ['kMW', 'movW'], ['kMH', 'movH'], ['kMB', 'both']].forEach(([id, k]) => $(id).classList.toggle('on', S.kind === k));
-  $('kindNote').textContent = KIND_NOTE[S.kind];
+  $('mGrid').dataset.tip = 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (free ? ' Hold Shift to move verticals.' : '');
+  $('mVerts').dataset.tip = 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift for Grid.';
   $('panReg').hidden = free; $('panIrr').hidden = !free; $('mVerts').hidden = !free; $('panH').hidden = !isVarH();
   set('gh0', S.prof.h0); set('gh1', S.prof.h1); $('gcv').value = S.prof.curve; syncRows();
   if (reg && UI.mode === 'verts') setMode('grid');

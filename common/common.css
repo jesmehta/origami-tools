@@ -1,3 +1,9 @@
 /* Shared styles for the origami tools (loaded before each tool's own CSS). */
 .ot-back{display:inline-block;margin:0 0 8px;font-size:12px;color:#555;text-decoration:none}
 .ot-back:hover{color:#000;text-decoration:underline}
+
+/* tooltips (see common.js) */
+.ot-tip{position:fixed;z-index:1000;max-width:300px;background:#2b2b2b;color:#fff;font:12px/1.45 system-ui,Segoe UI,Roboto,sans-serif;padding:6px 9px;border-radius:5px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:pre-line}
+.ot-tip[hidden]{display:none}
+legend[data-tip]::after,h2[data-tip]::after{content:" ⓘ";color:#999;font-weight:400}
+legend[data-tip],h2[data-tip],label[data-tip],span[data-tip]{cursor:help}

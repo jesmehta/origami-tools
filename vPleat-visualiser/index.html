@@ -69,8 +69,7 @@
 
 <section class="panel active" data-panel="draw">
   <div class="sidebar">
-    <h2>Draw</h2>
-    <div class="hint">Click empty canvas to add a point at the end. Drag a point to move it. Double-click the curve to insert a point there. Double-click a point (or select + Delete/Backspace) to remove it.</div>
+    <h2 data-tip="Click empty canvas to add a point at the end. Drag a point to move it. Double-click the curve to insert a point there. Double-click a point (or select + Delete/Backspace) to remove it.">Draw</h2>
     <div class="chk-row"><input type="checkbox" id="chk-lock"><label for="chk-lock">Lock canvas (prevent edits)</label></div>
     <div class="btn-row">
       <button id="btn-undo" disabled>Undo</button>
@@ -86,11 +85,10 @@
 
 <section class="panel" data-panel="segments">
   <div class="sidebar">
-    <h2>Segments</h2>
+    <h2 data-tip="Drag the orange handles along the grey trace to move a break point. Endpoints are fixed to the curve ends.">Segments</h2>
     <label>Number of segments <span id="lbl-numseg"></span></label>
     <input type="range" id="sl-numseg" min="1" max="15" step="1">
-    <button id="btn-autoadjust">Auto-adjust breakpoints</button>
-    <div class="hint">Drag the orange handles along the grey trace to move a break point. Endpoints are fixed to the curve ends.</div>
+    <button id="btn-autoadjust" data-tip="Moves the break points so each straight segment follows the curve as closely as possible.">Auto-adjust breakpoints</button>
     <h2 style="margin-top:1.2rem;">Width</h2>
     <label>Strip width (mm) <span id="lbl-width"></span></label>
     <input type="range" id="sl-width" min="2" max="100" step="1">
@@ -108,8 +106,7 @@
 
 <section class="panel" data-panel="straighten">
   <div class="sidebar">
-    <h2>Straightened ribbon</h2>
-    <div class="hint">Read-only preview: the R-offset edge becomes the shared mirror axis, giving V/Λ-shaped fold lines and 3 boundary verticals.</div>
+    <h2 data-tip="Read-only preview: the R-offset edge becomes the shared mirror axis, giving V/Λ-shaped fold lines and 3 boundary verticals.">Straightened ribbon</h2>
     <div class="legend">
       <span style="background:#111827"></span>cut (outer edge)<br>
       <span style="background:#e11d48"></span>fold / score line<br>
@@ -138,7 +135,7 @@
     <div class="chk-row"><input type="radio" name="align" id="rd-align-topleft"><label for="rd-align-topleft">Top-left aligned</label></div>
     <div id="page-fit-status" class="hint"></div>
 
-    <label style="margin-top:1rem;">Fit strategy</label>
+    <label style="margin-top:1rem;" data-tip="Proportional shrinks the whole pattern (width and length together) for the final export size only — fold angles are unaffected. Reduce strip width changes the actual strip width, so fold angles recalculate; it can't help if the curve itself is taller than the page.">Fit strategy</label>
     <div class="chk-row"><input type="radio" name="fitmode" id="rd-fit-scale" checked><label for="rd-fit-scale">Proportional scale</label></div>
     <div class="chk-row"><input type="radio" name="fitmode" id="rd-fit-width"><label for="rd-fit-width">Reduce strip width only</label></div>
     <button id="btn-autofit">Auto-fit to page</button>
@@ -147,10 +144,8 @@
     <input type="range" id="sl-width2" min="2" max="100" step="1">
     <label>Export scale <span id="lbl-exportscale"></span></label>
     <input type="range" id="sl-exportscale" min="10" max="100" step="1">
-    <div class="hint">"Proportional" shrinks the whole pattern (width and length together) for the final export size only — fold angles are unaffected. "Reduce strip width" changes the actual strip width, so fold angles recalculate; it can't help if the curve itself is taller than the page.</div>
 
-    <button id="btn-download-svg" class="primary" style="margin-top:1rem;">Download ZIP (SVG + JPGs)</button>
-    <div class="hint">Bundles the cut pattern (SVG, 1:1 mm, page guide excluded) plus reference JPGs of the drawn curve and the segment/width fit into one .zip — browsers block a single click from firing more than one file download, so everything ships in a single archive instead.</div>
+    <button id="btn-download-svg" class="primary" style="margin-top:1rem;" data-tip="Bundles the cut pattern (SVG, 1:1 mm, page guide excluded) plus reference JPGs of the drawn curve and the segment/width fit into one .zip.">Download ZIP (SVG + JPGs)</button>
     <div class="info" id="info-array"></div>
   </div>
   <div class="stage">

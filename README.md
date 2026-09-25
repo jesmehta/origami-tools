@@ -55,6 +55,9 @@ not use it (yet).
 - On-screen strokes halved (pattern, sheet, ghost, dimension, measure and
   handle outlines). Export stroke width is unchanged — it is a fabrication
   setting with its own field.
+- Sidebar explanations moved into hover tooltips (`data-tip`): sections with
+  one show ⓘ after their heading; mode buttons carry their own how-to. The
+  one-line hint in the status bar under the canvas stays.
 
 ## License
 
