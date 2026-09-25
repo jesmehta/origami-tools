@@ -119,6 +119,32 @@ Per-tool detail is in [x-span README § Decisions](../x-span/README.md#decisions
   orientation automatically was considered and dropped — "numbers also as
   written".
 
+### Two margins, snapped to the grid (added later the same day)
+
+- **Why:** user: "while the margin is defined by a distance, can i have an
+  edit margin that allows margins snapping to grid - this will allow full
+  multiples of the folds to be placed, since the margin is an arbitrary value
+  after all."
+- **One margin → two (↔, ↕), each symmetric.** A single margin can't usually
+  sit on the grid on both axes: the grid runs through the page centre, so the
+  margin must be L/2 − k·step, which differs per axis (A4, 10 mm: 8.5 vs 5).
+  Symmetric per axis keeps the pattern centred and the grid origin meaningful.
+  Per-side (four) margins were not needed.
+- **🔗 lock, default on** — behaves like the old single margin until you ask
+  for more. *Fit to grid* with the lock on tries a common value, else unlocks
+  and says so.
+- **Edit mode + Fit button, not either alone** — dragging shows and snaps;
+  the button is one click. Hypar has no modes, so its edges are always
+  draggable (after corners and the ◆), marked by small bars.
+- **Out of range is fine:** user: "the margins can still be manually managed
+  to be whatever distances are needed" — no grid line in 5–15 mm → left as is.
+- **Radial page: no fitting** (its grid is polar); vPleat keeps one margin (no
+  grid).
+- **Old project files** (single `m`) load as ↔ = ↕ = m. No other allowance
+  for existing drawings — user: "not many have been created, its fine as it
+  goes, dont make special concessions". The starter templates were
+  regenerated with the new fields.
+
 ## Grid
 
 - **Origin at the sheet centre**, not a corner — the user asked "would centre

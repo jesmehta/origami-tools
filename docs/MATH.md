@@ -141,6 +141,27 @@ a fan of n rays with step s satisfies it only when s = 360/n (the odd sum is
   8 px; an end outside is drawn at the clipped end; if none of the line is
   visible, the end is clamped into the view box.
 
+## 4b. Margins on the grid
+
+The square grid runs through the page centre with step *s*. A margin *m* on
+an axis of page length *L* puts its margin line on a grid line iff
+
+```text
+(L/2 − m) / s  is a whole number   ⇔   m = L/2 − k·s  for some integer k
+```
+
+and then the working length `L − 2m = 2k·s` is a whole (even) number of
+steps. *Fit to grid* lists every such m in 5–15 mm and takes the one nearest
+the current margin (ties → the smaller margin, i.e. the larger working area).
+Locked (🔗): it needs one m that works for both axes — the intersection of
+the two lists — and unlocks if there is none (A4, s = 10: ↔ needs 8.5,
+↕ needs 5 or 15). With s > 10 mm a 10 mm-wide range may contain no valid m;
+then that margin is left alone and the note says so.
+
+Dragging an edge: its distance *d* from the page edge is the new margin;
+snapped to `L/2 − round((L/2 − d)/s)·s` if within the snap tolerance,
+otherwise rounded to 0.1 mm; clamped to 5–15.
+
 ## 5. Snapping
 
 All snapping is "nearest candidate within a tolerance" (≈10 screen px,

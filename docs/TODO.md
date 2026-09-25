@@ -40,6 +40,9 @@
   `version` bump and a migration in the tool's `set`. The template JSONs in
   `*/templates/` are real project files and must be regenerated (or migrated)
   too.
+- **Margins are `mx` / `my` (+ `mLock`), not `m`.** Project loads still
+  accept an old `m`. Anything new that reads the margin must use the right
+  axis.
 - **Project files are checked by `tool` name** — `mirror-pleats-linear` and
   `mirror-pleats-radial` are different tools on purpose.
 

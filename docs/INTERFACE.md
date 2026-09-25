@@ -25,8 +25,13 @@ What a user can expect to work the same way in every tool (kirigami excepted).
 
 - **Size** preset dropdown + **⇄** (swap portrait/landscape) + W × H typed.
   Presets come from `common/page-sizes.txt`.
-- **Margin** 5–15 mm. The pattern is cropped at the margin line; the margin
+- **Margins** 5–15 mm: ↔ (left & right) and ↕ (top & bottom), each symmetric;
+  🔗 keeps them equal. The pattern is cropped at the margin line; the margin
   outline is exported as the cut; the page outline is never exported.
+- **Fit to grid** snaps each margin line to the nearest grid line; the
+  **Margin** edit mode (mirror-pleats, x-span; in hypar the edges are always
+  draggable, marked by blue bars) lets you drag the edges, snapping to the
+  grid, with the working area shown in grid steps in the status bar.
 - Mirror-pleats / x-span: changing page or margin rescales the pattern (the
   page stays the size you asked for). Hypar: the polygon keeps its position
   relative to the sheet centre.
