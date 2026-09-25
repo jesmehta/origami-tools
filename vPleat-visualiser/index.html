@@ -17,6 +17,9 @@
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
   header{display:flex;align-items:center;gap:1.5rem;padding:.6rem 1rem;background:var(--panel);border-bottom:1px solid var(--border);}
   header .ot-back{margin:0;white-space:nowrap;}
+  header .proj{margin-left:auto;display:flex;gap:.4rem;align-items:center;}
+  header .proj-btn{border:1px solid var(--border);background:#eef0f3;color:var(--text);padding:.45rem .9rem;border-radius:6px;cursor:pointer;font-size:.85rem;}
+  header .proj select{padding:.4rem;border:1px solid var(--border);border-radius:6px;font:inherit;font-size:.85rem;}
   header h1{font-size:1rem;font-weight:600;margin:0;white-space:nowrap;}
   nav.tabs{display:flex;gap:.4rem;flex-wrap:wrap;}
   .tab-btn{border:1px solid var(--border);background:#eef0f3;color:var(--text);padding:.45rem .9rem;border-radius:6px;cursor:pointer;font-size:.85rem;}
@@ -65,6 +68,12 @@
     <button class="tab-btn" data-tab="straighten">3. Straighten</button>
     <button class="tab-btn" data-tab="array">4. Array &amp; Export</button>
   </nav>
+  <div class="proj" data-tip="Save the whole design (curve, segments, width, array, page) as a .json to load later or reuse; an exported ZIP's SVG carries the same data and loads too. You can also drop a .json / .svg onto the page. Undo after a load restores only the curve.">
+    <button class="proj-btn" id="pjSave">Save…</button>
+    <button class="proj-btn" id="pjLoad">Load…</button>
+    <select id="pjTpl" hidden><option value="">Templates…</option></select>
+    <input type="file" id="pjFile" accept=".json,.svg,application/json,image/svg+xml" hidden>
+  </div>
 </header>
 
 <section class="panel active" data-panel="draw">
@@ -789,7 +798,7 @@ document.getElementById('btn-download-svg').onclick = async ()=>{
   // before the browser starts silently blocking further ones as spam.
   const st = OT.stamp();
   const zip = new JSZip();
-  zip.file(`vpleat-pattern_${st}.svg`, svgSrc);
+  zip.file(`vpleat-pattern_${st}.svg`, OT.embedProject(svgSrc, projectDoc()));
   zip.file(`vpleat-curve_${st}.jpg`, drawBlob);
   zip.file(`vpleat-segments_${st}.jpg`, segBlob);
   const zipBlob = await zip.generateAsync({ type:'blob' });
@@ -813,6 +822,19 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 
 /* ---------------- Init ---------------- */
 renderDraw();
+// Project files: the whole `state` (curve, breakpoints, width, array, page, fit). Missing fields fall back to the
+// start-up defaults. vPleat's undo only covers the curve, so undoing a load brings back the curve alone.
+const S0 = JSON.stringify(state);
+const projectDoc = OT.wireProject({
+  tool: 'vpleat', version: 1, templates: 'templates/index.txt',
+  get: () => JSON.parse(JSON.stringify(state)),
+  set: st => {
+    pushUndo();
+    Object.assign(state, JSON.parse(S0), st);
+    selectedIndex = -1;
+    document.querySelector('.tab-btn.active').click();       // re-render whichever tab is showing
+  },
+});
 </script>
 </body>
 </html>

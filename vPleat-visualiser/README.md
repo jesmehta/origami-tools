@@ -220,6 +220,14 @@ download when they're not each tied to a fresh user gesture — only the SVG
 ever landed. Bundling everything into one zip via JSZip sidesteps that
 browser restriction entirely and was verified to contain all three files.
 
+## Project files
+
+**Save… / Load…** in the header store the whole `state` (curve, break points,
+strip width, array count, page, margin, fit settings) as
+`vpleat_<stamp>.json`. The SVG inside an exported ZIP carries the same data,
+so it loads too; files can also be dropped onto the page. vPleat's undo only
+covers the curve, so Undo after a load brings back the previous curve alone.
+
 ## Draw tab controls
 
 - **Click empty canvas** — add a point at the end of the curve.

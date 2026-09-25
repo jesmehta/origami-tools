@@ -111,8 +111,8 @@ not use it (yet).
   *Templates…* dropdown (when the tool has a `templates/` folder), and
   drag-and-drop of a .json/.svg onto the page. A project holds the geometry and
   the Grid & snap settings; colours, stroke width and PNG density come from the
-  page's current settings. A load is one undo step. Rolling out tool by tool:
-  mirror-pleats first.
+  page's current settings. A load is one undo step. In mirror-pleats, x-span, hypar
+  and vPleat.
 
 ## License
 
