@@ -1,17 +1,17 @@
 /* Shared styles for the origami tools (loaded before each tool's own CSS). */
 .ot-back{display:inline-block;margin:0 0 10px;padding:5px 12px 5px 22px;font-size:13px;font-weight:600;color:#243322;text-decoration:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='14,1 99,1 99,99 14,99 1,50' fill='%23fff' stroke='%23243322' stroke-width='1.5' vector-effect='non-scaling-stroke' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
-.ot-back:hover,.ot-back:focus-visible{color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='14,1 99,1 99,99 14,99 1,50' fill='%23243322' stroke='%23243322' stroke-width='1.5' vector-effect='non-scaling-stroke' stroke-linejoin='round'/%3E%3C/svg%3E");outline:none}
+.ot-back:hover,.ot-back:focus-visible{color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='14,1 99,1 99,99 14,99 1,50' fill='%23b4532a' stroke='%23b4532a' stroke-width='1.5' vector-effect='non-scaling-stroke' stroke-linejoin='round'/%3E%3C/svg%3E");outline:none}
 
 /* tooltips (see common.js) */
 .ot-tip{position:fixed;z-index:1000;max-width:300px;background:#2c3b2a;color:#fff;font:12px/1.45 system-ui,Segoe UI,Roboto,sans-serif;padding:6px 9px;border-radius:5px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:pre-line}
 .ot-tip[hidden]{display:none}
-legend[data-tip]::after,h2[data-tip]::after{content:" ⓘ";color:#999;font-weight:400}
+legend[data-tip]::after,h2[data-tip]::after{content:" ⓘ";color:#b4532a;font-weight:400}
 legend[data-tip],h2[data-tip],label[data-tip],span[data-tip]{cursor:help}
 aside select{font:inherit;padding:3px 4px;max-width:190px}
 #margLock.on{background:#243322;color:#fff;border-color:#243322}
 /* collapsible sidebar sections (common.js) */
 legend.ot-head,h2.ot-head{cursor:pointer;user-select:none}
-.ot-head::before{content:"▾";display:inline-block;width:1.1em;font-size:1.15em;line-height:1;color:#666;text-align:center;transition:transform .12s}
+.ot-head::before{content:"▾";display:inline-block;width:1.1em;font-size:1.15em;line-height:1;color:#666;text-align:center;transition:transform .12s;color:#b4532a}
 .ot-head.ot-shut::before{transform:rotate(-90deg)}
 .ot-head:hover{color:#000}
 .ot-head:focus-visible{outline:1px dashed #888;outline-offset:2px}
@@ -19,7 +19,10 @@ fieldset.ot-shut{border-width:1px 0 0;border-radius:0;padding-bottom:4px}
 fieldset.ot-shut > :not(legend),.ot-folded{display:none !important}
 .ot-foldall{display:flex;justify-content:flex-end;gap:10px;margin:0 0 6px}
 div.ot-foldall button{all:unset;cursor:pointer;font-size:11px;color:#666}
-div.ot-foldall button:hover,div.ot-foldall button:focus-visible{color:#000;text-decoration:underline}
+div.ot-foldall button:hover,div.ot-foldall button:focus-visible{color:#b4532a;text-decoration:underline}
 html{accent-color:#4e7a3e}
 /* mild texture on the canvas background (svg#cv outranks each tool's #cv background shorthand) */
 svg#cv{background-image:url(canvas-texture.svg)}
+/* rust accents: tool titles, links */
+aside h1{color:#b4532a}
+aside a:not(.ot-back),.sidebar a{color:#b4532a}
