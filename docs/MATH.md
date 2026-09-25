@@ -112,6 +112,13 @@ a fan of n rays with step s satisfies it only when s = 360/n (the odd sum is
   `t_{j+1} = t_j + 2·h_j`, crossings at `t_j + h_j`, alternating by vertical.
   Free verticals keep vertices on verticals, so lines bend ("refract").
   Full derivation: [x-span README § The lattice](../x-span/README.md#the-lattice).
+  Per-row heights: `h_j = h_ref · ratio_j`. Each crossing `c_j` joins `t_j` and
+  `t_{j+1}` on the neighbouring vertical, so the "1.5" rows are kites (top half
+  `h_{j-1}`, bottom half `h_j`). Dragging touch level `j` by Δ: `h_{j-1} += Δ/2`,
+  `h_j −= Δ/2` (the chain above grows, the one below shrinks, `t_{j+1}` stays);
+  for `j = 0` the y offset moves by Δ instead. Angle drag: `θ = atan2(|Δy|, |Δx|)`
+  from the pivot (top vertex of V2); the y offset is then re-solved so the pivot
+  keeps its y under the new heights.
 - **hypar** — contours = the convex polygon clipped (Sutherland–Hodgman) by
   every edge half-plane pushed inward k·d, until no area remains; diagonals =
   corner bisectors, solid to the first other bisector crossed, ghost to the

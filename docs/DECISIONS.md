@@ -58,6 +58,39 @@ each tool's README (e.g. mirror-pleats § Decisions).
   fit": the geometry is small and plain SVG is enough, so there is no CDN
   dependency (JSZip is only loaded later, lazily, for ZIP export).
 
+## X span (2026-09-20)
+
+Per-tool detail is in [x-span README § Decisions](../x-span/README.md#decisions).
+
+- **Lines bend at the verticals (refract), not straight.** Two straight lines at
+  ±θ cross only once; to meet again on a vertical they must bend, and they bend
+  on the vertical in between. User: "The verticals again dont mirror so much as
+  refract the lines to be able to meet the next point."
+- **One lattice for all four grid types**, so Regular is just the equal-spacing,
+  constant-height case. The tiling condition (rhombi touch vertex to vertex, all
+  vertices on verticals) fixes every y once the heights are chosen; only x is free.
+- **Four named grid types** (Regular, Const H · move W, Const W · move H, Move
+  both) rather than two switches. User: "Three separate named modes".
+- **Height is per chain row**, not per vertex. User: "One h per chain row".
+  Per-vertex levels would also tile but stop being "chains" and are hard to edit.
+- **Heights stored as ratios of a reference `h`**, so the angle / chain-count
+  definitions and the angle drag scale all rows together. Claude's choice; the
+  user only asked that they "still work".
+- **Angle = side to the horizontal**, either diagonal may be the longer one.
+  User: "Either; angle = side to horizontal".
+- **Anchored at the top, cropped at the bottom**; no forced fill. Chosen twice
+  (constant and variable heights). "Fit to height" is the explicit way to fill.
+- **Chains in 0.5 steps** so the last row can be half a rhombus. User: "allow
+  chains to round to 0.5 to allow half rhombs along the bottom".
+- **Angle drag pivots on the top vertex of the 2nd vertical** and outranks the
+  y-offset drag (circle > line > empty space). User: "Angle set is a bigger
+  mouse priority than y offset". A reset button undoes accidental offsets.
+- **Distance / minor-diagonal verticals keep one extra vertical past the right
+  edge** (grey) so the cropped grid reaches the edge; count-defined verticals go
+  edge to edge.
+- **Free-chain editing and the "exact θ" toggle from v1 were dropped**: with
+  constant or per-row heights and a continuous tiling they cannot exist.
+
 ## Look
 
 - **Halve on-screen strokes only; leave export stroke alone.** The export
