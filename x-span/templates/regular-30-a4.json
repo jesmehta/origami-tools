@@ -1,0 +1,52 @@
+{
+ "format": 1,
+ "tool": "x-span",
+ "version": 1,
+ "grid": {
+  "on": true,
+  "step": 10,
+  "ring": 10,
+  "spoke": 7.5,
+  "snap": true
+ },
+ "state": {
+  "W": 277,
+  "H": 190,
+  "m": 10,
+  "kind": "regular",
+  "xs": [
+   0,
+   46.166666666666664,
+   92.33333333333333,
+   138.5,
+   184.66666666666666,
+   230.83333333333331,
+   277
+  ],
+  "layout": "gen",
+  "reg": {
+   "v": "count",
+   "n": 7,
+   "d": 50,
+   "m": 100
+  },
+  "gen": {
+   "n": 7,
+   "spacing": 50,
+   "start": 0
+  },
+  "a": "angle",
+  "theta": 30,
+  "nCh": 2,
+  "ratio": [
+   1
+  ],
+  "prof": {
+   "h0": 15,
+   "h1": 35,
+   "curve": "linear"
+  },
+  "yoff": 0,
+  "ph": 0
+ }
+}

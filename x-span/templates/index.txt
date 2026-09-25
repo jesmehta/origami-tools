@@ -1,0 +1,4 @@
+# Templates for the Project > Templates… dropdown: label, file (relative to this list).
+# Make one by building a design and using Project > Save…, then add a line here.
+Regular, 30° · A4, regular-30-a4.json
+Growing chain heights · A3, growing-heights-a3.json

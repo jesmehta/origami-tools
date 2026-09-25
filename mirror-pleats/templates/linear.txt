@@ -1,0 +1,4 @@
+# Templates for the Project > Templates… dropdown: label, file (relative to this list).
+# Make one by building a design and using Project > Save…, then add a line here.
+Ordered 45° pleats · A4, linear-ordered-a4.json
+Alternating pleats, edge to edge · A3, linear-alternating-a3.json

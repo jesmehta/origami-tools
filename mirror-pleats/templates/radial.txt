@@ -1,0 +1,5 @@
+# Templates for the Project > Templates… dropdown: label, file (relative to this list).
+# Make one by building a design and using Project > Save…, then add a line here.
+Fan from above · A4, radial-fan-a4.json
+8-ray rosette, flat-foldable · 550 square, radial-rosette-8.json
+6 uneven rays, flat-foldable · 270 square, radial-6-uneven.json

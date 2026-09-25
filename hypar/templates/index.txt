@@ -1,0 +1,5 @@
+# Templates for the Project > Templates… dropdown: label, file (relative to this list).
+# Make one by building a design and using Project > Save…, then add a line here.
+Square hypar · 270 square, square-270.json
+Hexagonal hypar · 270 square, hexagon-270.json
+Octagon with centre cut · 370 × 270, octagon-cut.json

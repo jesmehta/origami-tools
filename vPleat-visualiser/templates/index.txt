@@ -1,0 +1,4 @@
+# Templates for the Project > Templates… dropdown: label, file (relative to this list).
+# Make one by building a design and using Project > Save…, then add a line here.
+S-curve, 5 segments · A4, s-curve.json
+Gentle arc, 4 segments, 3 instances, arc.json

@@ -1,0 +1,46 @@
+{
+ "format": 1,
+ "tool": "vpleat",
+ "version": 1,
+ "grid": {
+  "on": true,
+  "step": 10,
+  "ring": 10,
+  "spoke": 7.5,
+  "snap": true
+ },
+ "state": {
+  "controlPoints": [
+   [
+    40,
+    240
+   ],
+   [
+    140,
+    120
+   ],
+   [
+    260,
+    80
+   ],
+   [
+    380,
+    120
+   ],
+   [
+    430,
+    200
+   ]
+  ],
+  "numSegments": 4,
+  "breakpointTs": null,
+  "widthMm": 24,
+  "arrayCount": 3,
+  "pageWidthMm": 297,
+  "pageHeightMm": 210,
+  "marginMm": 10,
+  "pageAlign": "center",
+  "fitMode": "proportional",
+  "exportScale": 1
+ }
+}
