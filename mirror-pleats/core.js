@@ -70,7 +70,6 @@ document.getElementById('app').innerHTML = `
       <button id="mVerts">Verticals</button>
       <button id="mMeas" data-tip="Click two points (distance) or two lines (angle); pick which in Dimensions.">Measure</button>
     </div>
-    <div class="row"><label><input type="checkbox" id="snap45"> Snap lines to 45° while drawing/dragging</label></div>
     <div class="row">
       <button id="bDel" data-tip="Delete / Backspace">Delete selected</button>
       <button id="bClear">Clear lines</button>
@@ -235,7 +234,7 @@ function computeOne(h, hi) {
   if (!V[h.k] || !V[h.k + 1]) return { segs, vtx };
   const LIM = (S.W + S.H) * 30;
   const mk = (a, b, base) => segs.push({ s: [a[0], a[1], b[0], b[1]], c: clipRect(a[0], a[1], b[0], b[1]), base, hi });
-  const addV = (vi, p) => { if (inRect(p)) vtx.push({ v: vi, p }); };
+  const addV = (vi, p) => { if (inRect(p)) vtx.push({ v: vi, p, hi }); };
   const P = vp(V[h.k], h.a), Q = vp(V[h.k + 1], h.b);
   mk(P, Q, true); addV(h.k, P); addV(h.k + 1, Q);
   for (const dir of [1, -1]) {
@@ -628,6 +627,7 @@ function render() {
     s += ln(xt, 0, xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`);
     s += `<circle cx="${f.x}" cy="${f.edge === 't' ? 0 : S.H}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".8"/>`;
   }
+  if (drag || UI.draw || UI.vdraw) s += OT.snapMark(px);
   cv.innerHTML = s;
   updateStatus();
 }
@@ -716,18 +716,48 @@ function nearestVertical(p, tol, only) {
   });
   return best;
 }
-function snapT(fixedPt, fixedIsLeft, movV, rawT) {
-  const dx = fixedIsLeft ? 1 : -1;
-  const c = [ray45(fixedPt, dx, 1, movV), ray45(fixedPt, dx, -1, movV)].filter(x => x !== null);
-  return c.length ? c.reduce((b, t) => Math.abs(t - rawT) < Math.abs(b - rawT) ? t : b) : rawT;
+/* ---------- snapping (engine in common.js; UI.snap is set per pointer event: checkbox on and Alt not held) ---------- */
+const snapTol = () => 10 * pxmm();
+// the "existing points": sheet corners and centre, vertical ends, and every vertex except those of line `skipH`
+function snapPts(skipH = -1) {
+  const pts = [[0, 0], [S.W, 0], [0, S.H], [S.W, S.H], [S.W / 2, S.H / 2]];
+  S.verts.forEach(v => { const e = vEnds(v); if (e) pts.push(e[0], e[1]); });
+  lastAll.vtx.forEach(q => { if (q.hi !== skipH) pts.push(q.p); });
+  return pts;
+}
+// t on vertical v under the pointer, snapped; `fixed` (the line's other end) is the anchor for angle snapping
+function snapTOn(p, v, fixed, skipH) {
+  const r = visT(v) || [0, 1];
+  if (!UI.snap) return projT(p, v);
+  const A = vp(v, 0), B = vp(v, 1);
+  return clamp(OT.snapOnLine(p, A, [B[0] - A[0], B[1] - A[1]], { tol: snapTol(), points: snapPts(skipH), anchors: fixed ? [fixed] : [] }), r[0], r[1]);
+}
+// x on the horizontal edge at height y (linear verticals), snapped; `anchor` = the vertical's other end (tilt angles)
+function snapEdgeX(x, y, anchor, skipV) {
+  if (!UI.snap) return x;
+  const pts = [[S.W / 2, y]];
+  S.verts.forEach((v, j) => { if (j !== skipV) pts.push([v.xt, y], [v.xb, y]); });
+  return OT.snapOnLine([x, y], [0, y], [1, 0], { tol: snapTol(), points: pts, anchors: anchor ? [anchor] : [] });
+}
+// a point on the rectangle outline nearest p, snapped along that edge (radial free verticals)
+function snapOnRect(p, anchor) {
+  const q = nearestOnRect(p);
+  if (!UI.snap) return q;
+  const horiz = Math.abs(q[1]) < 1e-9 || Math.abs(q[1] - S.H) < 1e-9, d = horiz ? [1, 0] : [0, 1];
+  const s = OT.snapOnLine(q, q, d, { tol: snapTol(), points: snapPts(), anchors: anchor ? [anchor] : [] });
+  return [clamp(q[0] + s * d[0], 0, S.W), clamp(q[1] + s * d[1], 0, S.H)];
+}
+// pointer turned about the centre to a snap direction (radial verticals through the centre)
+function snapAboutCentre(p) {
+  if (!UI.snap) return p;
+  const C = [S.centre.x, S.centre.y], a = OT.snapDir(C, p, snapTol()) * DEG, r = Math.hypot(p.x - C[0], p.y - C[1]);
+  return { x: C[0] + r * Math.cos(a), y: C[1] + r * Math.sin(a) };
 }
 // adjacent vertical + t for the second click of a new line
 function drawTarget(p) {
   const d = UI.draw, adj = [d.vi - 1, d.vi + 1].filter(i => i >= 0 && i < S.verts.length);
   const ai = nearestVertical(p, Infinity, adj);
-  let t = projT(p, S.verts[ai]);
-  if ($('snap45').checked) t = snapT(vp(S.verts[d.vi], d.t), ai > d.vi, S.verts[ai], t);
-  return { ai, t };
+  return { ai, t: snapTOn(p, S.verts[ai], vp(S.verts[d.vi], d.t)) };
 }
 
 // measure helpers
@@ -775,7 +805,7 @@ let drag = null;
 cv.addEventListener('pointerdown', e => {
   if (e.button !== 0 || S.verts.length < 2) return;
   const p = ptr(e), em = effMode(e.shiftKey);
-  UI.shift = e.shiftKey;
+  UI.shift = e.shiftKey; UI.snap = OT.snapping(e);
   if (em === 'measure') { measurePress(p); render(); return; }
 
   if (em === 'lines') {
@@ -794,14 +824,14 @@ cv.addEventListener('pointerdown', e => {
       cv.setPointerCapture(e.pointerId);
     } else {                                         // empty space or a vertical: start a new line
       const vi = nearestVertical(p, 14 * pxmm());
-      if (vi >= 0) UI.draw = { vi, t: projT(p, S.verts[vi]), cur: [p.x, p.y] };
+      if (vi >= 0) UI.draw = { vi, t: snapTOn(p, S.verts[vi]), cur: [p.x, p.y] };
     }
     syncUI(); render(); return;
   }
 
   if (MODE === 'radial') {                           // radial: verticals may enter/exit through any edge
     if (UI.vdraw) {                                  // free mode, second click
-      const nv = lineFrom(UI.vdraw.pt, nearestOnRect(p)), j = snap();
+      const nv = lineFrom(UI.vdraw.pt, snapOnRect(p, UI.vdraw.pt)), j = snap();
       if (nv ? addVerticalFree(nv) : (UI.note = 'That line would be horizontal.', false)) pushUndo(j);
       UI.vdraw = null; syncUI(); render(); return;
     }
@@ -809,13 +839,13 @@ cv.addEventListener('pointerdown', e => {
       const pn = perimNear(p);
       if (pn) {
         UI.selH = -1;
-        if (S.enforce) { const j = snap(); if (addVerticalEnforced(kOf(pn[0], pn[1]))) pushUndo(j); UI.vghost = null; }
-        else { UI.vdraw = { pt: pn }; UI.note = ''; }
+        if (S.enforce) { const j = snap(), q = snapAboutCentre({ x: pn[0], y: pn[1] }); if (addVerticalEnforced(kOf(q.x, q.y))) pushUndo(j); UI.vghost = null; }
+        else { UI.vdraw = { pt: snapOnRect(p) }; UI.note = ''; }
         syncUI(); render(); return;
       }
     }
   } else if (UI.vdraw) {                             // linear: second click on the opposite edge
-    const from = UI.vdraw, x2 = vdrawX(p.x);
+    const from = UI.vdraw, x2 = vdrawX(snapEdgeX(p.x, from.edge === 't' ? S.H : 0, [from.x, from.edge === 't' ? 0 : S.H], -1));
     const j = snap();
     if (from.edge === 't' ? addVertical(from.x, x2) : addVertical(x2, from.x)) pushUndo(j);
     UI.vdraw = null; syncUI(); render(); return;
@@ -824,7 +854,7 @@ cv.addEventListener('pointerdown', e => {
   UI.selH = -1; UI.selV = h && h.type !== 'centre' ? h.i : -1;
   if (!h && MODE === 'linear') {                     // empty click near the top/bottom edge starts a new vertical
     const edge = edgeNear(p);
-    if (edge) { UI.vdraw = { edge, x: clamp(p.x, 0, S.W) }; UI.note = ''; }
+    if (edge) { UI.vdraw = { edge, x: clamp(snapEdgeX(p.x, edge === 't' ? 0 : S.H, null, -1), 0, S.W) }; UI.note = ''; }
   }
   if (h) {
     drag = { ...h, start: p, snapJ: snap(), pushed: false };
@@ -838,16 +868,20 @@ cv.addEventListener('pointerdown', e => {
 cv.addEventListener('pointermove', e => {
   if (S.verts.length < 2) return;
   const p = ptr(e);
-  UI.shift = e.shiftKey;
+  UI.shift = e.shiftKey; UI.snap = OT.snapping(e);
   if (UI.mp && UI.mp.pt) { UI.mcur = snapPoint(p); render(); return; }
   if (UI.draw) {
     const { ai, t } = drawTarget(p);
     UI.draw.cur = vp(S.verts[ai], t); render(); return;
   }
-  if (UI.vdraw) { UI.vdraw.cur = MODE === 'radial' ? nearestOnRect(p) : vdrawX(p.x); render(); return; }
+  if (UI.vdraw) {
+    UI.vdraw.cur = MODE === 'radial' ? snapOnRect(p, UI.vdraw.pt)
+      : vdrawX(snapEdgeX(p.x, UI.vdraw.edge === 't' ? S.H : 0, [UI.vdraw.x, UI.vdraw.edge === 't' ? 0 : S.H], -1));
+    render(); return;
+  }
   if (!drag && S.enforce && MODE === 'radial' && effMode(e.shiftKey) === 'verts') {
-    const pn = hitVerts(p) ? null : perimNear(p);
-    UI.vghost = pn ? radialAt(kOf(pn[0], pn[1])) : null; render();
+    const pn = hitVerts(p) ? null : perimNear(p), q = pn && snapAboutCentre({ x: pn[0], y: pn[1] });
+    UI.vghost = q ? radialAt(kOf(q.x, q.y)) : null; render();
   }
   if (!drag) {
     const em = effMode(e.shiftKey);
@@ -860,28 +894,33 @@ cv.addEventListener('pointermove', e => {
   if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
   const d = drag;
   if (d.type === 'vEnd') {
-    if (MODE === 'radial') { if (S.enforce) setRadialK(d.i, kOf(p.x, p.y)); else setEndFree(d.i, d.end, p); } else setEnd(d.i, d.end, p.x);
+    const v = S.verts[d.i];
+    if (MODE === 'radial') {
+      if (S.enforce) { const q = snapAboutCentre(p); setRadialK(d.i, kOf(q.x, q.y)); }
+      else { const e2 = vEnds(v); setEndFree(d.i, d.end, (q => ({ x: q[0], y: q[1] }))(snapOnRect(p, e2 && e2[d.end === 't' ? 1 : 0]))); }
+    } else setEnd(d.i, d.end, snapEdgeX(p.x, d.end === 't' ? 0 : S.H, d.end === 't' ? [v.xb, S.H] : [v.xt, 0], d.i));
     S.layout = 'free';
   } else if (d.type === 'vBody') {
-    if (MODE === 'radial') { if (S.enforce) setRadialK(d.i, kOf(p.x, p.y)); else moveBodyFree(d.i, d.orig, p.x - d.start.x); } else moveBody(d.i, d.orig, p.x - d.start.x);
+    if (MODE === 'radial') { if (S.enforce) { const q = snapAboutCentre(p); setRadialK(d.i, kOf(q.x, q.y)); } else moveBodyFree(d.i, d.orig, p.x - d.start.x); }
+    else moveBody(d.i, d.orig, snapEdgeX(d.orig.xt + p.x - d.start.x, 0, null, d.i) - d.orig.xt);
     S.layout = 'free';
   } else if (d.type === 'centre') {
-    S.centre = { x: p.x, y: p.y };
+    const m = S.m, W = S.W, H = S.H;
+    S.centre = (q => ({ x: q[0], y: q[1] }))(UI.snap ? OT.snap2D(p, { tol: snapTol(), grid: false,
+      points: [[0, 0], [W, 0], [0, H], [W, H], [W / 2, H / 2], [W / 2, 0], [W / 2, H], [0, H / 2], [W, H / 2], [-m, -m], [W + m, -m], [-m, H + m], [W + m, H + m], [W / 2, -m], [W / 2, H + m]] }) : [p.x, p.y]);
     if (S.layout === 'gen') regen(false); else if (S.enforce) enforceRadial(); else fixCentre();
   }
   else if (d.type === 'hEnd') {
     const h = S.hors[d.i], movA = d.which === 'a';
     const mv = S.verts[movA ? h.k : h.k + 1], fx = S.verts[movA ? h.k + 1 : h.k];
-    let t = projT(p, mv);
-    if ($('snap45').checked) t = snapT(vp(fx, movA ? h.b : h.a), !movA, mv, t);
-    h[d.which] = t;
+    h[d.which] = snapTOn(p, mv, vp(fx, movA ? h.b : h.a), d.i);
   } else if (d.type === 'hBody') {
     const dt = clamp((p.y - d.start.y) / S.H, -Math.min(d.orig.a, d.orig.b), 1 - Math.max(d.orig.a, d.orig.b));
     S.hors[d.i].a = d.orig.a + dt; S.hors[d.i].b = d.orig.b + dt;
   }
   syncUI(); render();
 });
-const endDrag = () => { if (drag) { drag = null; UI.viewLock = null; syncUI(); render(); } };
+const endDrag = () => { OT.lastSnap = null; if (drag) { drag = null; UI.viewLock = null; syncUI(); render(); } };
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 

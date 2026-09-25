@@ -123,13 +123,14 @@ OT.wireSheet = o => {
    pages): rings every `ring` mm and spokes every `spoke`° around a given centre. Settings live in the
    #grOn / #grStep / #grRing / #grSpoke inputs that OT.gridFieldset() writes. */
 OT.gridFieldset = polar => `
-  <fieldset><legend data-tip="Screen only, never exported; drawn on the sheet. ${polar ? 'Polar: rings and spokes around the ◆ centre, following it when it moves.' : 'Square, with its origin at the sheet centre.'}">Grid</legend>
+  <fieldset><legend data-tip="Grid: screen only, never exported; drawn on the sheet. ${polar ? 'Polar: rings and spokes around the ◆ centre, following it when it moves.' : 'Square, with its origin at the sheet centre.'}">Grid &amp; snap</legend>
     <div class="row">
       <label><input type="checkbox" id="grOn" checked> Show</label>
       ${polar
         ? '<label>Rings <input type="number" id="grRing" value="10" min="1" step="1"> mm</label><label>Spokes <input type="number" id="grSpoke" value="7.5" min="1" step="0.5"> °</label>'
         : '<label>Spacing <input type="number" id="grStep" value="10" min="1" step="1"> mm</label>'}
     </div>
+    <div class="row"><label data-tip="Dragged points snap to nearby points, to rays at multiples of 15° and 22.5°, and to the grid while it is shown. Hold Alt while dragging to place a point freely."><input type="checkbox" id="snapOn" checked> Snap (Alt = off)</label></div>
   </fieldset>`;
 OT.gridCfg = () => {
   const v = (id, d) => { const el = document.getElementById(id); return el ? Math.max(0.5, +el.value || d) : d; };
@@ -142,6 +143,7 @@ OT.wireGrid = render => ['grOn', 'grStep', 'grRing', 'grSpoke'].forEach(id => {
 /* SVG for the grid. page: [x0, y0, x1, y1] (grid is clipped to it); origin: [x, y]; polar: bool.
    Lines through the origin are a shade darker; so is every 5th line / ring. */
 OT.gridSVG = (page, origin, polar) => {
+  OT._grid = { origin, polar };                         // remembered for snapping
   const g = OT.gridCfg(); if (!g.on) return '';
   const [x0, y0, x1, y1] = page, [ox, oy] = origin, f = n => +n.toFixed(3), NS = 'vector-effect="non-scaling-stroke"';
   let minor = '', major = '';
@@ -164,3 +166,108 @@ OT.gridSVG = (page, origin, polar) => {
   return `<clipPath id="otGridClip"><rect x="${f(x0)}" y="${f(y0)}" width="${f(x1 - x0)}" height="${f(y1 - y0)}"/></clipPath>` +
     `<g clip-path="url(#otGridClip)" fill="none" stroke-width="0.5" ${NS}><g stroke="#ebe8e0">${minor}</g><g stroke="#d6d2c6">${major}</g></g>`;
 };
+
+/* ---------- snapping ----------
+   Candidates, nearest wins within a pixel tolerance (tools pass it in mm): existing points (weighted ×0.5,
+   so they win ties), rays at the snap angles from anchor points, grid crossings / rings / spokes (only while
+   the grid is shown), then single grid lines (weighted ×2.5, so an angle ray usually beats a lone grid line). #snapOn turns it all off; holding Alt
+   bypasses it for one drag. OT.lastSnap is the snapped point (or null), for drawing a marker. */
+OT.SNAP_DEG = (() => {                                  // multiples of 15° and of 22.5°, over a full turn
+  const a = new Set();
+  for (let d = 0; d < 360; d += 15) a.add(d);
+  for (let d = 0; d < 360; d += 22.5) a.add(d);
+  return [...a].sort((x, y) => x - y);
+})();
+OT.lastSnap = null;
+OT.snapping = e => { const c = document.getElementById('snapOn'); OT.lastSnap = null; return (!c || c.checked) && !(e && e.altKey); };
+addEventListener('keydown', e => { if (e.key === 'Alt') e.preventDefault(); });   // keep Alt from opening the browser menu
+const P2 = p => Array.isArray(p) ? p : [p.x, p.y];
+const RAD = Math.PI / 180;
+const gridCtx = () => { const g = OT.gridCfg(); return g.on && OT._grid ? { ...g, ...OT._grid } : null; };
+
+/* Snap a point that is constrained to the line A + s·d. Returns s (unchanged projection if nothing is near).
+   o: { tol (mm), points: [[x,y]…], anchors: [[x,y]…] (angle rays), grid: false to skip the grid } */
+OT.snapOnLine = (p, A, d, o = {}) => {
+  p = P2(p);
+  const L2 = d[0] * d[0] + d[1] * d[1], tol = o.tol || 1;
+  const s0 = ((p[0] - A[0]) * d[0] + (p[1] - A[1]) * d[1]) / L2;
+  if (L2 < 1e-12) return s0;
+  const at = s => [A[0] + s * d[0], A[1] + s * d[1]], P = at(s0), L = Math.sqrt(L2);
+  let best = s0, bd = tol, hit = null;
+  const cand = (s, w) => { if (!isFinite(s)) return; const q = at(s), dd = Math.hypot(q[0] - P[0], q[1] - P[1]) * w; if (dd < bd) { bd = dd; best = s; hit = q; } };
+  const crs = (a, b) => a[0] * b[1] - a[1] * b[0];
+  const rayHit = (F, u) => { const den = crs(d, u); if (Math.abs(den) > 1e-9) cand(crs([F[0] - A[0], F[1] - A[1]], u) / den, 1); };
+  (o.points || []).forEach(q => { if (Math.abs(crs(d, [q[0] - A[0], q[1] - A[1]])) / L < tol) cand(((q[0] - A[0]) * d[0] + (q[1] - A[1]) * d[1]) / L2, 0.5); });
+  (o.anchors || []).forEach(F => OT.SNAP_DEG.forEach(a => { if (a < 180) rayHit(F, [Math.cos(a * RAD), Math.sin(a * RAD)]); }));
+  const g = o.grid === false ? null : gridCtx();
+  if (g && !g.polar) {
+    const [ox, oy] = g.origin, st = g.step;
+    if (Math.abs(d[0]) > 1e-9) for (let k = Math.round((P[0] - ox) / st) - 1, e = k + 2; k <= e; k++) cand((ox + k * st - A[0]) / d[0], 1);
+    if (Math.abs(d[1]) > 1e-9) for (let k = Math.round((P[1] - oy) / st) - 1, e = k + 2; k <= e; k++) cand((oy + k * st - A[1]) / d[1], 1);
+  } else if (g) {
+    const O = g.origin, r0 = Math.hypot(P[0] - O[0], P[1] - O[1]), a0 = Math.atan2(P[1] - O[1], P[0] - O[0]) / RAD;
+    // rings: |A + s·d − O| = r
+    const fx = A[0] - O[0], fy = A[1] - O[1], b = 2 * (fx * d[0] + fy * d[1]), c0 = fx * fx + fy * fy;
+    for (let k = Math.max(1, Math.round(r0 / g.ring) - 1), e = k + 2; k <= e; k++) {
+      const disc = b * b - 4 * L2 * (c0 - (k * g.ring) ** 2);
+      if (disc >= 0) { cand((-b + Math.sqrt(disc)) / (2 * L2), 1); cand((-b - Math.sqrt(disc)) / (2 * L2), 1); }
+    }
+    for (let k = Math.round(a0 / g.spoke) - 1, e = k + 2; k <= e; k++) rayHit(O, [Math.cos(k * g.spoke * RAD), Math.sin(k * g.spoke * RAD)]);
+  }
+  OT.lastSnap = hit;
+  return best;
+};
+
+/* Snap a free point. o: { tol, points, anchors (angle rays from each), grid: false to skip }. Returns [x, y]. */
+OT.snap2D = (p, o = {}) => {
+  p = P2(p);
+  const tol = o.tol || 1;
+  let best = p, bd = tol, hit = null;
+  const cand = (q, w) => { const dd = Math.hypot(q[0] - p[0], q[1] - p[1]) * w; if (dd < bd) { bd = dd; best = q; hit = q; } };
+  (o.points || []).forEach(q => cand(q, 0.5));
+  (o.anchors || []).forEach(F => {
+    const r = Math.hypot(p[0] - F[0], p[1] - F[1]); if (r < 1e-9) return;
+    OT.SNAP_DEG.forEach(t => {
+      const u = [Math.cos(t * RAD), Math.sin(t * RAD)], s = (p[0] - F[0]) * u[0] + (p[1] - F[1]) * u[1];
+      if (s > 0) cand([F[0] + s * u[0], F[1] + s * u[1]], 1);
+    });
+  });
+  const g = o.grid === false ? null : gridCtx();
+  if (g && !g.polar) {
+    const [ox, oy] = g.origin, st = g.step, gx = ox + Math.round((p[0] - ox) / st) * st, gy = oy + Math.round((p[1] - oy) / st) * st;
+    cand([gx, gy], 1); cand([gx, p[1]], 2.5); cand([p[0], gy], 2.5);
+  } else if (g) {
+    const O = g.origin, r = Math.hypot(p[0] - O[0], p[1] - O[1]), a = Math.atan2(p[1] - O[1], p[0] - O[0]);
+    const rr = Math.max(g.ring, Math.round(r / g.ring) * g.ring), aa = Math.round(a / RAD / g.spoke) * g.spoke * RAD;
+    cand([O[0] + rr * Math.cos(aa), O[1] + rr * Math.sin(aa)], 1);
+    cand([O[0] + rr * Math.cos(a), O[1] + rr * Math.sin(a)], 2.5);
+    cand([O[0] + r * Math.cos(aa), O[1] + r * Math.sin(aa)], 2.5);
+  }
+  OT.lastSnap = hit;
+  return best;
+};
+
+/* Snap the direction of p as seen from centre C to the snap angles (and the polar grid's spokes when that grid
+   is centred on C). Returns the snapped angle in degrees, or the raw one. tol in mm, measured at p. */
+OT.snapDir = (C, p, tol) => {
+  p = P2(p);
+  const r = Math.hypot(p[0] - C[0], p[1] - C[1]), a = Math.atan2(p[1] - C[1], p[0] - C[0]) / RAD;
+  if (r < 1e-9) return a;
+  const g = gridCtx(), list = OT.SNAP_DEG.slice();
+  if (g && g.polar && Math.hypot(g.origin[0] - C[0], g.origin[1] - C[1]) < 1e-6) {
+    const k = Math.round(a / g.spoke); list.push((k - 1) * g.spoke, k * g.spoke, (k + 1) * g.spoke);
+  }
+  let best = a, bd = tol;
+  list.forEach(t => {
+    const dt = ((t - a) % 360 + 540) % 360 - 180, dd = r * Math.abs(Math.sin(dt * RAD));
+    if (Math.abs(dt) < 90 && dd < bd) { bd = dd; best = a + dt; }
+  });
+  OT.lastSnap = best !== a ? [C[0] + r * Math.cos(best * RAD), C[1] + r * Math.sin(best * RAD)] : null;
+  return best;
+};
+// Snap a scalar to the nearest of some values within tol
+OT.snap1D = (v, values, tol) => { let best = v, bd = tol; values.forEach(x => { if (Math.abs(x - v) < bd) { bd = Math.abs(x - v); best = x; } }); return best; };
+// Grid lines as plain coordinates near v (square grid only), for 1-D snapping
+OT.gridLines = (axis, v) => { const g = gridCtx(); if (!g || g.polar) return []; const o = g.origin[axis], k = Math.round((v - o) / g.step); return [o + (k - 1) * g.step, o + k * g.step, o + (k + 1) * g.step]; };
+// Small orange ring at OT.lastSnap (px = mm per screen pixel)
+OT.snapMark = px => OT.lastSnap ? `<circle cx="${+OT.lastSnap[0].toFixed(3)}" cy="${+OT.lastSnap[1].toFixed(3)}" r="${7 * px}" fill="none" stroke="#e65100" stroke-width="1.2" vector-effect="non-scaling-stroke"/>` : '';

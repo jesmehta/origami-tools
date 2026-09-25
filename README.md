@@ -82,6 +82,24 @@ not use it (yet).
   every *Rings* mm and spokes every *Spokes*° around the ◆ centre, following
   it (7.5° default, so every snap angle — see below — has a spoke; multiples
   of 45° darker). vPleat has no grid (its curve is drawn freehand).
+- Snapping (*Snap* checkbox in the Grid & snap panel; hold **Alt** while
+  dragging to place freely). Candidates within ~10 px, nearest wins:
+  existing points (sheet corners/centre, vertical ends, trail vertices —
+  weighted to win ties), rays at every multiple of 15° and 22.5° from the
+  relevant anchor, grid crossings / ring×spoke points while the grid is shown,
+  then single grid lines (weighted so an angle ray usually beats them). An
+  orange ring marks the snap. What snaps where:
+  - mirror-pleats: line handles slide along their vertical and snap there
+    (the line's angle from its other end, grid-line and ring crossings,
+    vertices); linear vertical ends/bodies snap along the edge (tilt angle,
+    grid, other verticals); radial verticals through the centre snap their
+    direction (snap angles + polar spokes); free radial ends snap along the
+    outline; the ◆ snaps to sheet/page corners, edge midpoints and centre.
+    This replaces the old "Snap lines to 45°" checkbox.
+  - x-span: vertical x, the lattice angle θ (drag), chain-height handles and
+    the grid y offset (grid lines, sheet edges/centre).
+  - hypar: new-polygon centre, ◆, corners — regular: rotation snaps to the
+    snap angles about the centre; free: edge angles from both neighbours.
 
 ## License
 

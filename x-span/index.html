@@ -473,6 +473,7 @@ function render() {
     }));
     s += '</g>';
   }
+  if (drag) s += OT.snapMark(px);
   cv.innerHTML = s;
   updateStatus(G);
 }
@@ -557,6 +558,14 @@ function angleAnchor() {
   }
   return { ax: S.xs[1], ay: 0, vt: 't', j: 0 };
 }
+/* snapping (engine in common.js; UI.snap is set per pointer event: checkbox on and Alt not held) */
+const snapTol = () => 10 * pxmm();
+function snapX(x, skip) {                               // a vertical's x: grid lines, sheet centre, other verticals
+  if (!UI.snap) return x;
+  const pts = [[S.W / 2, 0]]; S.xs.forEach((v, j) => { if (j !== skip) pts.push([v, 0]); });
+  return OT.snapOnLine([x, 0], [0, 0], [1, 0], { tol: snapTol(), points: pts });
+}
+const snapY = y => UI.snap ? OT.snap1D(y, [...OT.gridLines(1, y), 0, S.H / 2, S.H], snapTol()) : y;
 function edgeNear(p) {
   const tol = 14 * pxmm();
   if (p.x < -tol || p.x > S.W + tol) return null;
@@ -607,19 +616,19 @@ let drag = null;
 cv.addEventListener('pointerdown', e => {
   if (e.button !== 0 || S.xs.length < 2) return;
   const p = ptr(e), em = effMode(e.shiftKey);
-  UI.shift = e.shiftKey;
+  UI.shift = e.shiftKey; UI.snap = OT.snapping(e);
   if (em === 'measure') { measurePress(p); render(); return; }
   if (em === 'grid') {
     UI.selV = -1;
     const th = isVarH() ? hitTouch(p) : null, snapJ = snap();
-    if (th) { ensureRatio(th.j + 2); drag = { type: 'touch', j: th.j, start: p, r0: S.ratio.slice(), y0: S.yoff, href: gridH(), snapJ, pushed: false }; }
+    if (th) { ensureRatio(th.j + 2); drag = { type: 'touch', j: th.j, start: { x: p.x, y: th.y }, r0: S.ratio.slice(), y0: S.yoff, href: gridH(), snapJ, pushed: false }; }
     else drag = hitLine(p) && gridH() > 1e-6 ? { type: 'angle', ...angleAnchor(), snapJ, pushed: false }
       : { type: 'grid', start: p, y0: S.yoff, snapJ, pushed: false };
     cv.setPointerCapture(e.pointerId); syncUI(); render(); return;
   }
   const h = hitVerts(p);                             // Verticals mode (irregular)
   UI.selV = h ? h.i : -1;
-  if (!h && edgeNear(p)) { const j = snap(); if (addVertical(clamp(p.x, 0, S.W))) pushUndo(j); }
+  if (!h && edgeNear(p)) { const j = snap(); if (addVertical(clamp(snapX(p.x, -1), 0, S.W))) pushUndo(j); }
   if (h) {
     drag = { ...h, start: p, snapJ: snap(), pushed: false, x0: S.xs[h.i] };
     UI.viewLock = bounds();
@@ -630,7 +639,7 @@ cv.addEventListener('pointerdown', e => {
 cv.addEventListener('pointermove', e => {
   if (S.xs.length < 2) return;
   const p = ptr(e);
-  UI.shift = e.shiftKey;
+  UI.shift = e.shiftKey; UI.snap = OT.snapping(e);
   if (UI.mp && UI.mp.pt) { UI.mcur = snapPoint(p); render(); return; }
   if (!drag) {
     const em = effMode(e.shiftKey);
@@ -641,22 +650,23 @@ cv.addEventListener('pointermove', e => {
   if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
   const d = drag;
   if (d.type === 'angle') {                          // θ from the pointer's direction off the anchor; anchor stays a vertex
-    S.a = 'angle'; S.theta = clamp(Math.atan2(Math.abs(p.y - d.ay), Math.abs(p.x - d.ax)) / DEG, 0.5, 89.5);
+    const a = UI.snap ? OT.snapDir([d.ax, d.ay], p, snapTol()) * DEG : Math.atan2(p.y - d.ay, p.x - d.ax);
+    S.a = 'angle'; S.theta = clamp(Math.atan2(Math.abs(Math.sin(a)), Math.abs(Math.cos(a))) / DEG, 0.5, 89.5);
     S.yoff = normY(d.ay - relOff(d.vt, d.j));
     UI.ang = { ax: d.ax, ay: d.ay, cur: [p.x, p.y] };
   } else if (d.type === 'touch') {                   // move touch level j: chain above grows, chain below shrinks (the rest stay put)
-    const R = d.r0.slice(), dy = p.y - d.start.y, k = d.href;
+    const R = d.r0.slice(), dy = snapY(p.y) - d.start.y, k = d.href;
     if (d.j === 0) { const h0 = R[0] * k, dd = Math.min(dy, 2 * (h0 - MINH)); R[0] = (h0 - dd / 2) / k; S.yoff = d.y0 + dd; }
     else {
       const hp = R[d.j - 1] * k, hj = R[d.j] * k, dd = clamp(dy, -2 * (hp - MINH), 2 * (hj - MINH));
       R[d.j - 1] = (hp + dd / 2) / k; R[d.j] = (hj - dd / 2) / k;
     }
     S.ratio = R;
-  } else if (d.type === 'grid') S.yoff = normY(d.y0 + p.y - d.start.y);
-  else setX(d.i, d.x0 + p.x - d.start.x);
+  } else if (d.type === 'grid') S.yoff = normY(snapY(d.y0 + p.y - d.start.y));
+  else setX(d.i, snapX(d.x0 + p.x - d.start.x, d.i));
   syncUI(); render();
 });
-const endDrag = () => { if (drag) { drag = null; UI.viewLock = null; UI.ang = null; syncUI(); render(); } };
+const endDrag = () => { OT.lastSnap = null; if (drag) { drag = null; UI.viewLock = null; UI.ang = null; syncUI(); render(); } };
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 
