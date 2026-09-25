@@ -165,15 +165,15 @@ otherwise rounded to 0.1 mm; clamped to 5–15.
 ## 5. Snapping
 
 All snapping is "nearest candidate within a tolerance" (≈10 screen px,
-converted to mm). Candidate distance is multiplied by a weight so that some
-kinds win ties:
+converted to mm). Candidate distance is multiplied by a weight so that points
+win ties, and single grid lines are a separate, lower tier:
 
-| Candidate | Weight |
+| Candidate | Weight / tier |
 |---|---|
 | existing points (corners, sheet centre, vertical ends, trail vertices — minus the dragged line's own) | 0.5 |
 | rays at every snap angle from an anchor (e.g. the line's other end) | 1 |
 | square-grid crossings / polar ring × spoke points | 1 |
-| a single grid line (x only, y only, ring only, spoke only) | 2.5 |
+| a single grid line (x only, y only, ring only, spoke only) | 1, **only if nothing above is in range** |
 
 Snap angles `OT.SNAP_DEG` = multiples of 15° ∪ multiples of 22.5° =
 0, 15, 22.5, 30, 45, 60, 67.5, 75, 90, … (the polar grid default of 7.5°
@@ -186,7 +186,13 @@ spokes contains all of them).
   (`|A + s·d − O| = r`, a quadratic); with spokes. The result is clamped to the
   visible part afterwards.
 - **Free** (`snap2D`, hypar corners / centres): points; the projection onto
-  each anchor ray; grid crossing; single grid lines.
+  each anchor ray; grid crossing; then (fallback tier) single grid lines.
+- **Whole moves** (a line's body, a vertical's body, the hypar ◆): the move
+  proposes a shift Δ; each end handle is snapped on its own at its shifted
+  position (constrained to its vertical / edge, or free for polygon corners),
+  giving a correction c_i; the smallest |c_i| among ends that snapped is added
+  to Δ for everything. Mirror-pleats line bodies shift both params by the same
+  Δt, so the correction from one end is valid for the other.
 - **Direction** (`snapDir`, rays / radial lines / x-span θ): the pointer's
   angle about a centre is snapped when the perpendicular distance at the
   pointer, `r·|sin Δ|`, is within tolerance — so it gets stricter near the
@@ -194,4 +200,6 @@ spokes contains all of them).
 
 Worked failure worth remembering: a test aimed at a 31° corner at radius
 70 mm from (135,135) landed 0.002 mm from the grid line x = 195, so the grid
-line correctly won. Not a bug — but it's why grid lines got the heavier weight.
+line correctly won. Not a bug. (The opposite case — a corner 0.16 mm from a
+grid line but 0.34 mm from a grid point, landing on the line — is why lone
+grid lines became a fallback tier.)

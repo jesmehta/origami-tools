@@ -157,8 +157,17 @@ Per-tool detail is in [x-span README § Decisions](../x-span/README.md#decisions
 ## Snapping
 
 - **One nearest-candidate engine** for every tool rather than per-feature
-  snaps. Weights make points win ties and make a lone grid line lose to an
-  angle ray.
+  snaps. Points are weighted to win ties. A lone grid line is a **fallback
+  tier** — used only if no point, angle ray or grid crossing is in range. It
+  started as a heavier weight (×1.5, then ×2.5), but a corner 0.16 mm from a
+  grid line and 0.34 mm from a grid point still went to the line; a tier makes
+  "prefer the crossing" hold regardless of distances.
+- **Moving a whole line / vertical / polygon snaps if any of its end handles
+  can** — user: "if an angled line is moved, then it should snap whenever its
+  handle points can snap to the grid or other element". Each end is tried
+  separately; the whole thing shifts by the smallest correction (raw
+  distance, so the handle that is closest to a target decides). Angle rays
+  are not used for a whole move — its angle isn't what's being set.
 - **Angles = multiples of 15° and 22.5°** in both linear and radial — the
   user's spec ("15, 30, 45, 60 … and divisions of 90 – 45 and 22.5 … as much
   of the angle snapping as applicable to linear as well").

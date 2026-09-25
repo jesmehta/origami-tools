@@ -43,6 +43,8 @@ What a user can expect to work the same way in every tool (kirigami excepted).
   of 45° darker), moving with it.
 - **Snap** checkbox; hold **Alt** while dragging to place freely.
 - An **orange ring** shows where a drag snapped.
+- Moving a whole line, vertical or polygon snaps as soon as **any** of its
+  end handles reaches a target.
 - Snap angles: every multiple of **15°** and **22.5°**.
 
 ## Handles

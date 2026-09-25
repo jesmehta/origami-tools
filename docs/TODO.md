@@ -61,9 +61,9 @@
   the index shift on insert) are intentional.
 - **Keep flat-foldable switch-on** can push rays past neighbours on a very
   uneven layout (Undo).
-- **A lone grid line deliberately loses** to points and angle rays (weight 2.5) — if snapping feels
-  "sticky" or "weak", tune the weights / 10 px tolerance in `common.js`, not
-  per tool.
+- **A lone grid line is a fallback tier** in `snap2D` (only if no point, ray
+  or crossing is in range) — if snapping feels "sticky" or "weak", tune the
+  weights / tiers / 10 px tolerance in `common.js`, not per tool.
 - **vPleat export look is set in two places**: page CSS (preview) and the
   `LOOK` table in the download handler (file). Change both.
 - Commit hygiene: stage explicit paths (`git add <files>`), not `commit -a` —

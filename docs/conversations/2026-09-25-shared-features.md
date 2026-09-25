@@ -206,3 +206,20 @@ steps); free drags gave 12.0000029 mm (now rounded to 0.1 mm); the "unlocked"
 note stuck after later drags (now cleared). Also checked: drag snaps 8.9 →
 8.5, Alt-drag stays at 9.2, lock/typed value/undo, hypar top edge → 15,
 an old `m = 7` file → 7 / 7, radial's Fit disabled.
+
+## 11. Snapping when a whole line is moved
+
+> yes, push.
+> if an angled line is moved, then it should snap whenever its handle points can snap to the grod or other element.
+
+Built: dragging a mirror-pleats line's body (both modes), a linear or free
+radial vertical's body, or the hypar ◆ now tries each end handle against the
+snap targets and shifts the whole thing by the smallest correction. Checks:
+a 45° line dragged 13.3 mm → both ends on grid lines (y 35, 75), with Alt →
+free (37.05, 77.05); a vertical dragged 7.9 → 108.5 (grid). Two things the
+hypar test showed: a small ◆ drag snapped straight back to the sheet centre
+(points count at half distance — intended); and a corner went to the grid
+line x = 195 rather than the grid point (195, 105) because the weighted line
+distance was marginally smaller — so single grid lines became a fallback
+tier (used only if no point / ray / crossing is in range). Angle tests from
+§4 re-run unchanged.
