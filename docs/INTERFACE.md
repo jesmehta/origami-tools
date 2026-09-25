@@ -9,6 +9,12 @@ What a user can expect to work the same way in every tool (kirigami excepted).
 - Top of the sidebar: **Origami tools** backlink (an outlined arrow-shaped button), tool title.
 - Sidebar order: **Sheet → Grid & snap → tool controls → Edit mode →
   layouts → Dimensions → Export → Undo/Redo.**
+- **Every sidebar section folds**: click its heading (▾ / ▸; Enter or Space
+  when focused). Meant for set-once sections like Sheet and Grid & snap.
+  Which sections are folded is remembered per page in the browser (not in
+  project files). vPleat: each tab's headings fold the controls under them;
+  its last tab is split into *Page* and *Fit & export* so the page settings
+  can be folded without hiding the Download button.
 - The canvas background is grey; the **page is white**, its outline light
   grey (screen only); the **margin rectangle** is the dark cut line.
 

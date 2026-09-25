@@ -134,7 +134,7 @@
     <label>Number of instances <span id="lbl-arraycount"></span></label>
     <input type="range" id="sl-arraycount" min="1" max="12" step="1">
 
-    <h2 style="margin-top:1.2rem;">Page &amp; fit</h2>
+    <h2 style="margin-top:1.2rem;">Page</h2>
     <label>Page size</label>
     <div style="display:flex;gap:.4rem;align-items:center">
       <select id="pgSel" style="flex:1;padding:.35rem;font:inherit"></select>
@@ -151,7 +151,8 @@
     <div class="chk-row"><input type="radio" name="align" id="rd-align-topleft"><label for="rd-align-topleft">Top-left aligned</label></div>
     <div id="page-fit-status" class="hint"></div>
 
-    <label style="margin-top:1rem;" data-tip="Proportional shrinks the whole pattern (width and length together) for the final export size only — fold angles are unaffected. Reduce strip width changes the actual strip width, so fold angles recalculate; it can't help if the curve itself is taller than the page.">Fit strategy</label>
+    <h2 style="margin-top:1.2rem;">Fit &amp; export</h2>
+    <label data-tip="Proportional shrinks the whole pattern (width and length together) for the final export size only — fold angles are unaffected. Reduce strip width changes the actual strip width, so fold angles recalculate; it can't help if the curve itself is taller than the page.">Fit strategy</label>
     <div class="chk-row"><input type="radio" name="fitmode" id="rd-fit-scale" checked><label for="rd-fit-scale">Proportional scale</label></div>
     <div class="chk-row"><input type="radio" name="fitmode" id="rd-fit-width"><label for="rd-fit-width">Reduce strip width only</label></div>
     <button id="btn-autofit">Auto-fit to page</button>

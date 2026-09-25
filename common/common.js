@@ -29,6 +29,34 @@ window.OT = window.OT || {};
   document.addEventListener('pointerdown', hide, true);
 })();
 
+/* ---------- collapsible sidebar sections ----------
+   Click a section heading to fold it away: a fieldset's <legend>, or (vPleat) an <h2> in a .sidebar, which folds
+   everything after it up to the next <h2>. Delegated, so sidebars built by script work too. Which sections are
+   shut is remembered per page in localStorage (a convenience only; it falls back to all open). */
+(function () {
+  const KEY = 'ot-shut:' + location.pathname;
+  const heads = () => [...document.querySelectorAll('aside fieldset > legend, .sidebar > h2')];
+  const name = h => h.textContent.trim();
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(heads().filter(isShut).map(name))); } catch (e) {} };
+  const isShut = h => h.classList.contains('ot-shut');
+  function setShut(h, shut) {
+    h.classList.toggle('ot-shut', shut); h.setAttribute('aria-expanded', !shut);
+    if (h.tagName === 'LEGEND') { h.parentElement.classList.toggle('ot-shut', shut); return; }
+    for (let el = h.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) el.classList.toggle('ot-folded', shut);
+  }
+  const headOf = t => t.closest && t.closest('aside fieldset > legend, .sidebar > h2');
+  document.addEventListener('click', e => { const h = headOf(e.target); if (h) { setShut(h, !isShut(h)); save(); } });
+  document.addEventListener('keydown', e => {
+    const h = (e.key === 'Enter' || e.key === ' ') && headOf(e.target);
+    if (h) { e.preventDefault(); setShut(h, !isShut(h)); save(); }
+  });
+  addEventListener('load', () => {
+    const shut = new Set(load());
+    heads().forEach(h => { h.classList.add('ot-head'); h.tabIndex = 0; setShut(h, shut.has(name(h))); });
+  });
+})();
+
 /* ---------- export ---------- */
 // Local-time stamp for file names: YYYY_MMDD_HHMMSS
 OT.stamp = (d = new Date()) => {

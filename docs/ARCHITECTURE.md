@@ -7,7 +7,7 @@ origami-tools/
   index.html                 landing page (cards + thumbnails in assets/thumbnails/)
   common/
     common.js                shared helpers, one global: OT
-    common.css               shared styles (backlink, tooltip, select)
+    common.css               shared styles (backlink, tooltip, select, folding)
     page-sizes.txt           sheet presets: "name, width, height" per line
   mirror-pleats/
     linear.html, radial.html set window.MODE, load common + core.js
@@ -32,6 +32,7 @@ tool's `<head>`, before the tool's own script.
 | Area | API | Notes |
 |---|---|---|
 | Tooltips | `data-tip="…"` on any element | One floating `<div>` on `<body>`; text read at hover time, so a tool can change a tip by setting `el.dataset.tip` (mirror-pleats/x-span do this per mode). Legends / h2 with a tip get a ⓘ via CSS. |
+| Folding sections | automatic | A delegated click on `aside fieldset > legend` or `.sidebar > h2` toggles `ot-shut` (a fieldset hides everything but its legend; an h2 hides its siblings up to the next h2 via `ot-folded`). On `load`, headings get `tabindex` and the folded set is restored from `localStorage['ot-shut:' + pathname]`, keyed by heading text. |
 | Export | `OT.stamp()` → `YYYY_MMDD_HHMMSS` · `OT.download(blob, name)` · `OT.svgToPng(svg, wmm, hmm, ppm)` → Promise<Blob> · `OT.jszip()` (lazy-loads JSZip from cdnjs) · `OT.wireExport({ base, svg(bg), size() })` | `wireExport` binds `#xSvg`, `#xPng`, `#xZip`; PNG density from `#ppm`. The ZIP's two files share one stamp. |
 | Sheet presets | `OT.pageSizes` (Promise of `[name, w, h][]`) · `OT.wireSheet({ get(), set(w, h) })` → `sync()` | Binds `#pgSel` + `#pgSwap`. `sync()` reselects the matching preset (either orientation) or "Custom"; tools call it from `syncUI()`. |
 | Grid | `OT.gridFieldset(polar)` → HTML · `OT.gridCfg()` · `OT.wireGrid(render)` · `OT.gridSVG(pageBox, origin, polar)` | `gridSVG` also records `OT._grid = { origin, polar }` for snapping; clipped to the page with a `<clipPath>`. |

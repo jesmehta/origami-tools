@@ -9,3 +9,11 @@ legend[data-tip]::after,h2[data-tip]::after{content:" ⓘ";color:#999;font-weigh
 legend[data-tip],h2[data-tip],label[data-tip],span[data-tip]{cursor:help}
 aside select{font:inherit;padding:3px 4px;max-width:190px}
 #margLock.on{background:#222;color:#fff;border-color:#222}
+/* collapsible sidebar sections (common.js) */
+legend.ot-head,h2.ot-head{cursor:pointer;user-select:none}
+.ot-head::before{content:"▾";display:inline-block;width:1.1em;font-size:1.15em;line-height:1;color:#666;text-align:center;transition:transform .12s}
+.ot-head.ot-shut::before{transform:rotate(-90deg)}
+.ot-head:hover{color:#000}
+.ot-head:focus-visible{outline:1px dashed #888;outline-offset:2px}
+fieldset.ot-shut{border-width:1px 0 0;border-radius:0;padding-bottom:4px}
+fieldset.ot-shut > :not(legend),.ot-folded{display:none !important}

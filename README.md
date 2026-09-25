@@ -56,10 +56,13 @@ not use it (yet).
 
 ### Shared-features changelog (all tools except kirigami)
 
-- Backlink "← Origami tools" at the top of every tool page.
+- Backlink to this page at the top of every tool page (an outlined
+  arrow-shaped button).
 - On-screen strokes halved (pattern, sheet, ghost, dimension, measure and
   handle outlines). Export stroke width is unchanged — it is a fabrication
   setting with its own field.
+- Sidebar sections fold: click a heading (▾ / ▸) to collapse it — e.g.
+  Sheet and Grid & snap once set. Remembered per page in the browser.
 - Sidebar explanations moved into hover tooltips (`data-tip`): sections with
   one show ⓘ after their heading; mode buttons carry their own how-to. The
   one-line hint in the status bar under the canvas stays.
