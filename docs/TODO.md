@@ -2,17 +2,11 @@
 
 ## Open / proposed
 
-- **Save / load projects as JSON** (scoped 2026-09-25, not started). Every
-  tool already serialises its state for undo, so: a shared
-  `OT.wireProject({ tool, version, get, set })` — Save downloads
-  `<tool>_<stamp>.json` `{ tool, version, savedAt, state }`; Load checks the
-  tool, fills missing fields with defaults, applies as one undoable step.
-  Per tool ~10–20 lines (vPleat more: some state lives outside `state`).
-  Templates: `templates/<tool>/` listed in a text file → "Start from
-  template" dropdown. Optional: embed the JSON in exported SVGs so an export
-  can be reopened. Estimate ~half a day. Open questions for the user:
-  include view settings (grid, colours, stroke, dimension toggles) or
-  geometry only? embed in SVG?
+- ~~Save / load projects as JSON~~ — **done 2026-09-25** (`a9823e7` …
+  `1c5b09e`); see DECISIONS § Projects. Possible follow-ups: more templates;
+  a version-migration function the first time a tool's state shape changes
+  (files carry `version: 1`); vPleat undo only covers the curve, so undoing a
+  load there is partial.
 - **Kirigami** — not functional; not on `common/`. When it is, give it the
   backlink, tooltips, export naming, sheet/margin, grid/snap.
 - Tool ideas from `scratchNodes_oritools.md`: helix generator, whirlpool;
@@ -20,6 +14,15 @@
 - Mountain/valley assignment (hypar has none; mirror-pleats all one colour).
 
 ## Watch out for
+
+- **Changing a tool's state shape breaks nothing silently only if** new
+  fields have start-up defaults — a load merges the file over the defaults
+  (`Object.assign(S, defaults, file)`). Renaming or re-meaning a field needs a
+  `version` bump and a migration in the tool's `set`. The template JSONs in
+  `*/templates/` are real project files and must be regenerated (or migrated)
+  too.
+- **Project files are checked by `tool` name** — `mirror-pleats-linear` and
+  `mirror-pleats-radial` are different tools on purpose.
 
 - **Live Server + saving exports inside the repo = page reload, work lost.**
   Save exports outside the served folder (or add them to

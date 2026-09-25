@@ -170,6 +170,26 @@ Per-tool detail is in [x-span README § Decisions](../x-span/README.md#decisions
 - **Stamp `YYYY_MMDD_HHMMSS`** local time — user's format.
 - **JSZip loaded lazily** from cdnjs on first ZIP.
 
+## Projects (save / load / templates)
+
+- **A project = geometry + Grid & snap settings.** User: "does a project need
+  grid, colours, stroke width, etc ? Maybe grid settings, to convey snapping,
+  and the geometry. The colours stroke etc can come form the current
+  defaults". So colours, stroke width and PNG density are not saved.
+- **The saved state is exactly the undo snapshot** (`S` / vPleat's `state`) —
+  no second serialisation to keep in step.
+- **Embedded in every exported SVG** (`<metadata id="ot-project">`, CDATA
+  JSON), so an export is also a project — user: "yes, if its already there,
+  sure". Load accepts .json or .svg; drop onto the page works too.
+- **A load merges over the start-up defaults and is one undo step**, so an
+  older file with fewer fields still loads, and a bad load is Ctrl+Z away
+  (vPleat: its undo only covers the curve).
+- **Wrong-tool files are refused** by name, including linear vs radial.
+- **Templates are plain project files** in `<tool>/templates/`, listed in an
+  index (`label, file` — file after the last comma, so labels can contain
+  commas; the first version split on every comma and broke on
+  "Alternating pleats, edge to edge"). Needs a server, like the page sizes.
+
 ## Bug: "exporting SVG resets the canvas" (radial)
 
 Not a code bug. The user was saving exports into `origami-tools/downloads/`,

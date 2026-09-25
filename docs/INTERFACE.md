@@ -51,6 +51,16 @@ What a user can expect to work the same way in every tool (kirigami excepted).
   **Delete/Backspace** removes the selection. **Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y**
   undo/redo.
 
+## Project
+
+- **Save…** downloads `<tool>_<stamp>.json`; **Load…** takes a .json or an
+  .svg exported by these tools; or drop either onto the page.
+  **Templates…** appears when the tool has a `templates/` folder (server only).
+- Saved: geometry and Grid & snap settings. Not saved: colours, stroke, PNG
+  density — those stay as currently set.
+- A load is one Undo step (vPleat: undo brings back the curve only).
+- In the sidebar just under the title (vPleat: at the right of the header).
+
 ## Export
 
 - **Export SVG / Export PNG / Export ZIP** (both). Names:
@@ -58,5 +68,6 @@ What a user can expect to work the same way in every tool (kirigami excepted).
   its stamp. vPleat: `vpleat-export_<stamp>.zip` with stamped contents.
 - SVG is true size in mm (1:1); PNG density is set in px/mm.
 - Not exported: grid, ghosts, handles, dimensions, measurements, page outline.
+  Every exported SVG does carry the project (invisible `<metadata>`).
 - **Saving an export into the repo folder while Live Server is running
   reloads the page and loses unsaved work** — save elsewhere (see TODO).
