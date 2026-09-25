@@ -39,6 +39,23 @@ fraction of H (line mode), or **distance from the centre in mm** (ray mode).
 `vp(v, t)` turns a param into a point; `projT(p, v)` projects back and
 clamps to the visible part.
 
+### Free verticals, 45° rays, snapping onto the centre
+
+- **Line through two outline points** A, B (any edges): with
+  `k = (B.x − A.x)/(B.y − A.y)`, `xt = A.x + (0 − A.y)·k` and
+  `xb = A.x + (H − A.y)·k`. Undefined when `B.y = A.y` (a horizontal line
+  can't be stored as `{xt, xb}`), so those are refused.
+- **Free verticals must not touch:** accepted only if their visible segments
+  don't intersect and are ≥ 1 mm apart (segment–segment distance is 0 if they
+  cross, else the smallest of the four endpoint-to-segment distances).
+- **45° ray from P onto a vertical** `{xt, xb}`, `D = xb − xt`, x-direction
+  `dx = ±1`, y-direction `dy = ±1`, `q = dx·dy`:
+  `t = (P.y + q(xt − P.x)) / (H − qD)`; valid if `0 ≤ t ≤ 1` (visible part)
+  and `dx·(x(t) − P.x) > 0`; a ~0 denominator means parallel, so none. Used by
+  the ordered layouts.
+- **Snapping existing verticals onto the centre C:** replace each by the line
+  through C and its point at `y = H/2`, `m`: `k = (m.x − cx)/(H/2 − cy)`.
+
 ### Radial, lines through the centre
 
 For centre C = (cx, cy) above/below the sheet, a vertical through C with

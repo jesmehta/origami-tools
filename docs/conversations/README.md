@@ -8,8 +8,8 @@ docs one level up; these are the "why, in the user's words" layer.
 
 | Date | Topic | Tool(s) |
 |---|---|---|
+| 2026-09-20 | [Building mirror-pleats: linear/radial pages, reflections, dimensions, enforce-radial, ghost lines](2026-09-20-mirror-pleats.md) | mirror-pleats |
 | 2026-09-25 | [Shared features: grid, snap, sheet/margin, tooltips, export, radial rays](2026-09-25-shared-features.md) | all except kirigami |
 
-Earlier sessions (tool creation for vPleat, mirror-pleats, x-span, hypar,
-kirigami) have not been logged here yet — add them in the same format and
-add a row above.
+Earlier sessions (tool creation for vPleat, x-span, hypar, kirigami) have
+not been logged here yet — add them in the same format and add a row above.

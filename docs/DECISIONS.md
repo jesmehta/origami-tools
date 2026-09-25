@@ -14,6 +14,50 @@ each tool's README (e.g. mirror-pleats § Decisions).
 - **Kirigami left out** — explicitly: "Dont work on Kirigami yet, its not
   functional."
 
+## Mirror pleats (first build, 2026-09-19/20)
+
+- **Linear and radial are two pages on one engine** (`core.js`, `window.MODE`)
+  — user: "do separate the linear from the radial - the radial needs degrees
+  between subsequent verticals, the linear needs mm". Only the Verticals
+  panel and the generator differ; everything after "generate verticals" is
+  shared.
+- **Lines / Verticals / Measure modes, Shift as a momentary swap** — a click
+  on a vertical was ambiguous between "start a line" and "move the vertical";
+  the user offered "a adjust verticals vs adjust horiz toggle mode, or maybe
+  a keyboard keypress + drag". Both were kept.
+- **A line may join any adjacent pair of verticals and reflects both ways** —
+  Claude's reading of "or indeed any verticals", not confirmed by the user;
+  it avoids special-casing V1/V2.
+- **Verticals never intersect: ends can't cross a neighbour (min 1 mm)** —
+  the user's spec "Lines may not intersect". Ordering both ends is enough
+  inside a rectangle, so it is cheap to enforce while dragging.
+- **±45° cap on the linear page only** — "in case of radial line the 45
+  degree cap may not apply".
+- **One colour for all lines, another for the rectangle; no mountain/valley
+  styling** — the user chose it over alternating M/V; lines default to green
+  and thinner ("too red too thick").
+- **Random layouts place lines one at a time and reject** any that cross
+  another trail or leave less than the min vertex gap (default 4 mm) on a
+  vertical (up to 250 tries each) — the user asked for the check; retry keeps
+  every result valid, and if not all fit it places fewer and says so instead
+  of breaking the rule.
+- **Dimensions are toggles plus a Measure tool** (distance = two snapped
+  points, angle = two lines). Measurements are snapshots: not exported, not
+  updated by edits — tying them to geometry would need stable identities for
+  every vertex.
+- **Enforce radial from centre is a toggle (default on)** — the user's ask.
+  Switching it on snaps each existing vertical onto the line through the
+  centre and the midpoint of its span (keeps its rough place and the order);
+  a new one is a single click on an edge; off, verticals are free lines added
+  by two clicks on the outline.
+- **Off-rectangle geometry is kept and drawn as grey ghosts, with counts in
+  the status bar** — the user: "so I dont have to be confused why the count
+  says 8 but i can see only 4 lines". Only radial lines beyond ±89° are
+  dropped. Toggleable.
+- **No libraries in the first build** despite "any and all libraries you deem
+  fit": the geometry is small and plain SVG is enough, so there is no CDN
+  dependency (JSZip is only loaded later, lazily, for ZIP export).
+
 ## Look
 
 - **Halve on-screen strokes only; leave export stroke alone.** The export
