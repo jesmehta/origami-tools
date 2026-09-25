@@ -1,0 +1,103 @@
+# Design decisions
+
+Cross-tool decisions, what was rejected, and why. Per-tool decisions are in
+each tool's README (e.g. mirror-pleats § Decisions).
+
+## Shared code
+
+- **One shared `common/` script, not copies per tool.** Chosen 2026-09-25
+  over duplicating the grid/snap/tooltip/export code into four files. Cost:
+  a tool is no longer one self-contained file you can copy away on its own.
+  It still opens from disk (relative `<script src>` works on `file://`).
+- **A classic script defining one global `OT`, not ES modules** — modules
+  are blocked on `file://`, and the tools had always worked from disk.
+- **Kirigami left out** — explicitly: "Dont work on Kirigami yet, its not
+  functional."
+
+## Look
+
+- **Halve on-screen strokes only; leave export stroke alone.** The export
+  stroke width is a fabrication setting with its own field.
+- **Long explanations → tooltips**, the status-bar mode hint kept. Chosen
+  over a separate ⓘ icon per control; headings with an explanation get ⓘ.
+- **White page on grey canvas**, margin rectangle as the dark line — so the
+  page, the working area and the cut line read as three different things.
+
+## Sheet and margin
+
+- **The model's rectangle *is* the area inside the margin** (mirror-pleats,
+  x-span). "Fit edge to edge", ordered/random layouts and tiling all fill the
+  working area with no geometry changes; the page is just `W + 2m`. Changing
+  the margin keeps the page size and rescales the pattern.
+- **Margin crops the pattern; margin outline exported as the cut; page
+  outline not exported** — the user's spec ("pattern cropped to margin line,
+  page outline isnt exported, margin outline is exported as cut + fold lines
+  as usual").
+- **vPleat is the exception**: it exports only the pattern, not the page, so
+  its margin shrinks the fit area and is drawn as a guide.
+- **Presets in a text file** (`common/page-sizes.txt`), as the user asked,
+  with a built-in fallback copy for `file://`. The user runs Live Server, so
+  the text file is what's normally read.
+- **Presets apply as written** (W × H); ⇄ swaps. Keeping the current
+  orientation automatically was considered and dropped — "numbers also as
+  written".
+
+## Grid
+
+- **Origin at the sheet centre**, not a corner — the user asked "would centre
+  of sheet be more useful?"; yes: with symmetric patterns the centre line is
+  always on a grid line, and the margin is symmetric about it too.
+- **Polar grid follows the ◆** on radial; spokes default to 7.5° (not the 5°
+  first proposed) so every snap angle has a spoke.
+- **Screen only**, clipped to the page.
+
+## Snapping
+
+- **One nearest-candidate engine** for every tool rather than per-feature
+  snaps. Weights make points win ties and make a lone grid line lose to an
+  angle ray.
+- **Angles = multiples of 15° and 22.5°** in both linear and radial — the
+  user's spec ("15, 30, 45, 60 … and divisions of 90 – 45 and 22.5 … as much
+  of the angle snapping as applicable to linear as well").
+- **Alt bypasses** for one drag; the checkbox turns it off. Alt's default
+  (focusing the browser menu) is suppressed.
+- **Replaced the old "Snap lines to 45°" checkbox** — 45° is in the new set.
+- **Line ends snap *along their vertical*** — the user: "lines snap to vertical
+  at any angle"; a line end never leaves its vertical, so every candidate is
+  turned into a position on that vertical.
+
+## Radial rays
+
+- **Rays when the centre is level with the sheet (0 ≤ y ≤ H)**, not only when
+  strictly inside: a centre beside the sheet has the same problem (lines
+  through it would be near-horizontal, which `{xt, xb}` can't store).
+- **Switch is automatic** on centre move; rays start as a full circle;
+  lines are re-hung by projecting their ends; *Enforce radial* locked on.
+- **(b) rays, not (a) full lines through an inside centre** — user's choice.
+- **Stop after exactly one lap**; report non-closure rather than spiral.
+  User: "stopping a ray at 360 if it isnt coincident is necessary".
+- **Keep flat-foldable turns ray i+2 the other way** (not i+1 the same way):
+  it lets every individual wedge change, and for 4 rays it looks symmetric.
+- **Correction on switch-on** turns all odd rays equally — simple, and
+  exact for the sums.
+
+## Off-canvas handles
+
+- **Display only** — the stored line end doesn't move. User: "display only,
+  i just need to adjust/select+delete the line".
+
+## Export
+
+- **SVG, PNG and ZIP buttons**; ZIP because browsers block several downloads
+  from one click (vPleat had already hit this).
+- **Stamp `YYYY_MMDD_HHMMSS`** local time — user's format.
+- **JSZip loaded lazily** from cdnjs on first ZIP.
+
+## Bug: "exporting SVG resets the canvas" (radial)
+
+Not a code bug. The user was saving exports into `origami-tools/downloads/`,
+which Live Server watches; a new file there reloads the page and the
+unsaved drawing is lost ("when i didnt save the file, it was fine, but on
+saving the file, it reset"). Options offered: ignore those paths in Live
+Server settings, auto-save state to the browser, gitignore `downloads/`.
+User's decision: "I can just save things elsewhere" — so none were built.

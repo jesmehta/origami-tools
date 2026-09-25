@@ -41,6 +41,11 @@ thumbnail and link for each tool below.
   true-scale SVG fabrication export, JSON save/load. See
   [kirigami-tools/README.md](kirigami-tools/README.md).
 
+## Documentation
+
+Architecture, interface conventions, the math, design decisions, TODO and
+conversation logs: [docs/](docs/README.md).
+
 ## Shared code (`common/`)
 
 Features common to the tools (backlink to this page, and more as they are
