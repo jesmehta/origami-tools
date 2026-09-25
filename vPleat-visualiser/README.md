@@ -203,6 +203,11 @@ padding the on-screen preview added to fit the page guide around it, and its
 `width`/`height` attributes carry the export scale (see Page fit, above) —
 so the file never contains the page guide or its extra padding.
 
+Stroke colour, width and dashing are written onto each line as attributes at
+export time. The preview gets its look from CSS classes (`.cut`, `.fold`,
+`.ref`) that a saved file doesn't carry; before this, exported lines had no
+stroke at all and showed as blank in most viewers.
+
 **Why a zip instead of three separate downloads:** the first implementation
 triggered three independent file downloads from one click. Testing (headless
 Chromium via Playwright) showed Chrome silently drops the second and third

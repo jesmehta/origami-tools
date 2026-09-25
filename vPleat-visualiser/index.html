@@ -743,6 +743,12 @@ document.getElementById('btn-download-svg').onclick = async ()=>{
   // to fit the page guide, which isn't part of the actual cut file.
   clone.setAttribute('viewBox', `0 0 ${lastArrayDims.w} ${lastArrayDims.h}`);
   clone.setAttribute('xmlns', SVGNS);
+  // the on-page look comes from CSS classes the saved file doesn't carry — bake it in as attributes
+  const LOOK = { cut: ['#111827', .6], fold: ['#e11d48', .4, '3 2'], ref: ['#94a3b8', .3, '1 2'] };
+  Object.entries(LOOK).forEach(([cls, [col, w, dash]]) => clone.querySelectorAll('.' + cls).forEach(el => {
+    el.setAttribute('stroke', col); el.setAttribute('stroke-width', w); el.setAttribute('fill', 'none');
+    if (dash) el.setAttribute('stroke-dasharray', dash);
+  }));
   clone.setAttribute('width', (lastArrayDims.w*state.exportScale) + 'mm');
   clone.setAttribute('height', (lastArrayDims.h*state.exportScale) + 'mm');
   const svgSrc = new XMLSerializer().serializeToString(clone);
