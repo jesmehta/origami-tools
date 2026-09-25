@@ -313,7 +313,7 @@ OT.parseProject = text => {
 OT.embedProject = (svg, doc) => doc ? svg.replace(/(<svg[^>]*>)/, `$1<metadata id="ot-project"><![CDATA[${JSON.stringify(doc)}]]></metadata>`) : svg;
 /* Wire the Project panel. o: { tool (e.g. 'x-span'), version, base (file-name prefix), get() → state,
    set(state, doc) (apply it; the tool makes it one undo step), templates: URL of an index file whose lines are
-   "label, file.json" relative to it (optional) }. Returns doc() for embedding in exports. */
+   "label, file.json" (file after the last comma, relative to the index; optional) }. Returns doc() for embedding in exports. */
 OT.wireProject = o => {
   const $ = id => document.getElementById(id);
   const doc = () => ({ format: OT.PROJECT_FORMAT, tool: o.tool, version: o.version || 1, savedAt: new Date().toISOString(), grid: OT.gridState(), state: o.get() });
@@ -334,7 +334,9 @@ OT.wireProject = o => {
   if (o.templates) (async () => {
     try {
       const url = new URL(o.templates, location.href), r = await fetch(url); if (!r.ok) return;
-      const list = (await r.text()).split(/\r?\n/).map(l => l.replace(/#.*/, '').split(',').map(x => x.trim())).filter(f => f.length >= 2 && f[0] && f[1]);
+      // "label, file": the file is after the last comma, so labels may contain commas
+      const list = (await r.text()).split(/\r?\n/).map(l => { l = l.replace(/#.*/, ''); const i = l.lastIndexOf(','); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
+        .filter(([label, file]) => label && file);
       if (!list.length) return;
       const sel = $('pjTpl');
       list.forEach(([label, file]) => { const op = document.createElement('option'); op.value = new URL(file, url).href; op.textContent = label; sel.appendChild(op); });
