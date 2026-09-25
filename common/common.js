@@ -171,7 +171,7 @@ OT.gridSVG = (page, origin, polar) => {
 /* ---------- snapping ----------
    Candidates, nearest wins within a pixel tolerance (tools pass it in mm): existing points (weighted ×0.5,
    so they win ties), rays at the snap angles from anchor points, grid crossings / rings / spokes (only while
-   the grid is shown), then single grid lines (weighted ×2.5, so an angle ray usually beats a lone grid line). #snapOn turns it all off; holding Alt
+   the grid is shown), then — only if none of those is in range — a single grid line. #snapOn turns it all off; holding Alt
    bypasses it for one drag. OT.lastSnap is the snapped point (or null), for drawing a marker. */
 OT.SNAP_DEG = (() => {                                  // multiples of 15° and of 22.5°, over a full turn
   const a = new Set();
@@ -233,17 +233,17 @@ OT.snap2D = (p, o = {}) => {
       if (s > 0) cand([F[0] + s * u[0], F[1] + s * u[1]], 1);
     });
   });
-  const g = o.grid === false ? null : gridCtx();
+  const g = o.grid === false ? null : gridCtx(), lines = [];   // single grid lines: only if nothing above is in range
   if (g && !g.polar) {
     const [ox, oy] = g.origin, st = g.step, gx = ox + Math.round((p[0] - ox) / st) * st, gy = oy + Math.round((p[1] - oy) / st) * st;
-    cand([gx, gy], 1); cand([gx, p[1]], 2.5); cand([p[0], gy], 2.5);
+    cand([gx, gy], 1); lines.push([gx, p[1]], [p[0], gy]);
   } else if (g) {
     const O = g.origin, r = Math.hypot(p[0] - O[0], p[1] - O[1]), a = Math.atan2(p[1] - O[1], p[0] - O[0]);
     const rr = Math.max(g.ring, Math.round(r / g.ring) * g.ring), aa = Math.round(a / RAD / g.spoke) * g.spoke * RAD;
     cand([O[0] + rr * Math.cos(aa), O[1] + rr * Math.sin(aa)], 1);
-    cand([O[0] + rr * Math.cos(a), O[1] + rr * Math.sin(a)], 2.5);
-    cand([O[0] + r * Math.cos(aa), O[1] + r * Math.sin(aa)], 2.5);
+    lines.push([O[0] + rr * Math.cos(a), O[1] + rr * Math.sin(a)], [O[0] + r * Math.cos(aa), O[1] + r * Math.sin(aa)]);
   }
+  if (!hit) lines.forEach(q => cand(q, 1));
   OT.lastSnap = hit;
   return best;
 };
