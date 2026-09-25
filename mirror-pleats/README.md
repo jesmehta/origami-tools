@@ -29,7 +29,9 @@ rescales verticals.
 **Verticals**
 - Linear: count, spacing (mm), first x (mm); "Fit edge to edge"; ±45° cap.
 - Radial: count, step (°) between subsequent verticals, rotation (°), centre
-  (x, y). The centre must sit above or below the rectangle. Verticals are
+  (x, y). With the centre above or below the rectangle the verticals are
+  lines through it, as described next; with it level with or inside the
+  rectangle they become **rays** (see *Rays* below). Verticals are
   infinite lines, so they may **enter and exit the rectangle through any edge**
   (top, bottom, left or right); only lines beyond ±89° are dropped. One that
   misses the rectangle entirely is kept (it still acts as a mirror) and drawn
@@ -68,6 +70,29 @@ rescales verticals.
   and vertices); *angle*: click two lines (verticals, rectangle edges, any
   drawn or reflected line). Shown as acute / obtuse. Measurements are
   snapshots and don't follow later edits; "Clear measurements" removes them.
+
+**Rays** (radial, centre level with or inside the rectangle, i.e.
+0 ≤ y ≤ H) — each vertical is a ray from the centre, kept in angular order,
+and the last ray neighbours the first. Moving the centre into that band (drag
+or type) switches over automatically: the rays start as a full circle
+(Step = 360° ÷ Count), lines are re-hung on the same verticals by projecting
+their ends, and *Enforce radial* is locked on. Moving it out switches back.
+- A line joins two neighbouring rays; its trail is mirrored onward round the
+  centre for **exactly one lap** and stops on the ray it started from.
+- It closes on itself only if the rays are flat-foldable (Kawasaki): an even
+  count with alternate angles each summing to 180°. The status bar shows the
+  two alternate sums (green when flat-foldable), says when the count is odd,
+  and counts trails that end a lap without closing.
+- **Keep flat-foldable** — turning a ray turns the ray two along the other way
+  by the same amount, which keeps both sums (2 rays: both turn together).
+  Switching it on corrects the current rays by turning all the odd ones
+  equally. Needs an even count.
+- **Full circle** — Step = 360° ÷ Count and regenerate.
+- Verticals mode: drag a ray (or its outer square) to turn it; click an edge
+  point to add a ray through it; the selected ray has an *angle* field and
+  ◀ ▶ turn it by the step in degrees. Edge-spacing dimensions become the
+  wedge angles; tilt becomes each ray's angle. A line's body drag slides both
+  ends in/out.
 
 **Reflection** — verticals are treated as infinite mirrors. Each line is
 mirrored across the next vertical and extended/trimmed to the one after, and
@@ -115,6 +140,15 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
   ambiguous between "start a line" and "move the vertical", so verticals and
   lines are edited in separate modes with Shift as a momentary swap.
 - **"45°" means 45° to the horizontal**, also in radial mode.
+- **Rays instead of lines once the centre is level with the sheet** — a line
+  through such a centre would be near-horizontal, and the old x-at-top /
+  x-at-bottom storage can't hold a horizontal line. Rays are stored as angles
+  and line ends as distances from the centre; the low-level helpers (`vp`,
+  `reflectPt`, `rayVert`, `vSeg`, `visT`, `nx`) hide the difference so drawing,
+  snapping, handles, layouts and measuring are shared.
+- **One lap, then stop** — past one lap a non-closing trail would cross its
+  own start and spiral; the closing condition is Kawasaki's theorem, so the
+  tool reports it rather than silently overlapping lines.
 - **Verticals are infinite lines** stored by their x at y=0 and y=H (which may
   lie outside the rectangle); the visible part is that line cropped to the
   rectangle. That is what lets radial verticals use any edge.
@@ -128,8 +162,9 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
   fields or "Reset verticals" regenerates it.
 - The crossing check is skipped (shown "n/a") above ~700 visible segments.
 - Randomize only places lines in section 1.
-- Radial centre must stay above or below the rectangle (a centre beside it
-  would make near-horizontal verticals).
+- Rays: a trail through a wedge wider than 180° usually can't reach the next
+  ray and stops early. Keep flat-foldable's correction on switch-on can push
+  rays past their neighbours if the layout is very uneven (Undo).
 
 ## Changelog
 
@@ -143,3 +178,8 @@ Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc cancels a pending line/measure.
 - **v4** — Radial: "Enforce radial from centre" toggle (existing + new verticals).
 - **v5** — Radial: verticals may enter/exit through any edge (enforced and free
   modes); grey ghost lines for everything outside the rectangle.
+- **v6** — Shared origami-tools features (see the top-level README): backlink,
+  thinner lines, tooltips, time-stamped SVG/PNG/ZIP export, sheet presets +
+  margin, grid (polar on radial), snapping (replaces the 45° checkbox),
+  off-canvas line handles. Radial: centre may sit inside the sheet — verticals
+  become rays, one-lap trails, flat-foldability check and keep option.

@@ -19,7 +19,7 @@ const vertPanel = MODE === 'linear' ? `
       <button id="bReset">Reset verticals</button>
     </div>
     <div class="row"><label data-tip="Limit each vertical's tilt to 45° either side of upright."><input type="checkbox" id="cap"> Cap verticals at ±45°</label></div>` : `
-  <fieldset><legend data-tip="Verticals fanned from the ◆ centre, spaced by Step degrees and turned by Rotate. Verticals may enter and exit through any edge; ones that miss the rectangle are drawn grey. Drag the ◆ in Verticals mode.">Verticals · radial</legend>
+  <fieldset><legend data-tip="Verticals fanned from the ◆ centre, spaced by Step degrees and turned by Rotate. With the centre above or below the sheet they are lines through the centre, which may enter and exit through any edge (ones that miss the sheet are drawn grey). With the centre level with or inside the sheet they become rays from the centre, and a trail goes round the centre once. Drag the ◆ in Verticals mode.">Verticals · radial</legend>
     <div class="row">
       <label>Count <input type="number" id="gN" min="2" max="40" step="1"></label>
       <label>Step <input type="number" id="gStep" min="0.5" step="0.5"> °</label>
@@ -29,7 +29,11 @@ const vertPanel = MODE === 'linear' ? `
       <label>Centre x <input type="number" id="cx" step="1"></label>
       <label>y <input type="number" id="cy" step="1"></label>
     </div>
-    <div class="row"><label data-tip="On: existing and new verticals all pass through the centre (a new one is a single click on an edge; dragging rotates about the centre). Off: free edge-to-edge lines. The centre must be above or below the rectangle."><input type="checkbox" id="enf"> Enforce radial from centre</label></div>
+    <div class="row"><label data-tip="On: existing and new verticals all pass through the centre (a new one is a single click on an edge; dragging rotates about the centre). Off: free edge-to-edge lines. Always on while the verticals are rays (centre level with the sheet)."><input type="checkbox" id="enf"> Enforce radial from centre</label></div>
+    <div class="row" id="rayRow" hidden>
+      <label data-tip="A trail closes on itself after one lap only if the rays are flat-foldable: an even number of them, with alternate angles adding up to 180° (Kawasaki). On: turning a ray turns the ray two along the other way, so this always holds."><input type="checkbox" id="kaw"> Keep flat-foldable</label>
+      <button id="bFull" data-tip="Spread the rays evenly round the full circle (Step = 360° ÷ Count).">Full circle</button>
+    </div>
     <div class="row"><button id="bReset">Reset verticals</button></div>`;
 
 document.getElementById('app').innerHTML = `
@@ -54,12 +58,13 @@ document.getElementById('app').innerHTML = `
   ${vertPanel}
     <div class="row" id="selV" hidden>
       <b>V<span id="selVn"></span></b>
-      <label>top x <input type="number" id="vxt" step="0.5"></label>
-      <label>bottom x <input type="number" id="vxb" step="0.5"></label>
+      <label id="vxtL">top x <input type="number" id="vxt" step="0.5"></label>
+      <label id="vxbL">bottom x <input type="number" id="vxb" step="0.5"></label>
+      <label id="vangL" hidden>angle <input type="number" id="vang" step="0.5"> °</label>
       <span>
         <button id="nudL" data-tip="Move the whole line left by the step">◀</button>
         <button id="nudR" data-tip="Move the whole line right by the step">▶</button>
-        <input type="number" id="step" value="1" min="0.1" step="0.5" style="width:52px"> mm
+        <input type="number" id="step" value="1" min="0.1" step="0.5" style="width:52px"> <span id="stepU">mm</span>
       </span>
     </div>
   </fieldset>
@@ -146,6 +151,8 @@ const S = {
   centre: { x: 138.5, y: -126 },
   cap: MODE === 'linear',
   enforce: MODE === 'radial',
+  rays: false,          // radial, centre level with the sheet: verts are {a} rays from the centre, line params are mm from it
+  kaw: false,           // rays: keep them flat-foldable (even count, alternate angles 180°)
   minGap: 4,
   gen: MODE === 'linear' ? { n: 7, spacing: 40, start: 20 } : { n: 7, step: 8, offset: 0 },
 };
@@ -158,17 +165,25 @@ const UI = {
 
 /* ---------- undo ---------- */
 const undoS = [], redoS = [];
-const snap = () => JSON.stringify({ W: S.W, H: S.H, m: S.m, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, enforce: S.enforce, gen: S.gen, minGap: S.minGap });
+const snap = () => JSON.stringify({ W: S.W, H: S.H, m: S.m, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, enforce: S.enforce, rays: S.rays, kaw: S.kaw, gen: S.gen, minGap: S.minGap });
 function restore(j) { Object.assign(S, JSON.parse(j)); UI.selV = UI.selH = -1; UI.draw = null; UI.vdraw = null; syncUI(); render(); }
 function pushUndo(j) { undoS.push(j || snap()); if (undoS.length > 80) undoS.shift(); redoS.length = 0; }
 function act(fn) { pushUndo(); UI.note = ''; fn(); syncUI(); render(); }
 function undo() { if (!undoS.length) return; redoS.push(snap()); restore(undoS.pop()); }
 function redo() { if (!redoS.length) return; undoS.push(snap()); restore(redoS.pop()); }
 
-/* ---------- geometry ---------- */
-const vp = (v, t) => [v.xt + (v.xb - v.xt) * t, S.H * t];
+/* ---------- geometry ----------
+   Ray mode (radial page, centre level with or inside the sheet): each vertical is {a}, a ray from the centre at a°
+   (screen angle, clockwise from +x), kept in cyclic order; a line's params a, b are distances from the centre (mm).
+   Otherwise a vertical is {xt, xb} and a line's params are fractions of H. The helpers below hide the difference. */
+const RAYS = () => MODE === 'radial' && !!S.rays;
+const nx = k => RAYS() ? (k + 1) % S.verts.length : k + 1;       // the vertical after k (rays wrap round)
+const ru = v => [Math.cos(v.a * DEG), Math.sin(v.a * DEG)];
+const RBIG = () => (S.W + S.H) * 4 + Math.abs(S.centre.x) + Math.abs(S.centre.y);
+const vp = (v, t) => { if (RAYS()) { const u = ru(v); return [S.centre.x + u[0] * t, S.centre.y + u[1] * t]; } return [v.xt + (v.xb - v.xt) * t, S.H * t]; };
 
 function reflectPt(p, v) {
+  if (RAYS()) { const u = ru(v), C = S.centre, k = (p[0] - C.x) * u[0] + (p[1] - C.y) * u[1]; return [2 * (C.x + k * u[0]) - p[0], 2 * (C.y + k * u[1]) - p[1]]; }
   const dx = v.xb - v.xt, dy = S.H, L = dx * dx + dy * dy;
   const k = ((p[0] - v.xt) * dx + p[1] * dy) / L;
   return [2 * (v.xt + k * dx) - p[0], 2 * k * dy - p[1]];
@@ -176,6 +191,12 @@ function reflectPt(p, v) {
 
 // ray o + s*d against the INFINITE line of vertical v
 function rayVert(o, d, v) {
+  if (RAYS()) {                                    // t: where the hit lies along the ray (negative = behind the centre)
+    const u = ru(v), C = S.centre, den = d[0] * u[1] - d[1] * u[0];
+    if (Math.abs(den) < 1e-12) return null;
+    const s = ((C.x - o[0]) * u[1] - (C.y - o[1]) * u[0]) / den;
+    return { s, t: (o[0] + s * d[0] - C.x) * u[0] + (o[1] + s * d[1] - C.y) * u[1] };
+  }
   const ex = v.xb - v.xt, ey = S.H;
   const den = d[0] * ey - d[1] * ex;
   if (Math.abs(den) < 1e-12) return null;
@@ -184,11 +205,22 @@ function rayVert(o, d, v) {
 }
 
 // visible part of a vertical (an infinite line given by its x at y=0 and y=H); null if it misses the rectangle
-const vSeg = v => clipBox(v.xt, 0, v.xb, S.H);
+const rayFar = v => { const u = ru(v), R = RBIG(); return [S.centre.x + u[0] * R, S.centre.y + u[1] * R]; };
+const vSeg = v => RAYS() ? clipBox(S.centre.x, S.centre.y, ...rayFar(v)) : clipBox(v.xt, 0, v.xb, S.H);
 const vEnds = v => { const c = vSeg(v); return c ? [[c[0], c[1]], [c[2], c[3]]] : null; };
-const visT = v => { const c = vSeg(v); return c ? [c[1] / S.H, c[3] / S.H] : null; };
-// the whole line clipped to the current view (for ghosts and hit-testing)
-const vView = v => { const b = bounds(), d = v.xb - v.xt; return clipBox(v.xt - d * 100, -S.H * 100, v.xt + d * 100, S.H * 100, b.x0, b.y0, b.x1, b.y1); };
+const visT = v => {
+  const c = vSeg(v); if (!c) return null;
+  if (RAYS()) { const C = S.centre; return [Math.hypot(c[0] - C.x, c[1] - C.y), Math.hypot(c[2] - C.x, c[3] - C.y)]; }
+  return [c[1] / S.H, c[3] / S.H];
+};
+// the whole line (ray) clipped to the current view (for ghosts and hit-testing)
+const vView = v => {
+  const b = bounds();
+  if (RAYS()) return clipBox(S.centre.x, S.centre.y, ...rayFar(v), b.x0, b.y0, b.x1, b.y1);
+  const d = v.xb - v.xt; return clipBox(v.xt - d * 100, -S.H * 100, v.xt + d * 100, S.H * 100, b.x0, b.y0, b.x1, b.y1);
+};
+// order of vertices along a vertical: top→bottom, or outward along a ray
+const byAlong = (p, q) => RAYS() ? Math.hypot(p[0] - S.centre.x, p[1] - S.centre.y) - Math.hypot(q[0] - S.centre.x, q[1] - S.centre.y) : p[1] - q[1];
 
 // t on vertical v where a ±45° ray from P (x-direction dx, y-direction dy) lands
 function ray45(P, dx, dy, v) {
@@ -231,12 +263,26 @@ const inRect = p => p[0] >= -1e-6 && p[0] <= S.W + 1e-6 && p[1] >= -1e-6 && p[1]
 // only afterwards, so a trail may leave and re-enter.
 function computeOne(h, hi) {
   const V = S.verts, n = V.length, segs = [], vtx = [];
-  if (!V[h.k] || !V[h.k + 1]) return { segs, vtx };
+  if (!V[h.k] || !V[nx(h.k)]) return { segs, vtx };
   const LIM = (S.W + S.H) * 30;
   const mk = (a, b, base) => segs.push({ s: [a[0], a[1], b[0], b[1]], c: clipRect(a[0], a[1], b[0], b[1]), base, hi });
   const addV = (vi, p) => { if (inRect(p)) vtx.push({ v: vi, p, hi }); };
-  const P = vp(V[h.k], h.a), Q = vp(V[h.k + 1], h.b);
-  mk(P, Q, true); addV(h.k, P); addV(h.k + 1, Q);
+  const P = vp(V[h.k], h.a), Q = vp(V[nx(h.k)], h.b);
+  mk(P, Q, true); addV(h.k, P); addV(nx(h.k), Q);
+  if (RAYS()) {                        // rays: mirror onward round the centre for exactly one lap, ending on the start ray
+    let A = P, B = Q, ai = nx(h.k), steps = 0;
+    for (; steps < n - 1; steps++) {
+      const Ap = reflectPt(A, V[ai]), d = [Ap[0] - B[0], Ap[1] - B[1]], nv = nx(ai);
+      if (Math.hypot(d[0], d[1]) < 1e-9) break;
+      const hit = rayVert(B, d, V[nv]);
+      if (!hit || hit.s <= 1e-9 || hit.t < -1e-9 || hit.s * Math.hypot(d[0], d[1]) > LIM) break;
+      const C = [B[0] + hit.s * d[0], B[1] + hit.s * d[1]];
+      mk(B, C, false);
+      if (!(nv === h.k && Math.hypot(C[0] - P[0], C[1] - P[1]) < 1e-3)) addV(nv, C);   // a closing vertex is the start point again
+      A = B; B = C; ai = nv;
+    }
+    return { segs, vtx, open: steps < n - 1 || Math.hypot(B[0] - P[0], B[1] - P[1]) > 1e-3 };   // closed = back where it started
+  }
   for (const dir of [1, -1]) {
     let A = dir > 0 ? P : Q, B = dir > 0 ? Q : P, ai = dir > 0 ? h.k + 1 : h.k;
     let atEnd = false;
@@ -260,8 +306,9 @@ function computeOne(h, hi) {
 }
 function computeAll(hors = S.hors) {
   const segs = [], vtx = [];
-  hors.forEach((h, i) => { const r = computeOne(h, i); segs.push(...r.segs); vtx.push(...r.vtx); });
-  return { segs, vtx };
+  let open = 0;
+  hors.forEach((h, i) => { const r = computeOne(h, i); segs.push(...r.segs); vtx.push(...r.vtx); if (r.open) open++; });
+  return { segs, vtx, open };
 }
 
 function segsCross(a, b) {
@@ -285,7 +332,7 @@ function analyze(all) {
   const by = {};
   all.vtx.forEach(q => (by[q.v] = by[q.v] || []).push(q.p));
   Object.values(by).forEach(l => {
-    l.sort((a, b) => a[1] - b[1]);
+    l.sort(byAlong);
     for (let i = 1; i < l.length; i++) minGap = Math.min(minGap, Math.hypot(l[i][0] - l[i - 1][0], l[i][1] - l[i - 1][1]));
   });
   return { cross, minGap };
@@ -316,7 +363,7 @@ function moveBody(i, orig, dx) {
   S.verts[i].xt = orig.xt + dx; S.verts[i].xb = orig.xb + dx;
 }
 function sanitize() {
-  if (MODE === 'radial') { if (S.enforce) gapRadial(); return; }
+  if (MODE === 'radial') { if (S.enforce && !RAYS()) gapRadial(); return; }
   const n = S.verts.length;
   if (S.cap) S.verts.forEach(v => { v.xb = clamp(v.xb, v.xt - S.H, v.xt + S.H); });
   for (const k of ['xt', 'xb']) {
@@ -360,6 +407,68 @@ function setRadialK(i, k1) {
   }
   Object.assign(V[i], radialAt(k));
 }
+// --- rays (centre level with the sheet) ---
+const norm360 = a => ((a % 360) + 360) % 360;
+const wrap180 = a => ((a % 360) + 540) % 360 - 180;
+const wedge = j => S.verts.length < 2 ? 360 : (norm360(S.verts[nx(j)].a - S.verts[j].a) || 360);   // angle from ray j to the next
+// Kawasaki: every trail closes after one lap iff the count is even and alternate wedges each sum to 180°
+function kawasaki() { let e = 0, o = 0; S.verts.forEach((_, j) => { if (j % 2) o += wedge(j); else e += wedge(j); }); return { even: S.verts.length % 2 === 0, e, o }; }
+// Make the rays flat-foldable by turning every odd ray by the same amount (each turn moves δ from an odd wedge to an even one)
+function enforceKaw() {
+  const n = S.verts.length; if (n % 2) return false;
+  const d = (kawasaki().o - 180) / (n / 2);
+  S.verts.forEach((v, j) => { if (j % 2) v.a = norm360(v.a + d); });
+  return true;
+}
+// Turn ray i toward a1°, stopping short of its neighbours. Keep flat-foldable: the ray two along turns the other way
+// by the same amount (that keeps both alternate sums); with only 2 rays both turn together.
+function setRayAngle(i, a1) {
+  const V = S.verts, n = V.length, g = GAPU / DEG, j = (i + 2) % n, pair = S.kaw && n >= 4 && n % 2 === 0;
+  let dl = wrap180(a1 - V[i].a);
+  if (S.kaw && n === 2) { V.forEach(v => { v.a = norm360(v.a + dl); }); return; }
+  let lo = -(wedge((i + n - 1) % n) - g), hi = wedge(i) - g;
+  if (pair) { hi = Math.min(hi, wedge((i + 1) % n) - g); lo = Math.max(lo, -(wedge(j) - g)); }
+  if (lo > hi) return;
+  dl = clamp(dl, lo, hi);
+  V[i].a = norm360(V[i].a + dl);
+  if (pair) V[j].a = norm360(V[j].a - dl);
+}
+function addRay(a) {
+  const V = S.verts, g = GAPU / DEG;
+  let j = V.findIndex((v, k) => norm360(a - v.a) < wedge(k));        // the wedge the new ray falls in
+  if (j < 0) j = V.length - 1;
+  const off = norm360(a - V[j].a);
+  if (off < g || wedge(j) - off < g) { UI.note = 'Too close to an existing ray.'; return false; }
+  insertVertical({ a: norm360(a) }, j + 1);
+  if (S.kaw && !enforceKaw()) UI.note = 'Odd number of rays: can\'t keep them flat-foldable.';
+  return true;
+}
+function genRays(jitter) {
+  const g = S.gen, n = g.n, step = Math.min(g.step, 360 / n);
+  UI.dropped = 0;
+  return Array.from({ length: n }, (_, i) => {
+    let a = 90 + g.offset + (i - (n - 1) / 2) * step;
+    if (jitter) a += (Math.random() - 0.5) * step * 0.7;
+    return { a: norm360(a) };
+  }).sort((p, q) => p.a - q.a);
+}
+// Radial: the verticals are rays whenever the centre is level with the sheet (0 ≤ y ≤ H) — lines through a centre
+// there would be near-horizontal. Switching regenerates the verticals (rays start as a full circle) and re-hangs each
+// line on the same index by projecting its old ends. Returns true if it switched.
+function syncRayMode() {
+  if (MODE !== 'radial') return false;
+  const want = S.centre.y >= 0 && S.centre.y <= S.H;
+  if (want === !!S.rays) return false;
+  const old = S.hors.filter(h => S.verts[h.k] && S.verts[nx(h.k)]).map(h => ({ k: h.k, P: vp(S.verts[h.k], h.a), Q: vp(S.verts[nx(h.k)], h.b) }));
+  S.rays = want;
+  if (want) { S.enforce = true; S.gen.step = 360 / S.gen.n; S.gen.offset = 0; }
+  else { S.gen.step = Math.min(S.gen.step, 160 / Math.max(1, S.gen.n - 1)); S.gen.offset = clamp(S.gen.offset, -89, 89); }
+  regen(false);
+  S.hors = old.filter(o => o.k < S.verts.length && nx(o.k) < S.verts.length)
+    .map(o => ({ k: o.k, a: projT({ x: o.P[0], y: o.P[1] }, S.verts[o.k]), b: projT({ x: o.Q[0], y: o.Q[1] }, S.verts[nx(o.k)]) }));
+  UI.note = want ? 'Centre is level with the sheet: the verticals are now rays from it.' : 'Centre is above/below the sheet: the verticals are lines through it again.';
+  return true;
+}
 // --- free (not through the centre) radial-page verticals: edge-to-edge lines, kept apart inside the rectangle ---
 function segDist(a, b) {
   if (segsCross(a, b)) return 0;
@@ -395,7 +504,7 @@ function moveBodyFree(i, orig, dx) {
   for (let n = 0; n < 16; n++) { const m = (a + b) / 2; if (freeOK(i, at(m))) a = m; else b = m; }
   Object.assign(S.verts[i], at(a));
 }
-const fixHors = () => { S.hors = S.hors.filter(h => h.k >= 0 && h.k + 1 < S.verts.length); };
+const fixHors = () => { S.hors = S.hors.filter(h => h.k >= 0 && h.k < S.verts.length && nx(h.k) < S.verts.length); };
 
 /* ---------- generators ---------- */
 function genLinear() {
@@ -404,10 +513,7 @@ function genLinear() {
   g.spacing = Math.min(g.spacing, (S.W - g.start) / (n - 1));
   return Array.from({ length: n }, (_, i) => { const x = g.start + i * g.spacing; return { xt: x, xb: x }; });
 }
-function fixCentre() {
-  S.centre.x = clamp(S.centre.x, -2 * S.W, 3 * S.W);
-  if (S.centre.y >= 0 && S.centre.y <= S.H) S.centre.y = S.centre.y < S.H / 2 ? -1 : S.H + 1;
-}
+function fixCentre() { S.centre.x = clamp(S.centre.x, -2 * S.W, 3 * S.W); }   // y level with the sheet means rays (syncRayMode)
 function genRadial(jitter) {
   fixCentre();
   const { x: cx, y: cy } = S.centre, g = S.gen, out = [];
@@ -423,7 +529,8 @@ function genRadial(jitter) {
   return out;
 }
 function regen(jitter) {
-  S.verts = MODE === 'linear' ? genLinear() : genRadial(jitter);
+  S.verts = MODE === 'linear' ? genLinear() : RAYS() ? genRays(jitter) : genRadial(jitter);
+  if (RAYS() && S.kaw) enforceKaw();
   S.layout = jitter ? 'free' : 'gen';
   S.cap = MODE === 'linear' ? S.cap : false;
   fixHors(); sanitize();
@@ -432,6 +539,14 @@ function regen(jitter) {
 function orderedHors(m, alt) {
   const out = [];
   if (S.verts.length < 2) { S.hors = out; return; }
+  if (RAYS()) {                                      // rays: chords between ray 1 and 2 (alternate: lopsided up/down)
+    const r = visT(S.verts[0]) || [0, 1], r1 = visT(S.verts[1]) || r;
+    for (let i = 0; i < m; i++) {
+      const a = r[0] + (r[1] - r[0]) * (i + 0.5) / m;
+      out.push({ k: 0, a, b: clamp(alt ? a * (i % 2 ? 1.25 : 0.8) : a, r1[0], r1[1]) });
+    }
+    S.hors = out; return;
+  }
   const V1 = S.verts[0], V2 = S.verts[1];
   for (let i = 0; i < m; i++) {
     const r = visT(V1) || [0, 1], a = r[0] + (r[1] - r[0]) * (i + 0.5) / m, P = vp(V1, a), first = alt && i % 2 ? -1 : 1;
@@ -509,7 +624,8 @@ function render() {
     let g = '';
     if (MODE === 'radial') V.forEach(v => {
       let c;
-      if (S.enforce) { const C = S.centre, M = [(v.xt + v.xb) / 2, S.H / 2]; c = clipBox(C.x, C.y, C.x + (M[0] - C.x) * 200, C.y + (M[1] - C.y) * 200, b.x0, b.y0, b.x1, b.y1); }
+      if (RAYS()) c = vView(v);
+      else if (S.enforce) { const C = S.centre, M = [(v.xt + v.xb) / 2, S.H / 2]; c = clipBox(C.x, C.y, C.x + (M[0] - C.x) * 200, C.y + (M[1] - C.y) * 200, b.x0, b.y0, b.x1, b.y1); }
       else c = vView(v);
       if (c) g += ln(...c);
     });
@@ -530,12 +646,15 @@ function render() {
   if (UI.selV >= 0 && V[UI.selV]) { const sc = vSeg(V[UI.selV]) || vView(V[UI.selV]); if (sc) s += ln(...sc, hl); }
   if (UI.selH >= 0 && S.hors[UI.selH]) {
     const h = S.hors[UI.selH];
-    if (V[h.k] && V[h.k + 1]) { const A = vp(V[h.k], h.a), B = vp(V[h.k + 1], h.b); s += ln(A[0], A[1], B[0], B[1], hl); }
+    if (V[h.k] && V[nx(h.k)]) { const A = vp(V[h.k], h.a), B = vp(V[nx(h.k)], h.b); s += ln(A[0], A[1], B[0], B[1], hl); }
   }
 
   // dimensions
   const D = UI.dim, ink = '#555';
-  if (D.edge && V.length) {
+  if (D.edge && V.length && RAYS()) {                // rays: the angle of each wedge, near the centre
+    const C = S.centre, R0 = 30 * px;
+    V.forEach((v, j) => { const w = wedge(j), a = (v.a + w / 2) * DEG; s += T(C.x + Math.cos(a) * R0, C.y + Math.sin(a) * R0 + 4 * px, w.toFixed(1) + '°'); });
+  } else if (D.edge && V.length) {
     const tops = [], bots = [];
     V.forEach(v => { const c = vSeg(v); if (!c) return; if (c[1] < 1e-6) tops.push(c[0]); if (c[3] > S.H - 1e-6) bots.push(c[2]); });
     [[tops, true], [bots, false]].forEach(([xs, top]) => {
@@ -548,7 +667,11 @@ function render() {
       }
     });
   }
-  if (D.tilt) V.forEach(v => { const c = vSeg(v); if (c) s += T(c[0], c[1] + 18 * px, ((Math.atan2(v.xb - v.xt, S.H) / DEG)).toFixed(1) + '°', { c: '#1976d2' }); });
+  if (D.tilt) V.forEach(v => {
+    const c = vSeg(v); if (!c) return;
+    if (RAYS()) s += T(c[2] - ru(v)[0] * 14 * px, c[3] - ru(v)[1] * 14 * px, norm360(v.a).toFixed(1) + '°', { c: '#1976d2' });
+    else s += T(c[0], c[1] + 18 * px, ((Math.atan2(v.xb - v.xt, S.H) / DEG)).toFixed(1) + '°', { c: '#1976d2' });
+  });
   if (D.base || D.refl) lastAll.segs.forEach(g => {
     if (!g.c || (g.base ? !D.base : !D.refl)) return;
     const dx = g.c[2] - g.c[0], dy = g.c[3] - g.c[1];
@@ -559,7 +682,7 @@ function render() {
     const by = {};
     lastAll.vtx.forEach(q => (by[q.v] = by[q.v] || []).push(q.p));
     Object.values(by).forEach(l => {
-      l.sort((a, b2) => a[1] - b2[1]);
+      l.sort(byAlong);
       for (let i = 1; i < l.length; i++) {
         const a = l[i - 1], c = l[i], d = Math.hypot(c[0] - a[0], c[1] - a[1]);
         if (d / px > 14) s += T((a[0] + c[0]) / 2 + 5 * px, (a[1] + c[1]) / 2 + 3 * px, d.toFixed(1), { a: 'start', c: '#e65100' });
@@ -591,7 +714,8 @@ function render() {
   const r = 5 * px, em = effMode(UI.shift);
   if (em === 'verts') {
     s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
-    V.forEach((v, i) => (vEnds(v) || []).forEach(p => {
+    V.forEach((v, i) => (vEnds(v) || []).forEach((p, k) => {
+      if (RAYS() && k === 0) return;                  // a ray's inner end is the centre
       s += `<rect x="${fmt(p[0] - r)}" y="${fmt(p[1] - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`;
     }));
     s += '</g>';
@@ -599,7 +723,7 @@ function render() {
   if (em === 'lines') {
     s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
     S.hors.forEach((h, i) => {
-      if (!V[h.k] || !V[h.k + 1]) return;
+      if (!V[h.k] || !V[nx(h.k)]) return;
       lineHandles(h).forEach(({ p, proxy }) => {       // proxy: the real end is off-canvas, shown at the nearest visible point
         s += `<circle cx="${fmt(p[0])}" cy="${fmt(p[1])}" r="${fmt(r)}" ${i === UI.selH ? 'fill="#bbdefb"' : ''}${proxy ? ' stroke-dasharray="2 2"' : ''}/>`;
       });
@@ -643,6 +767,7 @@ function updateStatus() {
   else if (em === 'measure') t = UI.mp ? 'Pick the second ' + (UI.mp.pt ? 'point.' : 'line.') : ($('mtD').checked ? 'Measure distance: click two points (snaps to corners, ends and vertices).' : 'Measure angle: click two lines.');
   else if (em === 'lines') t = UI.draw ? 'Click an adjacent vertical to finish the line (Esc cancels).' : 'LINES: click a vertical to start a line · drag a circle or a line to move it · hold Shift to edit verticals.';
   else t = UI.vdraw ? 'Click a point on another edge to finish the vertical (Esc cancels).'
+    : RAYS() ? 'VERTICALS: drag a ray (or its square) to turn it about the centre · click any edge point to add a ray through it · drag the ◆ to move the centre · Delete removes the selected · hold Shift to edit lines.'
     : MODE === 'radial' ? (S.enforce ? 'VERTICALS: drag to rotate about the centre · click any edge point to add a line through the centre · Delete removes the selected · hold Shift to edit lines.' : 'VERTICALS: drag a body or an end (slides along the outline) · click an edge point then another edge point to add one · Delete removes the selected · hold Shift to edit lines.')
     : 'VERTICALS: drag a body to move it whole, a square to move one end · click an edge point then the opposite edge to add one · Delete removes the selected · hold Shift to edit lines.';
   let info = '';
@@ -653,6 +778,12 @@ function updateStatus() {
   }
   if (UI.note) info += `<br>${UI.note}`;
   if (UI.ghost && (UI.hiddenV || UI.hiddenS)) info += `<br>Grey = outside the rectangle: ${UI.hiddenV} vertical(s) miss it, ${UI.hiddenS} reflected segment(s) fall wholly outside.`;
+  if (RAYS() && S.verts.length) {
+    const K = kawasaki(), ok = K.even && Math.abs(K.o - 180) < 0.01;
+    info += K.even ? `<br><span class="${ok ? 'ok' : 'bad'}">Alternate angles ${K.e.toFixed(1)}° / ${K.o.toFixed(1)}° — ${ok ? 'flat-foldable, trails close' : 'not flat-foldable, trails don\'t close'}</span>`
+      : '<br><span class="bad">Odd number of rays — a trail can\'t close on itself (flat-foldable needs an even count).</span>';
+    if (S.hors.length && lastAll.open) info += ` · ${lastAll.open} trail(s) stop after one lap without closing.`;
+  }
   if (MODE === 'radial' && UI.dropped) info += `<br>${UI.dropped} radial line(s) were dropped (angle beyond ±89°).`;
   $('status').innerHTML = t + info;
 }
@@ -681,7 +812,7 @@ const pxmm = () => 1 / cv.getScreenCTM().a;
 // Where to draw/grab a line's two end handles. An end outside the view is shown at the nearest visible point
 // of the line (or, if none of it is visible, at the view edge) so it can still be dragged or selected + deleted.
 function lineHandles(h) {
-  const V = S.verts, A = vp(V[h.k], h.a), B = vp(V[h.k + 1], h.b), b = bounds(), e = 8 * pxmm();
+  const V = S.verts, A = vp(V[h.k], h.a), B = vp(V[nx(h.k)], h.b), b = bounds(), e = 8 * pxmm();
   const box = [b.x0 + e, b.y0 + e, b.x1 - e, b.y1 - e];
   const inside = q => q[0] >= box[0] && q[0] <= box[2] && q[1] >= box[1] && q[1] <= box[3];
   const c = clipBox(A[0], A[1], B[0], B[1], ...box);
@@ -691,14 +822,14 @@ function lineHandles(h) {
 function hitLines(p) {
   const tol = 9 * pxmm(), V = S.verts;
   for (let i = S.hors.length - 1; i >= 0; i--) {
-    const h = S.hors[i]; if (!V[h.k] || !V[h.k + 1]) continue;
+    const h = S.hors[i]; if (!V[h.k] || !V[nx(h.k)]) continue;
     const [A, B] = lineHandles(h).map(o => o.p);
     if (Math.hypot(p.x - A[0], p.y - A[1]) < tol) return { type: 'hEnd', i, which: 'a' };
     if (Math.hypot(p.x - B[0], p.y - B[1]) < tol) return { type: 'hEnd', i, which: 'b' };
   }
   for (let i = S.hors.length - 1; i >= 0; i--) {
-    const h = S.hors[i]; if (!V[h.k] || !V[h.k + 1]) continue;
-    if (distSeg(p, vp(V[h.k], h.a), vp(V[h.k + 1], h.b)) < tol * 0.7) return { type: 'hBody', i };
+    const h = S.hors[i]; if (!V[h.k] || !V[nx(h.k)]) continue;
+    if (distSeg(p, vp(V[h.k], h.a), vp(V[nx(h.k)], h.b)) < tol * 0.7) return { type: 'hBody', i };
   }
   return null;
 }
@@ -757,6 +888,9 @@ function snapOnRect(p, anchor) {
   const s = OT.snapOnLine(q, q, d, { tol: snapTol(), points: snapPts(), anchors: anchor ? [anchor] : [] });
   return [clamp(q[0] + s * d[0], 0, S.W), clamp(q[1] + s * d[1], 0, S.H)];
 }
+// turn vertical i (through the centre, or a ray) to point at q
+const angAt = q => Math.atan2(q.y - S.centre.y, q.x - S.centre.x) / DEG;
+const turnTo = (i, q) => RAYS() ? setRayAngle(i, angAt(q)) : setRadialK(i, kOf(q.x, q.y));
 // pointer turned about the centre to a snap direction (radial verticals through the centre)
 function snapAboutCentre(p) {
   if (!UI.snap) return p;
@@ -765,7 +899,7 @@ function snapAboutCentre(p) {
 }
 // adjacent vertical + t for the second click of a new line
 function drawTarget(p) {
-  const d = UI.draw, adj = [d.vi - 1, d.vi + 1].filter(i => i >= 0 && i < S.verts.length);
+  const n = S.verts.length, d = UI.draw, adj = RAYS() ? [(d.vi + n - 1) % n, (d.vi + 1) % n] : [d.vi - 1, d.vi + 1].filter(i => i >= 0 && i < n);
   const ai = nearestVertical(p, Infinity, adj);
   return { ai, t: snapTOn(p, S.verts[ai], vp(S.verts[d.vi], d.t)) };
 }
@@ -822,7 +956,7 @@ cv.addEventListener('pointerdown', e => {
     if (UI.draw) {                                   // second click: finish the line
       const { ai, t } = drawTarget(p), from = UI.draw;
       pushUndo();
-      S.hors.push(ai > from.vi ? { k: from.vi, a: from.t, b: t } : { k: ai, a: t, b: from.t });
+      S.hors.push(ai === nx(from.vi) ? { k: from.vi, a: from.t, b: t } : { k: ai, a: t, b: from.t });
       UI.selH = S.hors.length - 1; UI.selV = -1; UI.draw = null;
       syncUI(); render(); return;
     }
@@ -849,7 +983,7 @@ cv.addEventListener('pointerdown', e => {
       const pn = perimNear(p);
       if (pn) {
         UI.selH = -1;
-        if (S.enforce) { const j = snap(), q = snapAboutCentre({ x: pn[0], y: pn[1] }); if (addVerticalEnforced(kOf(q.x, q.y))) pushUndo(j); UI.vghost = null; }
+        if (S.enforce) { const j = snap(), q = snapAboutCentre({ x: pn[0], y: pn[1] }); if (RAYS() ? addRay(angAt(q)) : addVerticalEnforced(kOf(q.x, q.y))) pushUndo(j); UI.vghost = null; }
         else { UI.vdraw = { pt: snapOnRect(p) }; UI.note = ''; }
         syncUI(); render(); return;
       }
@@ -891,7 +1025,7 @@ cv.addEventListener('pointermove', e => {
   }
   if (!drag && S.enforce && MODE === 'radial' && effMode(e.shiftKey) === 'verts') {
     const pn = hitVerts(p) ? null : perimNear(p), q = pn && snapAboutCentre({ x: pn[0], y: pn[1] });
-    UI.vghost = q ? radialAt(kOf(q.x, q.y)) : null; render();
+    UI.vghost = q ? (RAYS() ? { a: angAt(q) } : radialAt(kOf(q.x, q.y))) : null; render();
   }
   if (!drag) {
     const em = effMode(e.shiftKey);
@@ -906,26 +1040,28 @@ cv.addEventListener('pointermove', e => {
   if (d.type === 'vEnd') {
     const v = S.verts[d.i];
     if (MODE === 'radial') {
-      if (S.enforce) { const q = snapAboutCentre(p); setRadialK(d.i, kOf(q.x, q.y)); }
+      if (S.enforce) turnTo(d.i, snapAboutCentre(p));
       else { const e2 = vEnds(v); setEndFree(d.i, d.end, (q => ({ x: q[0], y: q[1] }))(snapOnRect(p, e2 && e2[d.end === 't' ? 1 : 0]))); }
     } else setEnd(d.i, d.end, snapEdgeX(p.x, d.end === 't' ? 0 : S.H, d.end === 't' ? [v.xb, S.H] : [v.xt, 0], d.i));
     S.layout = 'free';
   } else if (d.type === 'vBody') {
-    if (MODE === 'radial') { if (S.enforce) { const q = snapAboutCentre(p); setRadialK(d.i, kOf(q.x, q.y)); } else moveBodyFree(d.i, d.orig, p.x - d.start.x); }
+    if (MODE === 'radial') { if (S.enforce) turnTo(d.i, snapAboutCentre(p)); else moveBodyFree(d.i, d.orig, p.x - d.start.x); }
     else moveBody(d.i, d.orig, snapEdgeX(d.orig.xt + p.x - d.start.x, 0, null, d.i) - d.orig.xt);
     S.layout = 'free';
   } else if (d.type === 'centre') {
     const m = S.m, W = S.W, H = S.H;
     S.centre = (q => ({ x: q[0], y: q[1] }))(UI.snap ? OT.snap2D(p, { tol: snapTol(), grid: false,
       points: [[0, 0], [W, 0], [0, H], [W, H], [W / 2, H / 2], [W / 2, 0], [W / 2, H], [0, H / 2], [W, H / 2], [-m, -m], [W + m, -m], [-m, H + m], [W + m, H + m], [W / 2, -m], [W / 2, H + m]] }) : [p.x, p.y]);
-    if (S.layout === 'gen') regen(false); else if (S.enforce) enforceRadial(); else fixCentre();
+    if (!syncRayMode() && !RAYS()) { if (S.layout === 'gen') regen(false); else if (S.enforce) enforceRadial(); else fixCentre(); }
   }
   else if (d.type === 'hEnd') {
     const h = S.hors[d.i], movA = d.which === 'a';
-    const mv = S.verts[movA ? h.k : h.k + 1], fx = S.verts[movA ? h.k + 1 : h.k];
+    const mv = S.verts[movA ? h.k : nx(h.k)], fx = S.verts[movA ? nx(h.k) : h.k];
     h[d.which] = snapTOn(p, mv, vp(fx, movA ? h.b : h.a), d.i);
   } else if (d.type === 'hBody') {
-    const dt = clamp((p.y - d.start.y) / S.H, -Math.min(d.orig.a, d.orig.b), 1 - Math.max(d.orig.a, d.orig.b));
+    const C = S.centre, dt = RAYS()                  // rays: slide both ends out/in by the change in distance from the centre
+      ? Math.max(-Math.min(d.orig.a, d.orig.b), Math.hypot(p.x - C.x, p.y - C.y) - Math.hypot(d.start.x - C.x, d.start.y - C.y))
+      : clamp((p.y - d.start.y) / S.H, -Math.min(d.orig.a, d.orig.b), 1 - Math.max(d.orig.a, d.orig.b));
     S.hors[d.i].a = d.orig.a + dt; S.hors[d.i].b = d.orig.b + dt;
   }
   syncUI(); render();
@@ -1002,17 +1138,21 @@ function insertVertical(nv, i) {
   S.hors.forEach(h => {
     if (h.k >= i) nh.push({ ...h, k: h.k + 1 });
     else if (h.k === i - 1) {                        // this line spans the new vertical: trim it to the new one
-      const P = vp(V[h.k], h.a), Q = vp(V[h.k + 1], h.b);
+      const P = vp(V[h.k], h.a), Q = vp(V[nx(h.k)], h.b);
       const hit = rayVert(P, [Q[0] - P[0], Q[1] - P[1]], nv);
-      if (hit && hit.s > 0 && hit.s < 1) nh.push({ k: h.k, a: h.a, b: (P[1] + hit.s * (Q[1] - P[1])) / S.H });
+      if (hit && hit.s > 0 && hit.s < 1) {
+        const X = [P[0] + hit.s * (Q[0] - P[0]), P[1] + hit.s * (Q[1] - P[1])];
+        nh.push({ k: h.k, a: h.a, b: RAYS() ? Math.hypot(X[0] - S.centre.x, X[1] - S.centre.y) : X[1] / S.H });
+      }
     } else nh.push(h);
   });
   V.splice(i, 0, nv); S.hors = nh; S.layout = 'free'; S.gen.n = V.length; UI.selV = i; UI.selH = -1; UI.note = '';
   return true;
 }
 function delVertical(j) {
-  S.hors = S.hors.filter(h => h.k !== j && h.k !== j - 1).map(h => h.k > j ? { ...h, k: h.k - 1 } : h);
+  S.hors = S.hors.filter(h => h.k !== j && nx(h.k) !== j).map(h => h.k > j ? { ...h, k: h.k - 1 } : h);
   S.verts.splice(j, 1); S.layout = 'free'; S.gen.n = S.verts.length; UI.selV = -1;
+  if (RAYS() && S.kaw && !enforceKaw()) UI.note = 'Odd number of rays: can\'t keep them flat-foldable.';
 }
 const nH = () => clamp(Math.round(+$('nH').value) || 5, 1, 60);
 
@@ -1031,7 +1171,12 @@ on('rA', 'onclick', () => act(() => { randomVerts(); randomHors(nH()); }));
 on('bUndo', 'onclick', undo); on('bRedo', 'onclick', redo);
 on('mClear', 'onclick', () => { UI.meas = []; UI.mp = null; render(); });
 on('mg', 'onchange', () => { S.minGap = Math.max(0, +$('mg').value || 0); render(); });
-on('enf', 'onchange', () => act(() => { S.enforce = $('enf').checked; if (S.enforce) enforceRadial(); }));
+on('enf', 'onchange', () => act(() => { S.enforce = RAYS() || $('enf').checked; if (S.enforce && !RAYS()) enforceRadial(); }));
+on('kaw', 'onchange', () => act(() => {
+  S.kaw = $('kaw').checked;
+  if (S.kaw && !enforceKaw()) { S.kaw = false; UI.note = 'Flat-foldable needs an even number of rays.'; }
+}));
+on('bFull', 'onclick', () => act(() => { S.gen.step = 360 / S.gen.n; regen(false); }));
 on('gh', 'onchange', () => { UI.ghost = $('gh').checked; render(); });
 on('cap', 'onchange', () => act(() => { S.cap = $('cap').checked; if (S.cap) sanitize(); }));
 
@@ -1042,11 +1187,12 @@ const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() =
 }));
 genField('gN', 'n', 2, 40, true);
 if (MODE === 'linear') { genField('gSp', 'spacing', 1, 1e4); genField('gSt', 'start', 0, 1e4); }
-else { genField('gStep', 'step', 0.5, 90); genField('gOff', 'offset', -89, 89); }
-['cx', 'cy'].forEach(id => on(id, 'onchange', () => act(() => { S.centre = { x: +$('cx').value, y: +$('cy').value }; regen(false); })));
+else { genField('gStep', 'step', 0.5, 180); genField('gOff', 'offset', -180, 180); }
+['cx', 'cy'].forEach(id => on(id, 'onchange', () => act(() => { S.centre = { x: +$('cx').value, y: +$('cy').value }; if (!syncRayMode()) regen(false); })));
 function resize(nw, nh) {                               // new area inside the margin; the pattern scales with it
   const fx = nw / S.W, fy = nh / S.H;
-  S.verts.forEach(v => { v.xt *= fx; v.xb *= fx; });
+  if (RAYS()) S.hors.forEach(h => { h.a *= (fx + fy) / 2; h.b *= (fx + fy) / 2; });   // rays keep their angles
+  else S.verts.forEach(v => { v.xt *= fx; v.xb *= fx; });
   S.centre = { x: S.centre.x * fx, y: S.centre.y * fy };
   if (MODE === 'linear') { S.gen.start *= fx; S.gen.spacing *= fx; }
   S.W = nw; S.H = nh;
@@ -1069,11 +1215,13 @@ const setX = (which, x) => {
 };
 on('vxt', 'onchange', () => { if (UI.selV >= 0) act(() => setX('xt', +$('vxt').value)); });
 on('vxb', 'onchange', () => { if (UI.selV >= 0) act(() => setX('xb', +$('vxb').value)); });
+on('vang', 'onchange', () => { if (UI.selV >= 0 && RAYS()) act(() => { setRayAngle(UI.selV, +$('vang').value); S.layout = 'free'; }); });
 const nudge = sign => {
   if (UI.selV < 0) return;
   act(() => {
     const st = sign * (+$('step').value || 1), v = S.verts[UI.selV];
-    if (MODE === 'radial') {
+    if (RAYS()) setRayAngle(UI.selV, v.a + st);        // rays: the step is in degrees
+    else if (MODE === 'radial') {
       if (S.enforce) { const yw = wideY(); setRadialK(UI.selV, kOf((yw === 0 ? v.xt : v.xb) + st, yw)); }
       else moveBodyFree(UI.selV, { ...v }, st);
     } else moveBody(UI.selV, { ...v }, st);
@@ -1091,7 +1239,9 @@ document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI
 const syncSheet = OT.wireSheet({ get: () => [S.W + 2 * S.m, S.H + 2 * S.m], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
 function modeTips() {
   $('mLines').dataset.tip = 'Click a vertical to start a line, click an adjacent one to finish. Drag circles/lines to move them. Hold Shift to move verticals.';
-  $('mVerts').dataset.tip = MODE === 'radial'
+  $('mVerts').dataset.tip = RAYS()
+    ? 'Drag a ray (or its square end) to turn it about the centre. To add one, click a point on any edge. Drag the ◆ to move the centre. Delete removes the selected ray. Hold Shift to edit lines.'
+    : MODE === 'radial'
     ? 'Drag a vertical (or a square end handle). To add one, click a point on any edge' + (S.enforce ? ' (it passes through the centre).' : ', then a point on another edge.') + ' Delete removes the selected vertical. Hold Shift to edit lines.'
     : 'Drag a vertical to move it whole, or a square end handle. To add a vertical, click a point on the top or bottom edge, then a point on the opposite edge. Delete removes the selected vertical. Hold Shift to edit lines.';
 }
@@ -1100,10 +1250,13 @@ function syncUI() {
   const set = (id, v) => { const el = $(id); if (el && document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
   set('W', S.W + 2 * S.m); set('H', S.H + 2 * S.m); set('marg', S.m); syncSheet(); set('gN', S.gen.n); set('mg', S.minGap);
   if (MODE === 'linear') { set('gSp', S.gen.spacing); set('gSt', S.gen.start); if ($('cap')) $('cap').checked = S.cap; }
-  else { if ($('enf')) $('enf').checked = S.enforce; set('gStep', S.gen.step); set('gOff', S.gen.offset); set('cx', S.centre.x); set('cy', S.centre.y); }
+  else {
+    $('enf').disabled = RAYS(); $('rayRow').hidden = !RAYS(); $('kaw').checked = S.kaw;
+    if ($('enf')) $('enf').checked = S.enforce; set('gStep', S.gen.step); set('gOff', S.gen.offset); set('cx', S.centre.x); set('cy', S.centre.y); }
   const sv = UI.selV >= 0 ? S.verts[UI.selV] : null;
   $('selV').hidden = !sv;
-  if (sv) { $('selVn').textContent = UI.selV + 1; set('vxt', sv.xt); set('vxb', sv.xb); }
+  $('vxtL').hidden = $('vxbL').hidden = RAYS(); $('vangL').hidden = !RAYS(); $('stepU').textContent = RAYS() ? '°' : 'mm';
+  if (sv) { $('selVn').textContent = UI.selV + 1; if (RAYS()) set('vang', norm360(sv.a)); else { set('vxt', sv.xt); set('vxb', sv.xb); } }
 }
 
 /* ---------- init ---------- */
