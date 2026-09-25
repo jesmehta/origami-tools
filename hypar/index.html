@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../common/common.css">
 <script src="../common/common.js"></script>
 <style>
-:root{--bg:#f4f3ef;--panel:#fff;--ink:#222;--mute:#777;--line:#d9d6cc;--acc:#2e7d32;}
+:root{--bg:#eef0dc;--panel:#fbf9ec;--ink:#243322;--mute:#6b7556;--line:#cdd5b4;--acc:#b4532a;}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
@@ -15,9 +15,9 @@ body{font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);col
 #app{display:grid;grid-template-columns:340px 1fr;height:100%}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 14px 30px}
 main{display:flex;flex-direction:column;min-width:0;min-height:0}
-#cv{flex:1;min-height:0;width:100%;background:#e9e7e1;touch-action:none;display:block}
+#cv{flex:1;min-height:0;width:100%;background:#d9e2c4;touch-action:none;display:block}
 #status{padding:6px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--mute);min-height:44px}
-#status .bad{color:#c62828;font-weight:600}
+#status .bad{color:#a8401c;font-weight:600}
 h1{font-size:15px;margin:0 0 10px}
 fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:8px 10px 10px}
 legend{font-weight:600;padding:0 4px}
@@ -25,8 +25,8 @@ legend{font-weight:600;padding:0 4px}
 label{display:inline-flex;align-items:center;gap:5px}
 input[type=number]{width:64px;padding:3px 4px}
 input[type=color]{width:30px;height:22px;padding:0;border:1px solid var(--line)}
-button{font:inherit;padding:4px 9px;border:1px solid #bbb;border-radius:4px;background:#fafafa;cursor:pointer}
-button:hover{background:#eee}
+button{font:inherit;padding:4px 9px;border:1px solid #b9c29c;border-radius:4px;background:#f7f3dc;cursor:pointer}
+button:hover{background:#efe6bd}
 button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
 .note{color:var(--mute);font-size:12px;margin:4px 0 0}
 @media(max-width:780px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}aside{max-height:48vh}main{height:70vh}}
@@ -287,7 +287,7 @@ function dragMargin(e, p) {
 }
 const marginHandles = px => {
   const r = 4 * px, { W, H, mx, my } = S;
-  return `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" vector-effect="non-scaling-stroke">` +
+  return `<g fill="#fff" stroke="#b4532a" stroke-width="0.75" vector-effect="non-scaling-stroke">` +
     [[mx, H / 2, r, 3 * r], [W - mx, H / 2, r, 3 * r], [W / 2, my, 3 * r, r], [W / 2, H - my, 3 * r, r]].map(([x, y, w, h]) => `<rect x="${fmt(x - w)}" y="${fmt(y - h)}" width="${fmt(2 * w)}" height="${fmt(2 * h)}"/>`).join('') + '</g>';
 };
 
@@ -297,7 +297,7 @@ function render() {
   cv.setAttribute('viewBox', `${v.cx - v.w / 2} ${v.cy - h / 2} ${v.w} ${h}`);
   const ctm = cv.getScreenCTM(), px = ctm && ctm.a ? 1 / ctm.a : 1;
   const cc = $('colCut').value, cf = $('colFold').value, NS = 'vector-effect="non-scaling-stroke"';
-  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="#fffdf3" stroke="#a9b38c" stroke-width="0.5" ${NS}/>`;
   s += OT.gridSVG([0, 0, S.W, S.H], [S.W / 2, S.H / 2], false);
 
   const foldC = S.centreCut ? M.contours.slice(0, -1) : M.contours;
@@ -306,7 +306,7 @@ function render() {
     M.diags.forEach(d => { if (d.ghost) g += ln(d.ghost[0], d.ghost[1]); });
     [S.pts, ...M.contours].forEach(c => { if (!c.every(inMargin)) g += `<polygon points="${polyStr(c)}" fill="none"/>`; });
     M.diags.forEach(d => { if (!inMargin(d.solid[0]) || !inMargin(d.solid[1])) g += ln(d.solid[0], d.solid[1]); });
-    s += `<g stroke="#9e9e9e" stroke-width="0.5" stroke-dasharray="4 3" opacity=".9" ${NS}>${g}</g>`;
+    s += `<g stroke="#a3a88f" stroke-width="0.5" stroke-dasharray="4 3" opacity=".9" ${NS}>${g}</g>`;
   }
 
   s += `<g stroke="${cf}" stroke-width="0.55" fill="none" stroke-linecap="round" stroke-linejoin="round" ${NS}>`;
@@ -318,12 +318,12 @@ function render() {
   s += '</g>';
 
   const q = 5 * px;
-  s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
+  s += `<g fill="#fff" stroke="#b4532a" stroke-width="0.75" ${NS}>`;
   S.pts.forEach(p => { s += `<rect x="${fmt(p[0] - q)}" y="${fmt(p[1] - q)}" width="${fmt(2 * q)}" height="${fmt(2 * q)}"/>`; });
   s += '</g>';
   if (S.regular) {
     const c = S.c, d = q * 1.4;
-    s += `<polygon points="${c.x},${c.y - d} ${c.x + d},${c.y} ${c.x},${c.y + d} ${c.x - d},${c.y}" fill="#ffe082" stroke="#e65100"/>`;
+    s += `<polygon points="${c.x},${c.y - d} ${c.x + d},${c.y} ${c.x},${c.y + d} ${c.x - d},${c.y}" fill="#f6d365" stroke="#c98a00"/>`;
   }
   s += marginHandles(px);
   if (UI.drag) s += OT.snapMark(px);

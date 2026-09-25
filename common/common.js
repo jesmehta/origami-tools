@@ -206,7 +206,7 @@ OT.gridSVG = (page, origin, polar) => {
     }
   }
   return `<clipPath id="otGridClip"><rect x="${f(x0)}" y="${f(y0)}" width="${f(x1 - x0)}" height="${f(y1 - y0)}"/></clipPath>` +
-    `<g clip-path="url(#otGridClip)" fill="none" stroke-width="0.5" ${NS}><g stroke="#ebe8e0">${minor}</g><g stroke="#d6d2c6">${major}</g></g>`;
+    `<g clip-path="url(#otGridClip)" fill="none" stroke-width="0.5" ${NS}><g stroke="#e6ebd3">${minor}</g><g stroke="#c8d3a8">${major}</g></g>`;
 };
 
 /* ---------- snapping ----------
@@ -312,7 +312,7 @@ OT.snap1D = (v, values, tol) => { let best = v, bd = tol; values.forEach(x => { 
 // Grid lines as plain coordinates near v (square grid only), for 1-D snapping
 OT.gridLines = (axis, v) => { const g = gridCtx(); if (!g || g.polar) return []; const o = g.origin[axis], k = Math.round((v - o) / g.step); return [o + (k - 1) * g.step, o + k * g.step, o + (k + 1) * g.step]; };
 // Small orange ring at OT.lastSnap (px = mm per screen pixel)
-OT.snapMark = px => OT.lastSnap ? `<circle cx="${+OT.lastSnap[0].toFixed(3)}" cy="${+OT.lastSnap[1].toFixed(3)}" r="${7 * px}" fill="none" stroke="#e65100" stroke-width="1.2" vector-effect="non-scaling-stroke"/>` : '';
+OT.snapMark = px => OT.lastSnap ? `<circle cx="${+OT.lastSnap[0].toFixed(3)}" cy="${+OT.lastSnap[1].toFixed(3)}" r="${7 * px}" fill="none" stroke="#c98a00" stroke-width="1.2" vector-effect="non-scaling-stroke"/>` : '';
 
 /* ---------- projects: save / load / templates ----------
    A project file is JSON: { format, tool, version, savedAt, grid, state }. `state` is the tool's model (geometry

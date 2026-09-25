@@ -1,14 +1,14 @@
 /* Shared styles for the origami tools (loaded before each tool's own CSS). */
-.ot-back{display:inline-block;margin:0 0 10px;padding:5px 12px 5px 22px;font-size:13px;font-weight:600;color:#222;text-decoration:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='14,1 99,1 99,99 14,99 1,50' fill='%23fff' stroke='%23222' stroke-width='1.5' vector-effect='non-scaling-stroke' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
-.ot-back:hover,.ot-back:focus-visible{color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='14,1 99,1 99,99 14,99 1,50' fill='%23222' stroke='%23222' stroke-width='1.5' vector-effect='non-scaling-stroke' stroke-linejoin='round'/%3E%3C/svg%3E");outline:none}
+.ot-back{display:inline-block;margin:0 0 10px;padding:5px 12px 5px 22px;font-size:13px;font-weight:600;color:#243322;text-decoration:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='14,1 99,1 99,99 14,99 1,50' fill='%23fff' stroke='%23243322' stroke-width='1.5' vector-effect='non-scaling-stroke' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+.ot-back:hover,.ot-back:focus-visible{color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='14,1 99,1 99,99 14,99 1,50' fill='%23243322' stroke='%23243322' stroke-width='1.5' vector-effect='non-scaling-stroke' stroke-linejoin='round'/%3E%3C/svg%3E");outline:none}
 
 /* tooltips (see common.js) */
-.ot-tip{position:fixed;z-index:1000;max-width:300px;background:#2b2b2b;color:#fff;font:12px/1.45 system-ui,Segoe UI,Roboto,sans-serif;padding:6px 9px;border-radius:5px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:pre-line}
+.ot-tip{position:fixed;z-index:1000;max-width:300px;background:#2c3b2a;color:#fff;font:12px/1.45 system-ui,Segoe UI,Roboto,sans-serif;padding:6px 9px;border-radius:5px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:pre-line}
 .ot-tip[hidden]{display:none}
 legend[data-tip]::after,h2[data-tip]::after{content:" ⓘ";color:#999;font-weight:400}
 legend[data-tip],h2[data-tip],label[data-tip],span[data-tip]{cursor:help}
 aside select{font:inherit;padding:3px 4px;max-width:190px}
-#margLock.on{background:#222;color:#fff;border-color:#222}
+#margLock.on{background:#243322;color:#fff;border-color:#243322}
 /* collapsible sidebar sections (common.js) */
 legend.ot-head,h2.ot-head{cursor:pointer;user-select:none}
 .ot-head::before{content:"▾";display:inline-block;width:1.1em;font-size:1.15em;line-height:1;color:#666;text-align:center;transition:transform .12s}
@@ -20,3 +20,4 @@ fieldset.ot-shut > :not(legend),.ot-folded{display:none !important}
 .ot-foldall{display:flex;justify-content:flex-end;gap:10px;margin:0 0 6px}
 div.ot-foldall button{all:unset;cursor:pointer;font-size:11px;color:#666}
 div.ot-foldall button:hover,div.ot-foldall button:focus-visible{color:#000;text-decoration:underline}
+html{accent-color:#4e7a3e}

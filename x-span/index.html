@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../common/common.css">
 <script src="../common/common.js"></script>
 <style>
-:root{--bg:#f4f3ef;--panel:#fff;--ink:#222;--mute:#777;--line:#d9d6cc;--acc:#2e7d32;}
+:root{--bg:#eef0dc;--panel:#fbf9ec;--ink:#243322;--mute:#6b7556;--line:#cdd5b4;--acc:#b4532a;}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
@@ -15,9 +15,9 @@ body{font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);col
 #app{display:grid;grid-template-columns:340px 1fr;height:100%}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 14px 30px}
 main{display:flex;flex-direction:column;min-width:0;min-height:0}
-#cv{flex:1;min-height:0;width:100%;background:#e9e7e1;touch-action:none;display:block}
+#cv{flex:1;min-height:0;width:100%;background:#d9e2c4;touch-action:none;display:block}
 #status{padding:6px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--mute);min-height:44px}
-#status .bad{color:#c62828;font-weight:600}
+#status .bad{color:#a8401c;font-weight:600}
 #status .ok{color:#2e7d32;font-weight:600}
 h1{font-size:15px;margin:0 0 10px}
 fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:8px 10px 10px}
@@ -25,11 +25,11 @@ legend{font-weight:600;padding:0 4px}
 .row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:5px 0}
 label{display:inline-flex;align-items:center;gap:5px}
 input[type=number]{width:64px;padding:3px 4px}
-input[type=number]:disabled{background:#f1f1ee;color:#555;border:1px solid #ddd}
+input[type=number]:disabled{background:#eef0e0;color:#555;border:1px solid #ddd}
 input[type=color]{width:30px;height:22px;padding:0;border:1px solid var(--line)}
 select{font:inherit;padding:3px 4px}
-button{font:inherit;padding:4px 9px;border:1px solid #bbb;border-radius:4px;background:#fafafa;cursor:pointer}
-button:hover{background:#eee}
+button{font:inherit;padding:4px 9px;border:1px solid #b9c29c;border-radius:4px;background:#f7f3dc;cursor:pointer}
+button:hover{background:#efe6bd}
 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 #hRows .row{margin:2px 0}
 input[type=range]{width:120px}
@@ -391,10 +391,10 @@ function render() {
   const ctm = cv.getScreenCTM(), px = ctm && ctm.a ? 1 / ctm.a : 1;
   const lc = $('colLine').value, rc = $('colRect').value, NS = 'vector-effect="non-scaling-stroke"';
   const ln = (a, b2, c, d, extra = '') => `<line x1="${fmt(a)}" y1="${fmt(b2)}" x2="${fmt(c)}" y2="${fmt(d)}" ${extra}/>`;
-  const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#333'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
+  const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#2c3627'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
   const X = S.xs, G = lastG = computeGrid();
   const len = a => Math.hypot(a[2] - a[0], a[3] - a[1]);
-  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fffdf3" stroke="#a9b38c" stroke-width="0.5" ${NS}/>`;
   s += OT.gridSVG([-S.mx, -S.my, S.W + S.mx, S.H + S.my], [S.W / 2, S.H / 2], false);
   s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
@@ -408,7 +408,7 @@ function render() {
       if (c) g += ln(...c);
     });
     X.forEach(x => { if (x > S.W + 1e-6 && x < b.x1) g += ln(x, b.y0, x, b.y1); });
-    s += `<g stroke="#9e9e9e" stroke-width="0.5" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
+    s += `<g stroke="#a3a88f" stroke-width="0.5" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
   }
 
   s += `<g stroke="${lc}" stroke-width="0.55" fill="none" stroke-linecap="round" ${NS}>`;
@@ -416,10 +416,10 @@ function render() {
   G.segs.forEach(g => { if (g.c) s += ln(...g.c); });
   s += '</g>';
 
-  if (UI.selV >= 0 && X[UI.selV] !== undefined) s += ln(X[UI.selV], 0, X[UI.selV], S.H, `stroke="#1976d2" stroke-width="2.5" opacity=".3" ${NS}`);
+  if (UI.selV >= 0 && X[UI.selV] !== undefined) s += ln(X[UI.selV], 0, X[UI.selV], S.H, `stroke="#b4532a" stroke-width="2.5" opacity=".3" ${NS}`);
 
   // dimensions
-  const D = UI.dim, ink = '#555';
+  const D = UI.dim, ink = '#4a5640';
   if (D.edge && X.length) {
     const y = -10 * px, arr = [0, ...X.filter(x => x <= S.W + 1e-6), S.W];
     for (let i = 0; i < arr.length - 1; i++) {
@@ -432,16 +432,16 @@ function render() {
   if (D.ang) G.segs.forEach(g => {
     if (!g.c || len(g.c) / px < 34) return;
     const a = Math.abs(Math.atan2(g.c[3] - g.c[1], g.c[2] - g.c[0]) / DEG);
-    s += T((g.c[0] + g.c[2]) / 2, (g.c[1] + g.c[3]) / 2 - 3 * px, (a > 90 ? 180 - a : a).toFixed(1) + '°', { c: '#1976d2' });
+    s += T((g.c[0] + g.c[2]) / 2, (g.c[1] + g.c[3]) / 2 - 3 * px, (a > 90 ? 180 - a : a).toFixed(1) + '°', { c: '#b4532a' });
   });
   if (D.diag) G.diags.forEach(d => {
     if (X[d.v] > S.W + 1e-6) return;
     const y1 = clamp(d.y1, 0, S.H), y2 = clamp(d.y2, 0, S.H);
-    if ((y2 - y1) / px > 26) s += T(X[d.v] + 5 * px, (y1 + y2) / 2 + 3 * px, (d.y2 - d.y1).toFixed(1), { a: 'start', c: '#6a1b9a' });
+    if ((y2 - y1) / px > 26) s += T(X[d.v] + 5 * px, (y1 + y2) / 2 + 3 * px, (d.y2 - d.y1).toFixed(1), { a: 'start', c: '#2f6b5a' });
   });
 
   // measurements
-  const mc = '#e65100';
+  const mc = '#c98a00';
   UI.meas.forEach(m => {
     if (m.type === 'dist') {
       const d = Math.hypot(m.q[0] - m.p[0], m.q[1] - m.p[1]);
@@ -461,22 +461,22 @@ function render() {
   }
 
   if (UI.ang) {                                      // angle sweep guide: anchor, pointer ray, angle
-    const g = UI.ang, ac = '#1976d2', r0 = 5 * px;
+    const g = UI.ang, ac = '#b4532a', r0 = 5 * px;
     s += ln(g.ax, g.ay, g.cur[0], g.cur[1], `stroke="${ac}" stroke-dasharray="5 4" stroke-width="0.75" ${NS}`);
     s += `<circle cx="${fmt(g.ax)}" cy="${fmt(g.ay)}" r="${fmt(r0 * 1.2)}" fill="${ac}" opacity=".85"/>`;
     s += T(g.ax + (g.cur[0] < g.ax ? -1 : 1) * 12 * px, g.ay - 8 * px, S.theta.toFixed(1) + '°', { c: ac, a: g.cur[0] < g.ax ? 'end' : 'start' });
   }
   if (isVarH() && effMode(UI.shift) === 'grid') {    // touch-level handles: drag up/down to trade height between the chains above and below
     const r = 5 * px;
-    s += `<g fill="#fff" stroke="#e65100" stroke-width="0.75" ${NS}>`;
+    s += `<g fill="#fff" stroke="#c98a00" stroke-width="0.75" ${NS}>`;
     touchHandles().forEach(q => { s += `<circle cx="${fmt(q.x)}" cy="${fmt(q.y)}" r="${fmt(r)}"/>`; });
     s += '</g>';
   }
   if (effMode(UI.shift) === 'verts') {               // vertical handles, irregular Verticals mode only
     const r = 5 * px;
-    s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
+    s += `<g fill="#fff" stroke="#b4532a" stroke-width="0.75" ${NS}>`;
     X.forEach((x, i) => [0, S.H].forEach(y => {
-      s += `<rect x="${fmt(x - r)}" y="${fmt(y - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`;
+      s += `<rect x="${fmt(x - r)}" y="${fmt(y - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#f3d9b1"' : ''}/>`;
     }));
     s += '</g>';
   }
@@ -839,7 +839,7 @@ function dragMargin(e, p) {
 const marginInfo = () => OT.marginInfo(S.W + 2 * S.mx, S.H + 2 * S.my, S.mx, S.my);
 const marginHandles = px => {                            // Margin mode: a bar on each edge
   const r = 5 * px, H2 = S.H / 2, W2 = S.W / 2;
-  return `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" vector-effect="non-scaling-stroke">` +
+  return `<g fill="#fff" stroke="#b4532a" stroke-width="0.75" vector-effect="non-scaling-stroke">` +
     [[0, H2, r, 3 * r], [S.W, H2, r, 3 * r], [W2, 0, 3 * r, r], [W2, S.H, 3 * r, r]].map(([x, y, w, h]) => `<rect x="${fmt(x - w)}" y="${fmt(y - h)}" width="${fmt(2 * w)}" height="${fmt(2 * h)}"/>`).join('') + '</g>';
 };
 const syncMargins = OT.wireMargins({

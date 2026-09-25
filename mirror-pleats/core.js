@@ -615,11 +615,11 @@ function render() {
   const lc = $('colLine').value, rc = $('colRect').value;
   const NS = 'vector-effect="non-scaling-stroke"';
   const ln = (a, b2, c, d, extra = '') => `<line x1="${fmt(a)}" y1="${fmt(b2)}" x2="${fmt(c)}" y2="${fmt(d)}" ${extra}/>`;
-  const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#333'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
+  const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#2c3627'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
   const V = S.verts;
   lastAll = computeAll();
   if (!drag) UI.info = analyze(lastAll);
-  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fffdf3" stroke="#a9b38c" stroke-width="0.5" ${NS}/>`;
   s += OT.gridSVG([-S.mx, -S.my, S.W + S.mx, S.H + S.my], MODE === 'radial' ? [S.centre.x, S.centre.y] : [S.W / 2, S.H / 2], MODE === 'radial');
   s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
@@ -639,7 +639,7 @@ function render() {
       const c = clipBox(sg.s[0], sg.s[1], sg.s[2], sg.s[3], b.x0, b.y0, b.x1, b.y1);
       if (c) g += ln(...c);
     });
-    s += `<g stroke="#9e9e9e" stroke-width="0.5" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
+    s += `<g stroke="#a3a88f" stroke-width="0.5" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
   }
 
   s += `<g stroke="${lc}" stroke-width="0.55" fill="none" stroke-linecap="round" ${NS}>`;
@@ -647,7 +647,7 @@ function render() {
   lastAll.segs.forEach(g => { if (g.c) s += ln(...g.c); });
   s += '</g>';
 
-  const hl = `stroke="#1976d2" stroke-width="2.5" opacity=".3" ${NS}`;
+  const hl = `stroke="#b4532a" stroke-width="2.5" opacity=".3" ${NS}`;
   if (UI.selV >= 0 && V[UI.selV]) { const sc = vSeg(V[UI.selV]) || vView(V[UI.selV]); if (sc) s += ln(...sc, hl); }
   if (UI.selH >= 0 && S.hors[UI.selH]) {
     const h = S.hors[UI.selH];
@@ -655,7 +655,7 @@ function render() {
   }
 
   // dimensions
-  const D = UI.dim, ink = '#555';
+  const D = UI.dim, ink = '#4a5640';
   if (D.edge && V.length && RAYS()) {                // rays: the angle of each wedge, near the centre
     const C = S.centre, R0 = 30 * px;
     V.forEach((v, j) => { const w = wedge(j), a = (v.a + w / 2) * DEG; s += T(C.x + Math.cos(a) * R0, C.y + Math.sin(a) * R0 + 4 * px, w.toFixed(1) + '°'); });
@@ -674,14 +674,14 @@ function render() {
   }
   if (D.tilt) V.forEach(v => {
     const c = vSeg(v); if (!c) return;
-    if (RAYS()) s += T(c[2] - ru(v)[0] * 14 * px, c[3] - ru(v)[1] * 14 * px, norm360(v.a).toFixed(1) + '°', { c: '#1976d2' });
-    else s += T(c[0], c[1] + 18 * px, ((Math.atan2(v.xb - v.xt, S.H) / DEG)).toFixed(1) + '°', { c: '#1976d2' });
+    if (RAYS()) s += T(c[2] - ru(v)[0] * 14 * px, c[3] - ru(v)[1] * 14 * px, norm360(v.a).toFixed(1) + '°', { c: '#b4532a' });
+    else s += T(c[0], c[1] + 18 * px, ((Math.atan2(v.xb - v.xt, S.H) / DEG)).toFixed(1) + '°', { c: '#b4532a' });
   });
   if (D.base || D.refl) lastAll.segs.forEach(g => {
     if (!g.c || (g.base ? !D.base : !D.refl)) return;
     const dx = g.c[2] - g.c[0], dy = g.c[3] - g.c[1];
     let a = Math.abs(Math.atan2(dy, dx) / DEG); if (a > 90) a = 180 - a;
-    s += T((g.c[0] + g.c[2]) / 2, (g.c[1] + g.c[3]) / 2 - 3 * px, a.toFixed(1) + '°', { c: g.base ? '#1976d2' : '#6a1b9a' });
+    s += T((g.c[0] + g.c[2]) / 2, (g.c[1] + g.c[3]) / 2 - 3 * px, a.toFixed(1) + '°', { c: g.base ? '#b4532a' : '#2f6b5a' });
   });
   if (D.vtx) {
     const by = {};
@@ -690,13 +690,13 @@ function render() {
       l.sort(byAlong);
       for (let i = 1; i < l.length; i++) {
         const a = l[i - 1], c = l[i], d = Math.hypot(c[0] - a[0], c[1] - a[1]);
-        if (d / px > 14) s += T((a[0] + c[0]) / 2 + 5 * px, (a[1] + c[1]) / 2 + 3 * px, d.toFixed(1), { a: 'start', c: '#e65100' });
+        if (d / px > 14) s += T((a[0] + c[0]) / 2 + 5 * px, (a[1] + c[1]) / 2 + 3 * px, d.toFixed(1), { a: 'start', c: '#c98a00' });
       }
     });
   }
 
   // measurements
-  const mc = '#e65100';
+  const mc = '#c98a00';
   UI.meas.forEach(m => {
     if (m.type === 'dist') {
       const d = Math.hypot(m.q[0] - m.p[0], m.q[1] - m.p[1]);
@@ -718,43 +718,43 @@ function render() {
   // handles (verticals only editable in Verticals mode; lines only in Lines mode)
   const r = 5 * px, em = effMode(UI.shift);
   if (em === 'verts') {
-    s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
+    s += `<g fill="#fff" stroke="#b4532a" stroke-width="0.75" ${NS}>`;
     V.forEach((v, i) => (vEnds(v) || []).forEach((p, k) => {
       if (RAYS() && k === 0) return;                  // a ray's inner end is the centre
-      s += `<rect x="${fmt(p[0] - r)}" y="${fmt(p[1] - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`;
+      s += `<rect x="${fmt(p[0] - r)}" y="${fmt(p[1] - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#f3d9b1"' : ''}/>`;
     }));
     s += '</g>';
   }
   if (em === 'lines') {
-    s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
+    s += `<g fill="#fff" stroke="#b4532a" stroke-width="0.75" ${NS}>`;
     S.hors.forEach((h, i) => {
       if (!V[h.k] || !V[nx(h.k)]) return;
       lineHandles(h).forEach(({ p, proxy }) => {       // proxy: the real end is off-canvas, shown at the nearest visible point
-        s += `<circle cx="${fmt(p[0])}" cy="${fmt(p[1])}" r="${fmt(r)}" ${i === UI.selH ? 'fill="#bbdefb"' : ''}${proxy ? ' stroke-dasharray="2 2"' : ''}/>`;
+        s += `<circle cx="${fmt(p[0])}" cy="${fmt(p[1])}" r="${fmt(r)}" ${i === UI.selH ? 'fill="#f3d9b1"' : ''}${proxy ? ' stroke-dasharray="2 2"' : ''}/>`;
       });
     });
     s += '</g>';
   }
   if (MODE === 'radial') {
     const c = S.centre, d = r * 1.4;
-    s += `<polygon points="${c.x},${c.y - d} ${c.x + d},${c.y} ${c.x},${c.y + d} ${c.x - d},${c.y}" fill="#ffe082" stroke="#e65100"/>`;
+    s += `<polygon points="${c.x},${c.y - d} ${c.x + d},${c.y} ${c.x},${c.y + d} ${c.x - d},${c.y}" fill="#f6d365" stroke="#c98a00"/>`;
   }
 
   if (UI.draw && V[UI.draw.vi]) {
     const P = vp(V[UI.draw.vi], UI.draw.t);
-    s += `<circle cx="${P[0]}" cy="${P[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".7"/>`;
-    if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#1976d2" stroke-dasharray="5 4" stroke-width="0.75" ${NS}`);
+    s += `<circle cx="${P[0]}" cy="${P[1]}" r="${fmt(r * 1.2)}" fill="#b4532a" opacity=".7"/>`;
+    if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#b4532a" stroke-dasharray="5 4" stroke-width="0.75" ${NS}`);
   }
-  if (UI.vghost) { const gc = vSeg(UI.vghost); if (gc) s += ln(...gc, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`); }
+  if (UI.vghost) { const gc = vSeg(UI.vghost); if (gc) s += ln(...gc, `stroke="#b4532a" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`); }
   if (UI.vdraw && UI.vdraw.pt) {
     const f = UI.vdraw, q = f.cur || f.pt;
-    s += ln(f.pt[0], f.pt[1], q[0], q[1], `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`);
-    s += `<circle cx="${f.pt[0]}" cy="${f.pt[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".8"/>`;
+    s += ln(f.pt[0], f.pt[1], q[0], q[1], `stroke="#b4532a" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`);
+    s += `<circle cx="${f.pt[0]}" cy="${f.pt[1]}" r="${fmt(r * 1.2)}" fill="#b4532a" opacity=".8"/>`;
   } else if (UI.vdraw) {
     const f = UI.vdraw, x2 = UI.vdraw.cur === undefined ? f.x : UI.vdraw.cur;
     const [xt, xb] = f.edge === 't' ? [f.x, x2] : [x2, f.x];
-    s += ln(xt, 0, xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`);
-    s += `<circle cx="${f.x}" cy="${f.edge === 't' ? 0 : S.H}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".8"/>`;
+    s += ln(xt, 0, xb, S.H, `stroke="#b4532a" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`);
+    s += `<circle cx="${f.x}" cy="${f.edge === 't' ? 0 : S.H}" r="${fmt(r * 1.2)}" fill="#b4532a" opacity=".8"/>`;
   }
   if (em === 'margin') s += marginHandles(px);
   if (drag || UI.draw || UI.vdraw) s += OT.snapMark(px);
@@ -1317,7 +1317,7 @@ function dragMargin(e, p) {
 const marginInfo = () => OT.marginInfo(S.W + 2 * S.mx, S.H + 2 * S.my, S.mx, S.my);
 const marginHandles = px => {                            // Margin mode: a bar on each edge
   const r = 5 * px, H2 = S.H / 2, W2 = S.W / 2;
-  return `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" vector-effect="non-scaling-stroke">` +
+  return `<g fill="#fff" stroke="#b4532a" stroke-width="0.75" vector-effect="non-scaling-stroke">` +
     [[0, H2, r, 3 * r], [S.W, H2, r, 3 * r], [W2, 0, 3 * r, r], [W2, S.H, 3 * r, r]].map(([x, y, w, h]) => `<rect x="${fmt(x - w)}" y="${fmt(y - h)}" width="${fmt(2 * w)}" height="${fmt(2 * h)}"/>`).join('') + '</g>';
 };
 const syncMargins = OT.wireMargins({
