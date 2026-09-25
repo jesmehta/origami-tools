@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../common/common.css">
 <script src="../common/common.js"></script>
 <style>
-:root{--bg:#eef0dc;--panel:#fbf9ec;--ink:#243322;--mute:#6b7556;--line:#cdd5b4;--acc:#b4532a;}
+:root{--bg:#eef0dc;--panel:#fbf0c4;--ink:#243322;--mute:#6b7556;--line:#cdd5b4;--acc:#b4532a;}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
@@ -28,8 +28,8 @@ input[type=number]{width:64px;padding:3px 4px}
 input[type=number]:disabled{background:#eef0e0;color:#555;border:1px solid #ddd}
 input[type=color]{width:30px;height:22px;padding:0;border:1px solid var(--line)}
 select{font:inherit;padding:3px 4px}
-button{font:inherit;padding:4px 9px;border:1px solid #b9c29c;border-radius:4px;background:#f7f3dc;cursor:pointer}
-button:hover{background:#efe6bd}
+button{font:inherit;padding:4px 9px;border:1px solid #b9c29c;border-radius:4px;background:#f5e6a6;cursor:pointer}
+button:hover{background:#ecd684}
 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 #hRows .row{margin:2px 0}
 input[type=range]{width:120px}
@@ -394,7 +394,7 @@ function render() {
   const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#2c3627'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
   const X = S.xs, G = lastG = computeGrid();
   const len = a => Math.hypot(a[2] - a[0], a[3] - a[1]);
-  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fffdf3" stroke="#a9b38c" stroke-width="0.5" ${NS}/>`;
+  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fffae3" stroke="#a9b38c" stroke-width="0.5" ${NS}/>`;
   s += OT.gridSVG([-S.mx, -S.my, S.W + S.mx, S.H + S.my], [S.W / 2, S.H / 2], false);
   s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 

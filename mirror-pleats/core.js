@@ -619,7 +619,7 @@ function render() {
   const V = S.verts;
   lastAll = computeAll();
   if (!drag) UI.info = analyze(lastAll);
-  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fffdf3" stroke="#a9b38c" stroke-width="0.5" ${NS}/>`;
+  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fffae3" stroke="#a9b38c" stroke-width="0.5" ${NS}/>`;
   s += OT.gridSVG([-S.mx, -S.my, S.W + S.mx, S.H + S.my], MODE === 'radial' ? [S.centre.x, S.centre.y] : [S.W / 2, S.H / 2], MODE === 'radial');
   s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
