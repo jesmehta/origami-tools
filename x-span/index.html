@@ -43,6 +43,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
 <aside>
   <a class="ot-back" href="../index.html">← Origami tools</a>
   <h1>X Span Generator</h1>
+  <div id="projSlot"></div>
 
   <fieldset><legend>Sheet</legend>
     <div class="row">
@@ -203,6 +204,7 @@ const isVarH = () => S.kind === 'movH' || S.kind === 'both';    // heights varia
 const $ = id => document.getElementById(id);
 const cv = $('cv');
 $('gridSlot').outerHTML = OT.gridFieldset(false);
+$('projSlot').outerHTML = OT.projectFieldset();
 
 /* ---------- state ---------- */
 const S = {
@@ -513,7 +515,7 @@ function buildSVG(bg) {
     `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
     `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
 }
-OT.wireExport({ base: 'x-span', svg: buildSVG, size: () => [S.W + 2 * S.m, S.H + 2 * S.m] });
+OT.wireExport({ base: 'x-span', svg: buildSVG, size: () => [S.W + 2 * S.m, S.H + 2 * S.m], project: () => projectDoc() });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {
@@ -828,6 +830,13 @@ function syncUI() {
 regen();
 syncUI(); setMode('grid');
 OT.wireGrid(render);
+// Project files: the model S. Missing fields fall back to the start-up defaults; a load is one undo step.
+const S0 = snap();
+const projectDoc = OT.wireProject({
+  tool: 'x-span', version: 1, templates: 'templates/index.txt',
+  get: () => JSON.parse(snap()),
+  set: st => act(() => { Object.assign(S, JSON.parse(S0), st); UI.selV = -1; UI.mp = null; UI.meas = []; }),
+});
 new ResizeObserver(render).observe(cv);
 </script>
 </body>

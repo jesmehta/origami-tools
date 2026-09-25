@@ -37,6 +37,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
 <aside>
   <a class="ot-back" href="../index.html">← Origami tools</a>
   <h1>Hypar Generator</h1>
+  <div id="projSlot"></div>
 
   <fieldset><legend>Sheet</legend>
     <div class="row">
@@ -102,6 +103,7 @@ const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const $ = id => document.getElementById(id);
 const cv = $('cv');
 $('gridSlot').outerHTML = OT.gridFieldset(false);
+$('projSlot').outerHTML = OT.projectFieldset();
 
 /* ---------- state ---------- */
 const S = {
@@ -367,7 +369,7 @@ function buildSVG(bg) {
     `<g id="fold" stroke="${$('colFold').value}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round">${fold}</g>` +
     `<g id="cut" stroke="${$('colCut').value}" stroke-width="${sw}" fill="none" stroke-linejoin="round">${cut}</g></svg>`;
 }
-OT.wireExport({ base: 'hypar', svg: buildSVG, size: () => [S.W, S.H] });
+OT.wireExport({ base: 'hypar', svg: buildSVG, size: () => [S.W, S.H], project: () => projectDoc() });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {
@@ -438,6 +440,13 @@ cv.addEventListener('wheel', e => {
 /* ---------- init ---------- */
 OT.wireGrid(render);
 setRegular(); syncUI(); fitView(); render();
+// Project files: the model S. Missing fields fall back to the start-up defaults; a load is one undo step.
+const S0 = snap();
+const projectDoc = OT.wireProject({
+  tool: 'hypar', version: 1, templates: 'templates/index.txt',
+  get: () => JSON.parse(snap()),
+  set: st => act(() => { Object.assign(S, JSON.parse(S0), st); fitView(); }),
+});
 </script>
 </body>
 </html>

@@ -40,6 +40,10 @@ layers, `<g id="fold">` and `<g id="cut">`. Ghost lines and handles are not
 exported. Closed outlines are `<polygon>`s so laser software sees one closed
 path.
 
+**Project** — Save… / Load… a `.json` (sheet, polygon, contours settings, grid &
+snap) or an exported `.svg` (it carries the same data), or drop either onto the
+page; *Templates…* lists `templates/index.txt`. Loading is one undo step.
+
 ## How it works
 
 - **Contours** — the polygon clipped (Sutherland–Hodgman) by every edge's

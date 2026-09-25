@@ -144,6 +144,10 @@ twice. Dimensions, measurements and ghosts are not exported.
 Undo/redo: Ctrl+Z / Ctrl+Shift+Z (80 steps). Esc clears a pending measure and
 the selection.
 
+**Project** — Save… / Load… a `.json` (geometry + grid & snap settings) or an
+exported `.svg` (it carries the same data), or drop either onto the page;
+*Templates…* lists `templates/index.txt`. Loading is one undo step.
+
 ## Decisions
 
 - **One lattice, two ways of placing verticals.** The tiling condition (touching
