@@ -72,7 +72,12 @@ not use it (yet).
   `name, width, height` line per size; add your own there. Opened from disk
   (no server) the browser can't read that file, so the built-in copy in
   `common.js` is used. Hypar now has a sheet too (it had none).
-- Margin, 5–15 mm (default 10), the same on every side. The pattern is
+- Margins, 5–15 mm (default 10): **↔** left & right and **↕** top & bottom,
+  each symmetric, 🔗 to keep them equal (the default). *Fit to grid* and a
+  *Margin* edit mode (drag the edges, snapping to grid lines) put the margin
+  lines on the grid so the working area is a whole number of grid steps —
+  one value can't usually do that on both axes, hence two. Radial (polar
+  grid) and vPleat (no grid) have no fitting. The pattern is
   cropped at the margin line; the export is the whole page at true size with
   the margin outline as the cut line (plus the folds as before), and no page
   outline. On screen the page is white on a grey canvas. In mirror-pleats and

@@ -349,3 +349,72 @@ OT.wireProject = o => {
   })();
   return doc;
 };
+
+/* ---------- margins ----------
+   Two margins, each applied symmetrically: mx (left & right) and my (top & bottom), 5–15 mm, optionally locked
+   equal. The square grid runs through the page centre, so a margin line sits on a grid line when
+   (page length / 2 − margin) is a whole number of grid steps — usually a different margin per axis. */
+OT.MARGIN = [5, 15];
+OT.marginRow = () => `
+    <div class="row">
+      <label data-tip="Left &amp; right margin (5–15 mm). The pattern is cropped at the margin line, which is exported as the cut line; the page outline is not exported. Changing a margin keeps the page size and rescales the pattern.">Margin ↔ <input type="number" id="margX" min="5" max="15" step="0.5"></label>
+      <label data-tip="Top &amp; bottom margin (5–15 mm).">↕ <input type="number" id="margY" min="5" max="15" step="0.5"> mm</label>
+      <button id="margLock" data-tip="Keep the two margins equal">🔗</button>
+      <button id="margFit" data-tip="Move each margin line onto the nearest grid line (within 5–15 mm), so the area inside holds a whole number of grid steps. Or drag the margin edges in Margin mode.">Fit to grid</button>
+    </div>`;
+const clampM = v => Math.min(OT.MARGIN[1], Math.max(OT.MARGIN[0], v));
+// All margins in range that put the margin line on the grid, for page length L and step st
+OT.gridMargins = (L, st) => {
+  const out = [];
+  for (let k = Math.ceil((L / 2 - OT.MARGIN[1]) / st - 1e-9); L / 2 - k * st >= OT.MARGIN[0] - 1e-9; k++) out.push(L / 2 - k * st);
+  return out;
+};
+// nearest to v; on a tie the smaller margin (the larger working area)
+const nearest = (list, v) => list.reduce((b, x) => b === null || Math.abs(x - v) < Math.abs(b - v) - 1e-9 || (Math.abs(Math.abs(x - v) - Math.abs(b - v)) <= 1e-9 && x < b) ? x : b, null);
+// While dragging a margin edge: d = its distance from the page edge; snapped to the square grid if one is shown
+OT.snapMargin = (L, d, tol) => {
+  const g = gridCtx(); OT.lastSnap = null;
+  if (!g || g.polar) return d;
+  const k = Math.round((L / 2 - d) / g.step), v = L / 2 - k * g.step;
+  return Math.abs(v - d) < tol ? v : Math.round(d * 10) / 10;   // off the grid: whole tenths of a mm
+};
+// "working area 260 × 190 mm = 26 × 19 grid steps", flagging an axis whose margin line is off the grid
+OT.marginInfo = (PW, PH, mx, my) => {
+  const w = PW - 2 * mx, h = PH - 2 * my, g = OT.gridCfg(), f = v => +v.toFixed(2);
+  let s = `working area ${f(w)} × ${f(h)} mm`;
+  if (OT._grid && !OT._grid.polar) {
+    const on = (L, m) => Math.abs(((L / 2 - m) / g.step) - Math.round((L / 2 - m) / g.step)) < 1e-6;
+    s += ` = ${f(w / g.step)} × ${f(h / g.step)} grid steps`;
+    const off = [on(PW, mx) ? '' : '↔', on(PH, my) ? '' : '↕'].filter(Boolean);
+    if (off.length) s += ` (${off.join(' and ')} not on the grid)`;
+  }
+  return s;
+};
+/* Wire #margX, #margY, #margLock, #margFit. o: { get() → [mx, my, lock], set(mx, my, lock) (one undo step),
+   page() → [PW, PH], polar (bool: this page's grid is polar — Fit is disabled), note(msg) }. Returns sync(). */
+OT.wireMargins = o => {
+  const $ = id => document.getElementById(id);
+  $('margX').onchange = () => { const [mx, my, lock] = o.get(), v = clampM(+$('margX').value || mx); o.set(v, lock ? v : my, lock); };
+  $('margY').onchange = () => { const [mx, my, lock] = o.get(), v = clampM(+$('margY').value || my); o.set(lock ? v : mx, v, lock); };
+  $('margLock').onclick = () => { const [mx, my, lock] = o.get(); o.set(mx, lock ? my : mx, !lock); };
+  $('margFit').onclick = () => {
+    const [mx, my, lock] = o.get(), [PW, PH] = o.page(), st = OT.gridCfg().step;
+    const xs = OT.gridMargins(PW, st), ys = OT.gridMargins(PH, st);
+    if (lock) {                                    // one margin on the grid on both axes, if there is one
+      const both = xs.filter(x => ys.some(y => Math.abs(x - y) < 1e-6)), v = nearest(both, mx);
+      if (v !== null) { o.set(v, v, true); return; }
+    }
+    const fx = nearest(xs, mx), fy = nearest(ys, my);
+    o.set(fx === null ? mx : fx, fy === null ? my : fy, false);
+    const miss = [fx === null ? '↔' : '', fy === null ? '↕' : ''].filter(Boolean).join(' and ');
+    o.note((lock ? 'No single margin fits the grid on both axes, so the margins were unlocked. ' : '') +
+      (miss ? `No grid line lies within 5–15 mm for ${miss} with a ${st} mm grid; left as it was.` : ''));
+  };
+  return () => {
+    const [mx, my, lock] = o.get(), put = (id, v) => { if (document.activeElement !== $(id)) $(id).value = +v.toFixed(2); };
+    put('margX', mx); put('margY', my);
+    $('margY').disabled = lock; $('margLock').classList.toggle('on', lock);
+    $('margFit').disabled = !!o.polar;
+    if (o.polar) $('margFit').dataset.tip = 'This page\'s grid is polar, so there are no grid lines to fit the margins to; set them by value.';
+  };
+};

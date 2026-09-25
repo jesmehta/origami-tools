@@ -54,7 +54,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <label>W <input type="number" id="W" min="10" step="1"> mm</label>
       <label>H <input type="number" id="H" min="10" step="1"> mm</label>
     </div>
-    <div class="row"><label data-tip="Inset on every side (5–15 mm). The pattern is cropped at the margin line, which is exported as the cut line; the page outline is not exported. Changing it keeps the page size and rescales the pattern.">Margin <input type="number" id="marg" min="5" max="15" step="1"> mm</label></div>
+    <div id="margSlot"></div>
   </fieldset>
   <div id="gridSlot"></div>
 
@@ -148,6 +148,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <button id="mGrid" class="on">Grid</button>
       <button id="mVerts">Verticals</button>
       <button id="mMeas" data-tip="Click two points (distance) or two lines (angle); pick which in Dimensions.">Measure</button>
+      <button id="mMarg" data-tip="Drag the edges of the margin. They snap to the grid, so the area inside holds whole grid steps (Alt = free). The opposite edge follows; with 🔗 all four do.">Margin</button>
     </div>
     <div class="row"><button id="bDel">Delete selected vertical</button></div>
   </fieldset>
@@ -196,6 +197,7 @@ const GAP = 1;                                   // min mm between neighbouring 
 const MAXSEG = 30000;                            // safety cap on generated segments
 const MAXROWS = 4000, MINH = 0.3;                // row cap; smallest allowed half-height (mm)
 const DEG = Math.PI / 180;
+const POLAR = false;                              // square grid: margins can be fitted to it
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const fmt = n => +n.toFixed(4);
 const half = x => Math.round(x * 2) / 2;
@@ -205,10 +207,12 @@ const $ = id => document.getElementById(id);
 const cv = $('cv');
 $('gridSlot').outerHTML = OT.gridFieldset(false);
 $('projSlot').outerHTML = OT.projectFieldset();
+$('margSlot').outerHTML = OT.marginRow();
 
 /* ---------- state ---------- */
 const S = {
-  W: 277, H: 190, m: 10, // W × H: the area inside the margin m (origin at its top-left); the page is W + 2m × H + 2m
+  W: 277, H: 190,        // the area inside the margins (origin at its top-left); the page is W + 2·mx × H + 2·my
+  mx: 10, my: 10, mLock: true,   // margins: left & right, top & bottom (5–15 mm); mLock keeps them equal
   kind: 'regular',      // 'regular' | 'movW' (const H, free verticals) | 'movH' (const W, variable heights) | 'both'
   xs: [],               // x of each vertical, sorted (regular: derived from `reg`; irregular: the state)
   layout: 'gen',        // irregular: 'gen' (from the fields) | 'free' (hand-edited)
@@ -366,15 +370,16 @@ function setKind(k) {
 
 /* ---------- view ---------- */
 function bounds() {
+  if (UI.viewLockPage) { const L = UI.viewLockPage; return { x0: L.x0 - S.mx, y0: L.y0 - S.my, x1: L.x1 - S.mx, y1: L.y1 - S.my }; }   // margin drag: hold the page still
   if (UI.viewLock) return UI.viewLock;
-  const e = Math.max(S.W, S.H) * 0.08 + S.m;
-  return { x0: -e, y0: -e, x1: S.W + e, y1: S.H + e };
+  const pad = Math.max(S.W, S.H) * 0.08, ex = pad + S.mx, ey = pad + S.my;
+  return { x0: -ex, y0: -ey, x1: S.W + ex, y1: S.H + ey };
 }
 const edgeVert = x => x < 1e-6 || x > S.W - 1e-6;      // on/outside a rectangle edge: not drawn as a line inside
 let lastG = { segs: [], diags: [], h: 0 };
 
 function effMode(shift) {
-  if (UI.mode === 'measure') return 'measure';
+  if (UI.mode === 'measure' || UI.mode === 'margin') return UI.mode;
   if (!isFreeX()) return 'grid';
   return shift ? (UI.mode === 'grid' ? 'verts' : 'grid') : UI.mode;
 }
@@ -389,8 +394,8 @@ function render() {
   const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#333'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
   const X = S.xs, G = lastG = computeGrid();
   const len = a => Math.hypot(a[2] - a[0], a[3] - a[1]);
-  let s = `<rect x="${-S.m}" y="${-S.m}" width="${S.W + 2 * S.m}" height="${S.H + 2 * S.m}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
-  s += OT.gridSVG([-S.m, -S.m, S.W + S.m, S.H + S.m], [S.W / 2, S.H / 2], false);
+  let s = `<rect x="${-S.mx}" y="${-S.my}" width="${S.W + 2 * S.mx}" height="${S.H + 2 * S.my}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  s += OT.gridSVG([-S.mx, -S.my, S.W + S.mx, S.H + S.my], [S.W / 2, S.H / 2], false);
   s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
   const cut = G.segs.filter(g => g.c && len(g.s) - len(g.c) > 1e-6).length, out = G.segs.filter(g => !g.c).length;
@@ -475,6 +480,7 @@ function render() {
     }));
     s += '</g>';
   }
+  if (effMode(UI.shift) === 'margin') s += marginHandles(px);
   if (drag) s += OT.snapMark(px);
   cv.innerHTML = s;
   updateStatus(G);
@@ -484,6 +490,7 @@ function updateStatus(G) {
   const em = effMode(UI.shift);
   let t;
   if (S.xs.length < 2) t = 'Need at least 2 verticals.';
+  else if (em === 'margin') t = 'MARGIN: drag an edge of the margin (the opposite edge follows; with 🔗 all four) · snaps to the grid, Alt = free · ' + marginInfo() + '.';
   else if (em === 'measure') t = UI.mp ? 'Pick the second ' + (UI.mp.pt ? 'point.' : 'line.') : ($('mtD').checked ? 'Measure distance: click two points (snaps to corners, ends and vertices).' : 'Measure angle: click two lines.');
   else if (em === 'grid') t = 'GRID: ' + (isVarH() ? 'drag a circle to trade height between the chains above and below · ' : '') + 'drag a line to set the angle (pivots about the top of V2; heights scale together) · drag empty space to shift the grid up/down' + (isFreeX() ? ' · hold Shift to edit verticals.' : '.');
   else t = 'VERTICALS: drag a vertical (or a square) left/right · click a point on the top or bottom edge to add one · Delete removes the selected · hold Shift for Grid.';
@@ -509,13 +516,13 @@ function buildSVG(bg) {
   let l = '';
   S.xs.forEach(x => { if (!edgeVert(x)) l += `<line x1="${fmt(x)}" y1="0" x2="${fmt(x)}" y2="${fmt(H)}"/>`; });
   computeGrid().segs.forEach(g => { if (g.c) l += `<line x1="${fmt(g.c[0])}" y1="${fmt(g.c[1])}" x2="${fmt(g.c[2])}" y2="${fmt(g.c[3])}"/>`; });
-  const PW = W + 2 * S.m, PH = H + 2 * S.m;                // the whole page at true size; its outline is not drawn
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(PW)}mm" height="${fmt(PH)}mm" viewBox="${-S.m} ${-S.m} ${fmt(PW)} ${fmt(PH)}">` +
-    (bg ? `<rect x="${-S.m}" y="${-S.m}" width="${fmt(PW)}" height="${fmt(PH)}" fill="#fff"/>` : '') +
+  const PW = W + 2 * S.mx, PH = H + 2 * S.my;              // the whole page at true size; its outline is not drawn
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(PW)}mm" height="${fmt(PH)}mm" viewBox="${fmt(-S.mx)} ${fmt(-S.my)} ${fmt(PW)} ${fmt(PH)}">` +
+    (bg ? `<rect x="${fmt(-S.mx)}" y="${fmt(-S.my)}" width="${fmt(PW)}" height="${fmt(PH)}" fill="#fff"/>` : '') +
     `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
     `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
 }
-OT.wireExport({ base: 'x-span', svg: buildSVG, size: () => [S.W + 2 * S.m, S.H + 2 * S.m], project: () => projectDoc() });
+OT.wireExport({ base: 'x-span', svg: buildSVG, size: () => [S.W + 2 * S.mx, S.H + 2 * S.my], project: () => projectDoc() });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {
@@ -620,6 +627,16 @@ cv.addEventListener('pointerdown', e => {
   const p = ptr(e), em = effMode(e.shiftKey);
   UI.shift = e.shiftKey; UI.snap = OT.snapping(e);
   if (em === 'measure') { measurePress(p); render(); return; }
+  if (em === 'margin') {
+    const me = hitMargin(p);
+    if (me) {
+      const b = bounds();
+      UI.viewLockPage = { x0: b.x0 + S.mx, y0: b.y0 + S.my, x1: b.x1 + S.mx, y1: b.y1 + S.my };
+      drag = { type: 'margin', edge: me, snapJ: snap(), pushed: false }; UI.note = '';
+      cv.setPointerCapture(e.pointerId);
+    }
+    render(); return;
+  }
   if (em === 'grid') {
     UI.selV = -1;
     const th = isVarH() ? hitTouch(p) : null, snapJ = snap();
@@ -645,13 +662,16 @@ cv.addEventListener('pointermove', e => {
   if (UI.mp && UI.mp.pt) { UI.mcur = snapPoint(p); render(); return; }
   if (!drag) {
     const em = effMode(e.shiftKey);
-    cv.style.cursor = em === 'measure' ? 'crosshair' : em === 'grid' ? (isVarH() && hitTouch(p) ? 'row-resize' : hitLine(p) ? 'crosshair' : 'ns-resize')
+    const me = em === 'margin' && hitMargin(p);
+    cv.style.cursor = em === 'margin' ? (me ? (me === 'l' || me === 'r' ? 'ew-resize' : 'ns-resize') : 'default')
+      : em === 'measure' ? 'crosshair' : em === 'grid' ? (isVarH() && hitTouch(p) ? 'row-resize' : hitLine(p) ? 'crosshair' : 'ns-resize')
       : hitVerts(p) ? 'pointer' : edgeNear(p) ? 'crosshair' : 'default';
     return;
   }
   if (!drag.pushed) { pushUndo(drag.snapJ); drag.pushed = true; }
   const d = drag;
-  if (d.type === 'angle') {                          // θ from the pointer's direction off the anchor; anchor stays a vertex
+  if (d.type === 'margin') dragMargin(d.edge, p);
+  else if (d.type === 'angle') {                          // θ from the pointer's direction off the anchor; anchor stays a vertex
     const a = UI.snap ? OT.snapDir([d.ax, d.ay], p, snapTol()) * DEG : Math.atan2(p.y - d.ay, p.x - d.ax);
     S.a = 'angle'; S.theta = clamp(Math.atan2(Math.abs(Math.sin(a)), Math.abs(Math.cos(a))) / DEG, 0.5, 89.5);
     S.yoff = normY(d.ay - relOff(d.vt, d.j));
@@ -668,7 +688,7 @@ cv.addEventListener('pointermove', e => {
   else setX(d.i, snapX(d.x0 + p.x - d.start.x, d.i));
   syncUI(); render();
 });
-const endDrag = () => { OT.lastSnap = null; if (drag) { drag = null; UI.viewLock = null; UI.ang = null; syncUI(); render(); } };
+const endDrag = () => { OT.lastSnap = null; if (drag) { drag = null; UI.viewLock = UI.viewLockPage = null; UI.ang = null; syncUI(); render(); } };
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 
@@ -689,6 +709,7 @@ function setMode(m) {
   $('mGrid').classList.toggle('on', m === 'grid');
   $('mVerts').classList.toggle('on', m === 'verts');
   $('mMeas').classList.toggle('on', m === 'measure');
+  $('mMarg').classList.toggle('on', m === 'margin');
   render();
 }
 function delSel() {
@@ -705,6 +726,7 @@ on('kMB', 'onclick', () => setKind('both'));
 on('mGrid', 'onclick', () => setMode('grid'));
 on('mVerts', 'onclick', () => setMode('verts'));
 on('mMeas', 'onclick', () => setMode('measure'));
+on('mMarg', 'onclick', () => setMode('margin'));
 on('bDel', 'onclick', delSel);
 on('bReset', 'onclick', () => act(regen));
 on('bFit', 'onclick', () => act(() => { S.gen.start = 0; S.gen.spacing = S.W / (S.gen.n - 1); regen(); }));
@@ -782,12 +804,8 @@ function resize(nw, nh) {                               // new area inside the m
   if (!isFreeX() || S.layout === 'gen') regen(); else sanitize();
 }
 ['W', 'H'].forEach(id => on(id, 'onchange', () => act(() => {
-  resize(Math.max(10, (+$('W').value || S.W + 2 * S.m) - 2 * S.m), Math.max(10, (+$('H').value || S.H + 2 * S.m) - 2 * S.m));
+  resize(Math.max(10, (+$('W').value || S.W + 2 * S.mx) - 2 * S.mx), Math.max(10, (+$('H').value || S.H + 2 * S.my) - 2 * S.my));
 })));
-on('marg', 'onchange', () => act(() => {                // the page keeps its size; the area inside the margin changes
-  const m = clamp(Math.round(+$('marg').value) || S.m, 5, 15), d = 2 * (S.m - m);
-  S.m = m; resize(S.W + d, S.H + d);
-}));
 on('vx', 'onchange', () => { if (UI.selV >= 0) act(() => setX(UI.selV, +$('vx').value)); });
 const nudge = sign => { if (UI.selV >= 0) act(() => setX(UI.selV, S.xs[UI.selV] + sign * (+$('step').value || 1))); };
 on('nudL', 'onclick', () => nudge(-1)); on('nudR', 'onclick', () => nudge(1));
@@ -798,11 +816,41 @@ Object.keys(UI.dim).forEach(k => {
 });
 document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI.mp = null; render(); });
 
-const syncSheet = OT.wireSheet({ get: () => [S.W + 2 * S.m, S.H + 2 * S.m], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
+/* ---------- margins (two, each symmetric; see common.js) ---------- */
+// the page keeps its size; the area inside the margins changes and the pattern rescales with it
+function setMargins(mx, my, lock) { const dx = 2 * (S.mx - mx), dy = 2 * (S.my - my); S.mx = mx; S.my = my; S.mLock = lock; resize(S.W + dx, S.H + dy); }
+// Margin mode: which margin edge (l r t b) is under p
+function hitMargin(p) {
+  const tol = 9 * pxmm(), inX = p.x > -tol && p.x < S.W + tol, inY = p.y > -tol && p.y < S.H + tol;
+  if (inY && Math.abs(p.x) < tol) return 'l';
+  if (inY && Math.abs(p.x - S.W) < tol) return 'r';
+  if (inX && Math.abs(p.y) < tol) return 't';
+  if (inX && Math.abs(p.y - S.H) < tol) return 'b';
+  return null;
+}
+// drag edge e to p: its distance from the page edge becomes that margin, snapped to the grid, kept in 5–15 mm
+function dragMargin(e, p) {
+  const horiz = e === 'l' || e === 'r', PW = S.W + 2 * S.mx, PH = S.H + 2 * S.my;
+  let d = e === 'l' ? p.x + S.mx : e === 'r' ? S.W + S.mx - p.x : e === 't' ? p.y + S.my : S.H + S.my - p.y;
+  d = UI.snap ? OT.snapMargin(horiz ? PW : PH, d, snapTol()) : Math.round(d * 10) / 10;
+  d = clamp(d, 5, 15);
+  if (S.mLock) setMargins(d, d, true); else setMargins(horiz ? d : S.mx, horiz ? S.my : d, false);
+}
+const marginInfo = () => OT.marginInfo(S.W + 2 * S.mx, S.H + 2 * S.my, S.mx, S.my);
+const marginHandles = px => {                            // Margin mode: a bar on each edge
+  const r = 5 * px, H2 = S.H / 2, W2 = S.W / 2;
+  return `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" vector-effect="non-scaling-stroke">` +
+    [[0, H2, r, 3 * r], [S.W, H2, r, 3 * r], [W2, 0, 3 * r, r], [W2, S.H, 3 * r, r]].map(([x, y, w, h]) => `<rect x="${fmt(x - w)}" y="${fmt(y - h)}" width="${fmt(2 * w)}" height="${fmt(2 * h)}"/>`).join('') + '</g>';
+};
+const syncMargins = OT.wireMargins({
+  get: () => [S.mx, S.my, S.mLock], set: (mx, my, lock) => act(() => setMargins(mx, my, lock)),
+  page: () => [S.W + 2 * S.mx, S.H + 2 * S.my], polar: POLAR, note: m => { UI.note = m; render(); },
+});
+const syncSheet = OT.wireSheet({ get: () => [S.W + 2 * S.mx, S.H + 2 * S.my], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
 function syncUI() {
   const set = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
   const free = isFreeX(), reg = !free, X = S.xs, h = gridH(), d = X.length > 1 ? X[1] - X[0] : 0;
-  set('W', S.W + 2 * S.m); set('H', S.H + 2 * S.m); set('marg', S.m); syncSheet();
+  set('W', S.W + 2 * S.mx); set('H', S.H + 2 * S.my); syncMargins(); syncSheet();
   [['kReg', 'regular'], ['kMW', 'movW'], ['kMH', 'movH'], ['kMB', 'both']].forEach(([id, k]) => $(id).classList.toggle('on', S.kind === k));
   $('mGrid').dataset.tip = 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (free ? ' Hold Shift to move verticals.' : '');
   $('mVerts').dataset.tip = 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift for Grid.';
@@ -835,7 +883,9 @@ const S0 = snap();
 const projectDoc = OT.wireProject({
   tool: 'x-span', version: 1, templates: 'templates/index.txt',
   get: () => JSON.parse(snap()),
-  set: st => act(() => { Object.assign(S, JSON.parse(S0), st); UI.selV = -1; UI.mp = null; UI.meas = []; }),
+  set: st => act(() => {
+    if (st.m !== undefined) { st.mx = st.my = st.m; delete st.m; }   // files from before there were two margins
+    Object.assign(S, JSON.parse(S0), st); UI.selV = -1; UI.mp = null; UI.meas = []; }),
 });
 new ResizeObserver(render).observe(cv);
 </script>

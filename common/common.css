@@ -8,3 +8,4 @@
 legend[data-tip]::after,h2[data-tip]::after{content:" ⓘ";color:#999;font-weight:400}
 legend[data-tip],h2[data-tip],label[data-tip],span[data-tip]{cursor:help}
 aside select{font:inherit;padding:3px 4px;max-width:190px}
+#margLock.on{background:#222;color:#fff;border-color:#222}

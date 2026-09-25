@@ -21,10 +21,21 @@ panel and the vertical generator differ.
 ## Using it
 
 **Sheet** — page W × H in mm, typed or from the *Size* presets (⇄ swaps
-portrait/landscape), and a **margin** (5–15 mm). The "rectangle" everything
-below refers to is the area inside the margin: the pattern is cropped there
-and its outline is the exported cut line. Changing the page or the margin
-rescales verticals.
+portrait/landscape), and margins (below). The "rectangle" everything below
+refers to is the area inside the margins: the pattern is cropped there and its
+outline is the exported cut line. Changing the page or a margin rescales
+verticals.
+
+**Margins** — two, each symmetric: **↔** left & right, **↕** top & bottom
+(5–15 mm; 🔗 keeps them equal). **Fit to grid** moves each margin line onto the
+nearest grid line, so the area inside holds a whole number of grid steps —
+e.g. A4 with a 10 mm grid → ↔ 8.5, ↕ 5 → 280 × 200 mm = 28 × 20 steps (if
+no single value fits both axes it unlocks 🔗 and says so). **Margin** edit
+mode: drag any margin edge; the opposite edge follows (all four with 🔗),
+it snaps to grid lines (Alt = free; off the grid it moves in 0.1 mm steps),
+and the status bar shows the working area in mm and grid steps, flagging an
+axis that isn't on the grid. The margins can always be typed to any value. On the radial page the grid is polar, so
+*Fit to grid* is disabled and edges don't snap; set the margins by value.
 
 **Verticals**
 - Linear: count, spacing (mm), first x (mm); "Fit edge to edge"; ±45° cap.

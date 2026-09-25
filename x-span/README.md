@@ -67,9 +67,19 @@ the vertices `t_j`; the other verticals carry the crossings `c_j`. Every crossin
 ## Using it
 
 **Sheet** — page W × H in mm, typed or from the *Size* presets (⇄ swaps
-portrait/landscape), and a **margin** (5–15 mm). The "rectangle" below is the
-area inside the margin: the lattice fills and is cropped to it, and its outline
-is the exported cut line.
+portrait/landscape), and margins (below). The "rectangle" below is the area
+inside the margins: the lattice fills and is cropped to it, and its outline is
+the exported cut line.
+
+**Margins** — two, each symmetric: **↔** left & right, **↕** top & bottom
+(5–15 mm; 🔗 keeps them equal). **Fit to grid** moves each margin line onto the
+nearest grid line, so the area inside holds a whole number of grid steps —
+e.g. A4 with a 10 mm grid → ↔ 8.5, ↕ 5 → 280 × 200 mm = 28 × 20 steps (if
+no single value fits both axes it unlocks 🔗 and says so). **Margin** edit
+mode: drag any margin edge; the opposite edge follows (all four with 🔗),
+it snaps to grid lines (Alt = free; off the grid it moves in 0.1 mm steps),
+and the status bar shows the working area in mm and grid steps, flagging an
+axis that isn't on the grid. The margins can always be typed to any value.
 
 **Regular · verticals** — pick what defines them: *number*, *distance*, or
 *rhombus minor diagonal* (= 2 × distance; the horizontal diagonal spans two

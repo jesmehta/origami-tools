@@ -9,9 +9,13 @@ diagonal from every corner.
 
 - **Sheet** — the paper the polygon sits on (default 270 × 270 mm): a size
   preset, ⇄ to swap portrait/landscape, or W × H typed in. Resizing keeps the
-  polygon where it was relative to the sheet centre. **Margin** (5–15 mm):
-  the polygon, contours and diagonals are cropped at the margin line, which is
-  exported as a cut. The export is the whole sheet at true size; the sheet
+  polygon where it was relative to the sheet centre. **Margins** (5–15 mm,
+  ↔ left & right and ↕ top & bottom, 🔗 keeps them equal): the polygon,
+  contours and diagonals are cropped at the margin line, which is exported as
+  a cut. **Fit to grid** puts each margin line on the nearest grid line; the
+  margin edges (blue bars) can also be dragged at any time — they snap to the
+  grid (Alt = free) and the status bar shows the working area in grid steps.
+  Changing a margin doesn't move the polygon. The export is the whole sheet at true size; the sheet
   outline itself is not exported. A closed outline stays one `<polygon>` while
   it is wholly inside the margin, and becomes its surviving edge pieces once
   cropped.
