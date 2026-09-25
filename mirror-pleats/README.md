@@ -52,6 +52,10 @@ rescales verticals.
   vertical; the line body slides both ends). Delete removes the selected line.
   Lines can be drawn in any section, not only the first; they reflect in both
   directions.
+  A handle whose end lies outside the view (e.g. after moving verticals) is
+  drawn with a dashed outline at the nearest visible point of its line, so the
+  line can still be grabbed, adjusted or selected and deleted; only the
+  display moves, not the line.
 - **Verticals** — drag a body to move the whole line in ±x, drag a square
   handle to move one end, or use the numeric fields / ◀ ▶ nudge. (Radial: drag
   the ◆ to move the centre.) **Add a vertical** by clicking a point on the top

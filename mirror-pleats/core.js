@@ -600,8 +600,8 @@ function render() {
     s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
     S.hors.forEach((h, i) => {
       if (!V[h.k] || !V[h.k + 1]) return;
-      [vp(V[h.k], h.a), vp(V[h.k + 1], h.b)].forEach(p => {
-        s += `<circle cx="${fmt(p[0])}" cy="${fmt(p[1])}" r="${fmt(r)}" ${i === UI.selH ? 'fill="#bbdefb"' : ''}/>`;
+      lineHandles(h).forEach(({ p, proxy }) => {       // proxy: the real end is off-canvas, shown at the nearest visible point
+        s += `<circle cx="${fmt(p[0])}" cy="${fmt(p[1])}" r="${fmt(r)}" ${i === UI.selH ? 'fill="#bbdefb"' : ''}${proxy ? ' stroke-dasharray="2 2"' : ''}/>`;
       });
     });
     s += '</g>';
@@ -678,11 +678,21 @@ function ptr(e) {
 }
 const pxmm = () => 1 / cv.getScreenCTM().a;
 
+// Where to draw/grab a line's two end handles. An end outside the view is shown at the nearest visible point
+// of the line (or, if none of it is visible, at the view edge) so it can still be dragged or selected + deleted.
+function lineHandles(h) {
+  const V = S.verts, A = vp(V[h.k], h.a), B = vp(V[h.k + 1], h.b), b = bounds(), e = 8 * pxmm();
+  const box = [b.x0 + e, b.y0 + e, b.x1 - e, b.y1 - e];
+  const inside = q => q[0] >= box[0] && q[0] <= box[2] && q[1] >= box[1] && q[1] <= box[3];
+  const c = clipBox(A[0], A[1], B[0], B[1], ...box);
+  return [[A, c && [c[0], c[1]]], [B, c && [c[2], c[3]]]].map(([q, vis]) => inside(q) ? { p: q, proxy: false }
+    : { p: vis || [clamp(q[0], box[0], box[2]), clamp(q[1], box[1], box[3])], proxy: true });
+}
 function hitLines(p) {
   const tol = 9 * pxmm(), V = S.verts;
   for (let i = S.hors.length - 1; i >= 0; i--) {
     const h = S.hors[i]; if (!V[h.k] || !V[h.k + 1]) continue;
-    const A = vp(V[h.k], h.a), B = vp(V[h.k + 1], h.b);
+    const [A, B] = lineHandles(h).map(o => o.p);
     if (Math.hypot(p.x - A[0], p.y - A[1]) < tol) return { type: 'hEnd', i, which: 'a' };
     if (Math.hypot(p.x - B[0], p.y - B[1]) < tol) return { type: 'hEnd', i, which: 'b' };
   }
