@@ -76,3 +76,44 @@ OT.wireExport = opts => {
     } catch (e) { alert(e.message); }
   };
 };
+
+/* ---------- sheet size presets ---------- */
+// Fallback when page-sizes.txt can't be read (e.g. opened from file://). Keep in step with that file.
+OT.PAGE_DEFAULTS = [['A4', 297, 210], ['A3', 420, 297], ['370 × 270', 370, 270], ['270 square', 270, 270], ['550 × 760', 550, 760], ['550 square', 550, 550]];
+OT.pageSizes = (function () {
+  const here = document.currentScript && document.currentScript.src;
+  return (async () => {
+    try {
+      const r = await fetch(new URL('page-sizes.txt', here));
+      if (!r.ok) throw new Error(r.status);
+      const out = [];
+      (await r.text()).split(/\r?\n/).forEach(line => {
+        const f = line.replace(/#.*/, '').split(',').map(x => x.trim());
+        if (f.length >= 3 && f[0] && +f[1] > 0 && +f[2] > 0) out.push([f[0], +f[1], +f[2]]);
+      });
+      if (out.length) return out;
+    } catch (e) { /* fall through */ }
+    return OT.PAGE_DEFAULTS;
+  })();
+})();
+/* Fill the size <select> (#pgSel) and wire the swap button (#pgSwap). o.get(): current [w, h] of the sheet;
+   o.set(w, h): apply a new sheet size. Returns sync(), which re-selects the matching preset (either
+   orientation) or "Custom" — call it whenever the size may have changed. */
+OT.wireSheet = o => {
+  const sel = document.getElementById(o.sel || 'pgSel'), swap = document.getElementById(o.swap || 'pgSwap');
+  let sizes = [];
+  const same = (a, b) => Math.abs(a - b) < 1e-6;
+  const sync = () => {
+    const [w, h] = o.get(), i = sizes.findIndex(([, a, b]) => (same(a, w) && same(b, h)) || (same(a, h) && same(b, w)));
+    sel.value = i >= 0 ? String(i) : 'custom';
+  };
+  OT.pageSizes.then(list => {
+    sizes = list;
+    sel.innerHTML = list.map(([n, w, h], i) => `<option value="${i}">${n.includes(String(w)) ? n : `${n} (${w} × ${h})`}</option>`).join('') +
+      '<option value="custom">Custom</option>';
+    sync();
+  });
+  sel.onchange = () => { if (sel.value !== 'custom') { const [, w, h] = sizes[+sel.value]; o.set(w, h); } };
+  swap.onclick = () => { const [w, h] = o.get(); o.set(h, w); };
+  return sync;
+};

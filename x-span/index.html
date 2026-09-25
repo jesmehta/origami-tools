@@ -44,7 +44,11 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
   <a class="ot-back" href="../index.html">← Origami tools</a>
   <h1>X Span Generator</h1>
 
-  <fieldset><legend>Rectangle</legend>
+  <fieldset><legend>Sheet</legend>
+    <div class="row">
+      <label>Size <select id="pgSel"></select></label>
+      <button id="pgSwap" data-tip="Swap portrait / landscape">⇄</button>
+    </div>
     <div class="row">
       <label>W <input type="number" id="W" min="10" step="1"> mm</label>
       <label>H <input type="number" id="H" min="10" step="1"> mm</label>
@@ -769,10 +773,11 @@ Object.keys(UI.dim).forEach(k => {
 });
 document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI.mp = null; render(); });
 
+const syncSheet = OT.wireSheet({ get: () => [S.W, S.H], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
 function syncUI() {
   const set = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
   const free = isFreeX(), reg = !free, X = S.xs, h = gridH(), d = X.length > 1 ? X[1] - X[0] : 0;
-  set('W', S.W); set('H', S.H);
+  set('W', S.W); set('H', S.H); syncSheet();
   [['kReg', 'regular'], ['kMW', 'movW'], ['kMH', 'movH'], ['kMB', 'both']].forEach(([id, k]) => $(id).classList.toggle('on', S.kind === k));
   $('mGrid').dataset.tip = 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (free ? ' Hold Shift to move verticals.' : '');
   $('mVerts').dataset.tip = 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift for Grid.';

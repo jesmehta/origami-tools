@@ -7,6 +7,10 @@ diagonal from every corner.
 
 ## Using it
 
+- **Sheet** — the paper the polygon sits on (default 270 × 270 mm): a size
+  preset, ⇄ to swap portrait/landscape, or W × H typed in. Resizing keeps the
+  polygon where it was relative to the sheet centre. The export is the whole
+  sheet at true size; the sheet outline itself is not exported.
 - **Define the polygon** — with *Regular polygon* on, drag on empty canvas:
   the press point is the centre, the drag sets radius and rotation. Sides,
   radius (mm) and rotation (°) are also numeric fields. Drag the ◆ to move

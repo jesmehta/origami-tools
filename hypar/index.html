@@ -15,7 +15,7 @@ body{font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);col
 #app{display:grid;grid-template-columns:340px 1fr;height:100%}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 14px 30px}
 main{display:flex;flex-direction:column;min-width:0;min-height:0}
-#cv{flex:1;min-height:0;width:100%;background:#fff;touch-action:none;display:block}
+#cv{flex:1;min-height:0;width:100%;background:#e9e7e1;touch-action:none;display:block}
 #status{padding:6px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--mute);min-height:44px}
 #status .bad{color:#c62828;font-weight:600}
 h1{font-size:15px;margin:0 0 10px}
@@ -37,6 +37,17 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
 <aside>
   <a class="ot-back" href="../index.html">← Origami tools</a>
   <h1>Hypar Generator</h1>
+
+  <fieldset><legend>Sheet</legend>
+    <div class="row">
+      <label>Size <select id="pgSel"></select></label>
+      <button id="pgSwap" data-tip="Swap portrait / landscape">⇄</button>
+    </div>
+    <div class="row">
+      <label>W <input type="number" id="W" min="10" step="1"> mm</label>
+      <label>H <input type="number" id="H" min="10" step="1"> mm</label>
+    </div>
+  </fieldset>
 
   <fieldset><legend>Polygon</legend>
     <div class="row">
@@ -91,7 +102,8 @@ const cv = $('cv');
 
 /* ---------- state ---------- */
 const S = {
-  n: 6, R: 60, rot: -90, c: { x: 0, y: 0 },
+  W: 270, H: 270,                         // the sheet; the polygon sits on it
+  n: 6, R: 60, rot: -90, c: { x: 135, y: 135 },
   regular: true, pts: [],
   d: 3, centreCut: false,
 };
@@ -216,7 +228,7 @@ function compute() {
 /* ---------- view ---------- */
 function fitView() {
   const r = cv.getBoundingClientRect(), asp = (r.width || 1) / (r.height || 1);
-  const xs = S.pts.map(p => p[0]), ys = S.pts.map(p => p[1]);
+  const xs = [0, S.W, ...S.pts.map(p => p[0])], ys = [0, S.H, ...S.pts.map(p => p[1])];
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   UI.view = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: Math.max((x1 - x0) * 1.25, (y1 - y0) * 1.25 * asp, 20) };
 }
@@ -232,7 +244,7 @@ function render() {
   cv.setAttribute('viewBox', `${v.cx - v.w / 2} ${v.cy - h / 2} ${v.w} ${h}`);
   const ctm = cv.getScreenCTM(), px = ctm && ctm.a ? 1 / ctm.a : 1;
   const cc = $('colCut').value, cf = $('colFold').value, NS = 'vector-effect="non-scaling-stroke"';
-  let s = '';
+  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
 
   if (UI.ghost) {
     let g = '';
@@ -273,6 +285,7 @@ function updateStatus(M) {
 
 /* ---------- sidebar sync ---------- */
 function syncUI() {
+  $('W').value = S.W; $('H').value = S.H; syncSheet();
   $('nS').value = S.n; $('rad').value = +S.R.toFixed(2); $('rot').value = +S.rot.toFixed(2);
   $('reg').checked = S.regular; $('dw').value = S.d; $('cc').checked = S.centreCut;
   $('rad').disabled = $('rot').disabled = !S.regular;
@@ -292,6 +305,12 @@ $('reg').onchange = () => act(() => {
     setRegular();
   }
 });
+['W', 'H'].forEach(id => $(id).onchange = () => act(() => {   // resize the sheet about its centre; the polygon keeps its place relative to it
+  const nw = Math.max(10, +$('W').value || S.W), nh = Math.max(10, +$('H').value || S.H), dx = (nw - S.W) / 2, dy = (nh - S.H) / 2;
+  S.W = nw; S.H = nh; S.c = { x: S.c.x + dx, y: S.c.y + dy }; S.pts = S.pts.map(p => [p[0] + dx, p[1] + dy]);
+  fitView();
+}));
+const syncSheet = OT.wireSheet({ get: () => [S.W, S.H], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
 $('dw').onchange = () => act(() => { S.d = Math.max(0.1, +$('dw').value || 3); });
 $('cc').onchange = () => act(() => { S.centreCut = $('cc').checked; });
 $('gh').onchange = () => { UI.ghost = $('gh').checked; render(); };
@@ -307,9 +326,7 @@ addEventListener('resize', render);
 
 /* ---------- export ---------- */
 function buildSVG(bg) {
-  const M = compute(), sw = +$('sw').value || 0.2, m = sw / 2;
-  const xs = S.pts.map(p => p[0]), ys = S.pts.map(p => p[1]);
-  const x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m, w = Math.max(...xs) - Math.min(...xs) + sw, h = Math.max(...ys) - Math.min(...ys) + sw;
+  const M = compute(), sw = +$('sw').value || 0.2, x0 = 0, y0 = 0, w = S.W, h = S.H;   // the whole sheet, true size
   const foldC = S.centreCut ? M.contours.slice(0, -1) : M.contours;
   let fold = foldC.map(c => `<polygon points="${polyStr(c)}"/>`).join('') + M.diags.map(d => ln(d.solid[0], d.solid[1])).join('');
   let cut = `<polygon points="${polyStr(S.pts)}"/>` + (M.inner ? `<polygon points="${polyStr(M.inner)}"/>` : '');
@@ -318,10 +335,7 @@ function buildSVG(bg) {
     `<g id="fold" stroke="${$('colFold').value}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round">${fold}</g>` +
     `<g id="cut" stroke="${$('colCut').value}" stroke-width="${sw}" fill="none" stroke-linejoin="round">${cut}</g></svg>`;
 }
-OT.wireExport({ base: 'hypar', svg: buildSVG, size: () => {
-  const sw = +$('sw').value || 0.2, xs = S.pts.map(p => p[0]), ys = S.pts.map(p => p[1]);
-  return [Math.max(...xs) - Math.min(...xs) + sw, Math.max(...ys) - Math.min(...ys) + sw];
-} });
+OT.wireExport({ base: 'hypar', svg: buildSVG, size: () => [S.W, S.H] });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {

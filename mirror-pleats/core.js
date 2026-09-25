@@ -38,7 +38,11 @@ document.getElementById('app').innerHTML = `
   <h1>Mirror Pleats · ${MODE === 'linear' ? 'Linear' : 'Radial'}</h1>
   <p class="sw">Switch: ${MODE === 'linear' ? '<b>Linear</b> · <a href="radial.html">Radial</a>' : '<a href="linear.html">Linear</a> · <b>Radial</b>'}</p>
 
-  <fieldset><legend>Rectangle</legend>
+  <fieldset><legend>Sheet</legend>
+    <div class="row">
+      <label>Size <select id="pgSel"></select></label>
+      <button id="pgSwap" data-tip="Swap portrait / landscape">⇄</button>
+    </div>
     <div class="row">
       <label>W <input type="number" id="W" min="10" step="1"> mm</label>
       <label>H <input type="number" id="H" min="10" step="1"> mm</label>
@@ -1023,6 +1027,7 @@ Object.keys(UI.dim).forEach(k => {
 });
 document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI.mp = null; render(); });
 
+const syncSheet = OT.wireSheet({ get: () => [S.W, S.H], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
 function modeTips() {
   $('mLines').dataset.tip = 'Click a vertical to start a line, click an adjacent one to finish. Drag circles/lines to move them. Hold Shift to move verticals.';
   $('mVerts').dataset.tip = MODE === 'radial'
@@ -1032,7 +1037,7 @@ function modeTips() {
 function syncUI() {
   modeTips();
   const set = (id, v) => { const el = $(id); if (el && document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
-  set('W', S.W); set('H', S.H); set('gN', S.gen.n); set('mg', S.minGap);
+  set('W', S.W); set('H', S.H); syncSheet(); set('gN', S.gen.n); set('mg', S.minGap);
   if (MODE === 'linear') { set('gSp', S.gen.spacing); set('gSt', S.gen.start); if ($('cap')) $('cap').checked = S.cap; }
   else { if ($('enf')) $('enf').checked = S.enforce; set('gStep', S.gen.step); set('gOff', S.gen.offset); set('cx', S.centre.x); set('cy', S.centre.y); }
   const sv = UI.selV >= 0 ? S.verts[UI.selV] : null;

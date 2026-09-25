@@ -126,6 +126,11 @@
     <input type="range" id="sl-arraycount" min="1" max="12" step="1">
 
     <h2 style="margin-top:1.2rem;">Page &amp; fit</h2>
+    <label>Page size</label>
+    <div style="display:flex;gap:.4rem;align-items:center">
+      <select id="pgSel" style="flex:1;padding:.35rem;font:inherit"></select>
+      <button id="pgSwap" style="width:auto;margin:0;padding:.35rem .6rem" data-tip="Swap portrait / landscape">⇄</button>
+    </div>
     <label>Page width (mm)</label>
     <input type="number" id="in-pagew" min="0" step="1" placeholder="none">
     <label>Page height (mm)</label>
@@ -624,6 +629,7 @@ function renderArray(){
   document.getElementById('lbl-width2').textContent = state.widthMm + ' mm';
   document.getElementById('in-pagew').value = state.pageWidthMm || '';
   document.getElementById('in-pageh').value = state.pageHeightMm || '';
+  syncSheet();
   document.getElementById('sl-exportscale').value = Math.round(state.exportScale*100);
   document.getElementById('lbl-exportscale').textContent = Math.round(state.exportScale*100) + '%';
 
@@ -719,6 +725,7 @@ document.getElementById('sl-exportscale').oninput = (e)=>{
 };
 document.getElementById('in-pagew').oninput = (e)=>{ state.pageWidthMm = parseFloat(e.target.value)||0; renderArray(); };
 document.getElementById('in-pageh').oninput = (e)=>{ state.pageHeightMm = parseFloat(e.target.value)||0; renderArray(); };
+const syncSheet = OT.wireSheet({ get: () => [state.pageWidthMm, state.pageHeightMm], set: (w, h) => { state.pageWidthMm = w; state.pageHeightMm = h; renderArray(); } });
 document.getElementById('rd-align-center').onchange = ()=>{ state.pageAlign='center'; renderArray(); };
 document.getElementById('rd-align-topleft').onchange = ()=>{ state.pageAlign='topleft'; renderArray(); };
 document.getElementById('rd-fit-scale').onchange = ()=>{ state.fitMode='proportional'; };

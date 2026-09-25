@@ -20,7 +20,8 @@ panel and the vertical generator differ.
 
 ## Using it
 
-**Rectangle** — W × H in mm. Changing it rescales verticals.
+**Sheet** — W × H in mm, typed or from the *Size* presets (⇄ swaps
+portrait/landscape). Changing it rescales verticals.
 
 **Verticals**
 - Linear: count, spacing (mm), first x (mm); "Fit edge to edge"; ±45° cap.

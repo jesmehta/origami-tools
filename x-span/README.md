@@ -66,7 +66,7 @@ the vertices `t_j`; the other verticals carry the crossings `c_j`. Every crossin
 
 ## Using it
 
-**Rectangle** — W × H in mm.
+**Sheet** — W × H in mm, typed or from the *Size* presets (⇄ swaps portrait/landscape).
 
 **Regular · verticals** — pick what defines them: *number*, *distance*, or
 *rhombus minor diagonal* (= 2 × distance; the horizontal diagonal spans two

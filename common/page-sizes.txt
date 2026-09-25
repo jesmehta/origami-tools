@@ -1,0 +1,12 @@
+# Preset sheet sizes for the origami tools' "Size" dropdown.
+# One per line:  name, width mm, height mm   (width × height as the sheet is first shown;
+# the ⇄ button swaps portrait / landscape). Lines starting with # are ignored.
+# Add your own sizes at the end. Read when a tool page loads (needs a server such
+# as Live Server; opened straight from disk the tools fall back to the built-in list
+# in common.js, which mirrors the first six lines below).
+A4, 297, 210
+A3, 420, 297
+370 × 270, 370, 270
+270 square, 270, 270
+550 × 760, 550, 760
+550 square, 550, 550

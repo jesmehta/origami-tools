@@ -62,6 +62,11 @@ not use it (yet).
   local-time stamp, `<tool>_YYYY_MMDD_HHMMSS.svg|png|zip`; a ZIP's two files
   share its stamp. JSZip is loaded from cdnjs only when a ZIP is first
   requested. (vPleat already exported a ZIP; its names now carry the stamp.)
+- Sheet size presets: a *Size* dropdown plus ⇄ (swap portrait/landscape) next
+  to W × H. The list is read from `common/page-sizes.txt` — one
+  `name, width, height` line per size; add your own there. Opened from disk
+  (no server) the browser can't read that file, so the built-in copy in
+  `common.js` is used. Hypar now has a sheet too (it had none).
 
 ## License
 
