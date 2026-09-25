@@ -6,7 +6,7 @@ What a user can expect to work the same way in every tool (kirigami excepted).
 
 - **Sidebar left, canvas right, status bar under the canvas.** (vPleat: tabs
   across the top, a sidebar per tab.)
-- Top of the sidebar: **← Origami tools** backlink, tool title.
+- Top of the sidebar: **Origami tools** backlink (an outlined arrow-shaped button), tool title.
 - Sidebar order: **Sheet → Grid & snap → tool controls → Edit mode →
   layouts → Dimensions → Export → Undo/Redo.**
 - The canvas background is grey; the **page is white**, its outline light

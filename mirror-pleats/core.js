@@ -39,7 +39,7 @@ const vertPanel = MODE === 'linear' ? `
 
 document.getElementById('app').innerHTML = `
 <aside>
-  <a class="ot-back" href="../index.html">← Origami tools</a>
+  <a class="ot-back" href="../index.html">Origami tools</a>
   <h1>Mirror Pleats · ${MODE === 'linear' ? 'Linear' : 'Radial'}</h1>
   <p class="sw">Switch: ${MODE === 'linear' ? '<b>Linear</b> · <a href="radial.html">Radial</a>' : '<a href="linear.html">Linear</a> · <b>Radial</b>'}</p>
   ${OT.projectFieldset()}
