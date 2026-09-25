@@ -253,6 +253,6 @@ rust + yellow fill and be rust fill or something ?" (`e22466f`). Then:
 > cool, i think this is great, merge, document commit push
 
 Fast-forward merged into `main`, branch deleted, thumbnails regenerated,
-these docs. One slip on the way: a `BE` CSS escape for the ▾ arrow went
+these docs. One slip on the way: a `\25BE` CSS escape for the ▾ arrow went
 through a shell heredoc and Python and arrived as a control character (seen
 as "□BE" in the screenshot) — replaced with the literal character.
