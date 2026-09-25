@@ -737,7 +737,7 @@ function render() {
   }
   if (MODE === 'radial') {
     const c = S.centre, d = r * 1.4;
-    s += `<polygon points="${c.x},${c.y - d} ${c.x + d},${c.y} ${c.x},${c.y + d} ${c.x - d},${c.y}" fill="#f6d365" stroke="#c98a00"/>`;
+    s += `<polygon points="${c.x},${c.y - d} ${c.x + d},${c.y} ${c.x},${c.y + d} ${c.x - d},${c.y}" fill="#b4532a" stroke="#7a3316"/>`;
   }
 
   if (UI.draw && V[UI.draw.vi]) {
