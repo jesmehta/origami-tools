@@ -17,8 +17,13 @@ What a user can expect to work the same way in every tool (kirigami excepted).
   project files). vPleat: each tab's headings fold the controls under them;
   its last tab is split into *Page* and *Fit & export* so the page settings
   can be folded without hiding the Download button.
-- The canvas background is grey; the **page is white**, its outline light
-  grey (screen only); the **margin rectangle** is the dark cut line.
+- **Colours** (palette, 2026-09-26): sage-green canvas background with a faint
+  random-dash texture; cream sidebar, status bar and on-screen paper; pale
+  yellow buttons; deep green for text and the selected mode; **rust** for
+  tool titles, links, section arrows, ⓘ, handles and the ◆ centre; amber for
+  the snap ring and measure marks. **Fold lines stay green and cut lines
+  black**; the **margin rectangle** is the dark cut line. The paper's
+  outline is sage (screen only).
 
 ## Tooltips instead of paragraphs
 

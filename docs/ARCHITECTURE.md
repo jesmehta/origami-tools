@@ -9,6 +9,7 @@ origami-tools/
     common.js                shared helpers, one global: OT
     common.css               shared styles (backlink, tooltip, select, folding)
     page-sizes.txt           sheet presets: "name, width, height" per line
+    canvas-texture.svg       tile for the canvas background (svg#cv in common.css)
   mirror-pleats/
     linear.html, radial.html set window.MODE, load common + core.js
     core.js, core.css        the whole engine (both modes)

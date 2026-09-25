@@ -223,3 +223,36 @@ line x = 195 rather than the grid point (195, 105) because the weighted line
 distance was marginally smaller — so single grid lines became a fallback
 tier (used only if no point / ray / crossing is in range). Angle tests from
 §4 re-run unchanged.
+
+## 12. Look: backlink, folding sections, palette (2026-09-26)
+
+> I'd like the "← Origami tools" to be more visible - a button or actually even a shape outline
+
+→ an arrow-shaped outline button (`3d04ffc`).
+
+> can the panel sections on the left side be collapsible ? That way fixed stuff like page siz and grid settings, once set, can be collpased leaving easier access tot he rest of the controls ?
+
+→ every section heading folds, remembered per page (`883e8ef`); vPleat's
+"Page & fit" split into *Page* and *Fit & export* so folding the page
+settings doesn't hide Download. Then:
+
+> can there be a expand all collapse all button as well ?
+
+→ `8d6bdeb`.
+
+> can the beige background and colours become shades of green, yellow, and rust orange ? I want to see what that would look like. Try to retain the green fold lines and black cut lines in the drawings.
+
+Done on a `palette-trial` branch so `main` stayed as it was (`5b9fbd3`).
+Iterations, in the user's words: "can the cream be yellower ?" (`68b1956`) →
+"ok no, go back to cream" (reverted, `0462299`); "the green background, can
+it have a mild texture - dashed lines, randomly starting and stopping, or
+something ?" (`e431cfe`); "nice, can we increase the use of the rust orange
+slightly ?" (`33de6bc`); "can the centrepoint for radial and hypar not be
+rust + yellow fill and be rust fill or something ?" (`e22466f`). Then:
+
+> cool, i think this is great, merge, document commit push
+
+Fast-forward merged into `main`, branch deleted, thumbnails regenerated,
+these docs. One slip on the way: a `BE` CSS escape for the ▾ arrow went
+through a shell heredoc and Python and arrived as a control character (seen
+as "□BE" in the screenshot) — replaced with the literal character.

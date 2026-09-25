@@ -97,8 +97,35 @@ Per-tool detail is in [x-span README § Decisions](../x-span/README.md#decisions
   stroke width is a fabrication setting with its own field.
 - **Long explanations → tooltips**, the status-bar mode hint kept. Chosen
   over a separate ⓘ icon per control; headings with an explanation get ⓘ.
-- **White page on grey canvas**, margin rectangle as the dark line — so the
+- **Paper on a contrasting canvas**, margin rectangle as the dark line — so the
   page, the working area and the cut line read as three different things.
+- **Palette: green, cream/yellow, rust** (2026-09-26) — user: "can the beige
+  background and colours become shades of green, yellow, and rust orange ? I
+  want to see what that would look like. Try to retain the green fold lines
+  and black cut lines in the drawings." Tried on a branch, adjusted, then
+  adopted ("i think this is great"):
+  - sage canvas `#d9e2c4`, background `#eef0dc`, cream panels `#fbf9ec`,
+    buttons `#f7f3dc`, borders `#cdd5b4`, text / selected `#243322`;
+    rust `#b4532a` (dark edge `#7a3316`); amber `#c98a00`; paper `#fffdf3`.
+  - A yellower cream (`#fbf0c4`) was tried and dropped — "ok no, go back to
+    cream".
+  - Canvas texture — user: "can it have a mild texture - dashed lines,
+    randomly starting and stopping". A seeded 360 px seamless tile
+    (`common/canvas-texture.svg`, 35% opacity); it doesn't pan with the
+    drawing, like a desk under the paper.
+  - More rust — "increase the use of the rust orange slightly": titles,
+    links, section arrows, ⓘ, hovers. The ◆ centre was yellow + amber; user:
+    "be rust fill or something" → solid rust.
+  - **Screen only.** Exports keep their own colours (fold / cut colour
+    pickers, white PNG background). vPleat's drawing colours (red folds,
+    blue/slate offsets) were left alone.
+- **Sections fold, with Expand / Collapse all** — user: "That way fixed stuff
+  like page siz and grid settings, once set, can be collpased leaving easier
+  access tot he rest of the controls". Remembered per page in localStorage,
+  not in projects (it's a view preference).
+- **Backlink as an arrow-shaped outline button** — user: "more visible - a
+  button or actually even a shape outline". The shape is the arrow, so the
+  "←" was dropped from the label.
 
 ## Sheet and margin
 

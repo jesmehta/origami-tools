@@ -64,6 +64,12 @@
 - **A lone grid line is a fallback tier** in `snap2D` (only if no point, ray
   or crossing is in range) — if snapping feels "sticky" or "weak", tune the
   weights / tiers / 10 px tolerance in `common.js`, not per tool.
+- **Palette colours are literals, not variables, in SVG render code** (handles
+  `#b4532a`, snap / measure `#c98a00`, grid in `common.js`, paper `#fffdf3`)
+  and in each tool's `:root` / CSS. Changing the palette means a find-and-replace
+  across `common/`, `mirror-pleats/core.*`, `x-span`, `hypar`, `vPleat`,
+  `index.html` — see DECISIONS § Look for the list. Don't touch the
+  `fill="#fff"` in `buildSVG` (the PNG export background).
 - **vPleat export look is set in two places**: page CSS (preview) and the
   `LOOK` table in the download handler (file). Change both.
 - Commit hygiene: stage explicit paths (`git add <files>`), not `commit -a` —

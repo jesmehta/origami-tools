@@ -58,6 +58,9 @@ not use it (yet).
 
 - Backlink to this page at the top of every tool page (an outlined
   arrow-shaped button).
+- Palette: sage-green canvas (faint dash texture), cream panels, rust
+  accents (titles, links, handles, ◆); green fold / black cut lines kept.
+  Screen only — exports unchanged.
 - On-screen strokes halved (pattern, sheet, ghost, dimension, measure and
   handle outlines). Export stroke width is unchanged — it is a fabrication
   setting with its own field.
