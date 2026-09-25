@@ -49,6 +49,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
     </div>
     <div class="row"><label data-tip="Inset on every side (5–15 mm). Everything is cropped at the margin line, which is exported as a cut line; the page outline is not exported.">Margin <input type="number" id="marg" min="5" max="15" step="1"> mm</label></div>
   </fieldset>
+  <div id="gridSlot"></div>
 
   <fieldset><legend>Polygon</legend>
     <div class="row">
@@ -100,6 +101,7 @@ const fmt = n => +n.toFixed(4);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const $ = id => document.getElementById(id);
 const cv = $('cv');
+$('gridSlot').outerHTML = OT.gridFieldset(false);
 
 /* ---------- state ---------- */
 const S = {
@@ -270,6 +272,7 @@ function render() {
   const ctm = cv.getScreenCTM(), px = ctm && ctm.a ? 1 / ctm.a : 1;
   const cc = $('colCut').value, cf = $('colFold').value, NS = 'vector-effect="non-scaling-stroke"';
   let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  s += OT.gridSVG([0, 0, S.W, S.H], [S.W / 2, S.H / 2], false);
 
   const foldC = S.centreCut ? M.contours.slice(0, -1) : M.contours;
   if (UI.ghost) {                                    // grey: first/last-crossing stretches, and whatever the margin crops away
@@ -426,6 +429,7 @@ cv.addEventListener('wheel', e => {
 }, { passive: false });
 
 /* ---------- init ---------- */
+OT.wireGrid(render);
 setRegular(); syncUI(); fitView(); render();
 </script>
 </body>

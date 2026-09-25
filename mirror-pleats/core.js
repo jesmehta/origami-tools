@@ -49,6 +49,7 @@ document.getElementById('app').innerHTML = `
     </div>
     <div class="row"><label data-tip="Inset on every side (5–15 mm). The pattern is cropped at the margin line, which is exported as the cut line; the page outline is not exported. Changing it keeps the page size and rescales the pattern.">Margin <input type="number" id="marg" min="5" max="15" step="1"> mm</label></div>
   </fieldset>
+  ${OT.gridFieldset(MODE === 'radial')}
 
   ${vertPanel}
     <div class="row" id="selV" hidden>
@@ -500,6 +501,7 @@ function render() {
   lastAll = computeAll();
   if (!drag) UI.info = analyze(lastAll);
   let s = `<rect x="${-S.m}" y="${-S.m}" width="${S.W + 2 * S.m}" height="${S.H + 2 * S.m}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  s += OT.gridSVG([-S.m, -S.m, S.W + S.m, S.H + S.m], MODE === 'radial' ? [S.centre.x, S.centre.y] : [S.W / 2, S.H / 2], MODE === 'radial');
   s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
   UI.hiddenV = V.filter(v => !vSeg(v)).length;
@@ -1061,4 +1063,5 @@ regen(false);
 orderedHors(4, false);
 syncUI();
 setMode('lines');
+OT.wireGrid(render);
 new ResizeObserver(render).observe(cv);

@@ -55,6 +55,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
     </div>
     <div class="row"><label data-tip="Inset on every side (5–15 mm). The pattern is cropped at the margin line, which is exported as the cut line; the page outline is not exported. Changing it keeps the page size and rescales the pattern.">Margin <input type="number" id="marg" min="5" max="15" step="1"> mm</label></div>
   </fieldset>
+  <div id="gridSlot"></div>
 
   <fieldset><legend>Grid type</legend>
     <div class="row">
@@ -201,6 +202,7 @@ const isFreeX = () => S.kind === 'movW' || S.kind === 'both';   // verticals mov
 const isVarH = () => S.kind === 'movH' || S.kind === 'both';    // heights variable per chain row
 const $ = id => document.getElementById(id);
 const cv = $('cv');
+$('gridSlot').outerHTML = OT.gridFieldset(false);
 
 /* ---------- state ---------- */
 const S = {
@@ -386,6 +388,7 @@ function render() {
   const X = S.xs, G = lastG = computeGrid();
   const len = a => Math.hypot(a[2] - a[0], a[3] - a[1]);
   let s = `<rect x="${-S.m}" y="${-S.m}" width="${S.W + 2 * S.m}" height="${S.H + 2 * S.m}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  s += OT.gridSVG([-S.m, -S.m, S.W + S.m, S.H + S.m], [S.W / 2, S.H / 2], false);
   s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
   const cut = G.segs.filter(g => g.c && len(g.s) - len(g.c) > 1e-6).length, out = G.segs.filter(g => !g.c).length;
@@ -814,6 +817,7 @@ function syncUI() {
 /* ---------- init ---------- */
 regen();
 syncUI(); setMode('grid');
+OT.wireGrid(render);
 new ResizeObserver(render).observe(cv);
 </script>
 </body>

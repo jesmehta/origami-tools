@@ -117,3 +117,50 @@ OT.wireSheet = o => {
   swap.onclick = () => { const [w, h] = o.get(); o.set(h, w); };
   return sync;
 };
+
+/* ---------- grid ----------
+   Screen-only guide, never exported. Square: lines every `step` mm through the sheet centre. Polar (radial
+   pages): rings every `ring` mm and spokes every `spoke`° around a given centre. Settings live in the
+   #grOn / #grStep / #grRing / #grSpoke inputs that OT.gridFieldset() writes. */
+OT.gridFieldset = polar => `
+  <fieldset><legend data-tip="Screen only, never exported; drawn on the sheet. ${polar ? 'Polar: rings and spokes around the ◆ centre, following it when it moves.' : 'Square, with its origin at the sheet centre.'}">Grid</legend>
+    <div class="row">
+      <label><input type="checkbox" id="grOn" checked> Show</label>
+      ${polar
+        ? '<label>Rings <input type="number" id="grRing" value="10" min="1" step="1"> mm</label><label>Spokes <input type="number" id="grSpoke" value="7.5" min="1" step="0.5"> °</label>'
+        : '<label>Spacing <input type="number" id="grStep" value="10" min="1" step="1"> mm</label>'}
+    </div>
+  </fieldset>`;
+OT.gridCfg = () => {
+  const v = (id, d) => { const el = document.getElementById(id); return el ? Math.max(0.5, +el.value || d) : d; };
+  const on = document.getElementById('grOn');
+  return { on: !on || on.checked, step: v('grStep', 10), ring: v('grRing', 10), spoke: v('grSpoke', 7.5) };
+};
+OT.wireGrid = render => ['grOn', 'grStep', 'grRing', 'grSpoke'].forEach(id => {
+  const el = document.getElementById(id); if (el) el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', render);
+});
+/* SVG for the grid. page: [x0, y0, x1, y1] (grid is clipped to it); origin: [x, y]; polar: bool.
+   Lines through the origin are a shade darker; so is every 5th line / ring. */
+OT.gridSVG = (page, origin, polar) => {
+  const g = OT.gridCfg(); if (!g.on) return '';
+  const [x0, y0, x1, y1] = page, [ox, oy] = origin, f = n => +n.toFixed(3), NS = 'vector-effect="non-scaling-stroke"';
+  let minor = '', major = '';
+  const add = (s, k) => { if (k % 5 === 0) major += s; else minor += s; };
+  if (!polar) {
+    const st = g.step; if ((x1 - x0) / st > 1500 || (y1 - y0) / st > 1500) return '';
+    for (let k = Math.ceil((x0 - ox) / st); ox + k * st <= x1; k++) add(`<line x1="${f(ox + k * st)}" y1="${f(y0)}" x2="${f(ox + k * st)}" y2="${f(y1)}"/>`, k);
+    for (let k = Math.ceil((y0 - oy) / st); oy + k * st <= y1; k++) add(`<line x1="${f(x0)}" y1="${f(oy + k * st)}" x2="${f(x1)}" y2="${f(oy + k * st)}"/>`, k);
+  } else {
+    const dx = Math.max(x0 - ox, 0, ox - x1), dy = Math.max(y0 - oy, 0, oy - y1);
+    const rMin = Math.hypot(dx, dy), rMax = Math.max(...[[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => Math.hypot(x - ox, y - oy)));
+    if ((rMax - rMin) / g.ring > 1500) return '';
+    for (let k = Math.max(1, Math.ceil(rMin / g.ring)); k * g.ring <= rMax; k++) add(`<circle cx="${f(ox)}" cy="${f(oy)}" r="${f(k * g.ring)}"/>`, k);
+    const n = Math.round(360 / g.spoke);
+    if (n <= 1440) for (let k = 0; k < n; k++) {
+      const a = k * g.spoke * Math.PI / 180;
+      add(`<line x1="${f(ox)}" y1="${f(oy)}" x2="${f(ox + rMax * Math.cos(a))}" y2="${f(oy + rMax * Math.sin(a))}"/>`, (k * g.spoke) % 45 === 0 ? 0 : 1);
+    }
+  }
+  return `<clipPath id="otGridClip"><rect x="${f(x0)}" y="${f(y0)}" width="${f(x1 - x0)}" height="${f(y1 - y0)}"/></clipPath>` +
+    `<g clip-path="url(#otGridClip)" fill="none" stroke-width="0.5" ${NS}><g stroke="#ebe8e0">${minor}</g><g stroke="#d6d2c6">${major}</g></g>`;
+};

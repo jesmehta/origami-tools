@@ -76,6 +76,12 @@ not use it (yet).
   margin keeps the page size and rescales the pattern. vPleat exports only the
   pattern, so there the margin shrinks the area the pattern must fit (status
   and auto-fit) and is drawn as an inner guide.
+- Grid (screen only, never exported, clipped to the page): square, every
+  *Spacing* mm through the sheet centre (every 5th line darker) in
+  mirror-pleats linear, x-span and hypar; polar on the radial page — rings
+  every *Rings* mm and spokes every *Spokes*° around the ◆ centre, following
+  it (7.5° default, so every snap angle — see below — has a spoke; multiples
+  of 45° darker). vPleat has no grid (its curve is drawn freehand).
 
 ## License
 
