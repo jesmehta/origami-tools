@@ -62,7 +62,8 @@ not use it (yet).
   handle outlines). Export stroke width is unchanged — it is a fabrication
   setting with its own field.
 - Sidebar sections fold: click a heading (▾ / ▸) to collapse it — e.g.
-  Sheet and Grid & snap once set. Remembered per page in the browser.
+  Sheet and Grid & snap once set; *Expand all* / *Collapse all* above the
+  sections. Remembered per page in the browser.
 - Sidebar explanations moved into hover tooltips (`data-tip`): sections with
   one show ⓘ after their heading; mode buttons carry their own how-to. The
   one-line hint in the status bar under the canvas stays.

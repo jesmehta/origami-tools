@@ -17,3 +17,6 @@ legend.ot-head,h2.ot-head{cursor:pointer;user-select:none}
 .ot-head:focus-visible{outline:1px dashed #888;outline-offset:2px}
 fieldset.ot-shut{border-width:1px 0 0;border-radius:0;padding-bottom:4px}
 fieldset.ot-shut > :not(legend),.ot-folded{display:none !important}
+.ot-foldall{display:flex;justify-content:flex-end;gap:10px;margin:0 0 6px}
+div.ot-foldall button{all:unset;cursor:pointer;font-size:11px;color:#666}
+div.ot-foldall button:hover,div.ot-foldall button:focus-visible{color:#000;text-decoration:underline}

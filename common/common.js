@@ -32,7 +32,8 @@ window.OT = window.OT || {};
 /* ---------- collapsible sidebar sections ----------
    Click a section heading to fold it away: a fieldset's <legend>, or (vPleat) an <h2> in a .sidebar, which folds
    everything after it up to the next <h2>. Delegated, so sidebars built by script work too. Which sections are
-   shut is remembered per page in localStorage (a convenience only; it falls back to all open). */
+   shut is remembered per page in localStorage (a convenience only; it falls back to all open). A sidebar with three
+   or more sections also gets Expand all / Collapse all above its first section. */
 (function () {
   const KEY = 'ot-shut:' + location.pathname;
   const heads = () => [...document.querySelectorAll('aside fieldset > legend, .sidebar > h2')];
@@ -54,6 +55,18 @@ window.OT = window.OT || {};
   addEventListener('load', () => {
     const shut = new Set(load());
     heads().forEach(h => { h.classList.add('ot-head'); h.tabIndex = 0; setShut(h, shut.has(name(h))); });
+    document.querySelectorAll('aside, .sidebar').forEach(box => {
+      const hs = heads().filter(h => box.contains(h));
+      if (hs.length < 3) return;
+      const bar = document.createElement('div'); bar.className = 'ot-foldall';
+      bar.innerHTML = '<button type="button" data-shut="0">Expand all</button><button type="button" data-shut="1">Collapse all</button>';
+      bar.addEventListener('click', e => {
+        const b = e.target.closest('button'); if (!b) return;
+        hs.forEach(h => setShut(h, b.dataset.shut === '1')); save();
+      });
+      const first = hs[0].tagName === 'LEGEND' ? hs[0].parentElement : hs[0];
+      first.before(bar);
+    });
   });
 })();
 

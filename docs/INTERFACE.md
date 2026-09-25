@@ -11,6 +11,8 @@ What a user can expect to work the same way in every tool (kirigami excepted).
   layouts → Dimensions → Export → Undo/Redo.**
 - **Every sidebar section folds**: click its heading (▾ / ▸; Enter or Space
   when focused). Meant for set-once sections like Sheet and Grid & snap.
+  **Expand all / Collapse all** sit above the first section of any sidebar
+  with three or more sections.
   Which sections are folded is remembered per page in the browser (not in
   project files). vPleat: each tab's headings fold the controls under them;
   its last tab is split into *Page* and *Fit & export* so the page settings
