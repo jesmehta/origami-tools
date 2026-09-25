@@ -455,7 +455,17 @@ cv.addEventListener('pointermove', e => {
   const n = S.pts.length, others = i => S.pts.filter((_, k) => k !== i);
   if (d.type === 'marg') { dragMargin(d.edge, p); syncUI(); render(); return; }
   if (d.type === 'new') setFromCorner(0, snapP(p, [[S.c.x, S.c.y]]));
-  else if (d.type === 'c') { const q = snapP([p[0] + d.off[0], p[1] + d.off[1]]); S.c = { x: q[0], y: q[1] }; setRegular(); }
+  else if (d.type === 'c') {                           // moving the whole polygon: snap the centre or any corner, whichever is nearest a target
+    const raw = [p[0] + d.off[0], p[1] + d.off[1]], rel = S.pts.map(q => [q[0] - S.c.x, q[1] - S.c.y]);
+    let shift = [0, 0], bd = Infinity, mark = null;
+    if (UI.snap) [[0, 0], ...rel].forEach(r => {
+      const at = [raw[0] + r[0], raw[1] + r[1]], q = snapP(at);
+      const dd = Math.hypot(q[0] - at[0], q[1] - at[1]);
+      if (OT.lastSnap && dd < bd) { bd = dd; shift = [q[0] - at[0], q[1] - at[1]]; mark = OT.lastSnap; }
+    });
+    OT.lastSnap = mark;
+    S.c = { x: raw[0] + shift[0], y: raw[1] + shift[1] }; setRegular();
+  }
   else if (S.regular) setFromCorner(d.i, snapP(p, [[S.c.x, S.c.y]]));
   else moveCorner(d.i, snapP(p, [S.pts[(d.i + n - 1) % n], S.pts[(d.i + 1) % n]], others(d.i)));
   syncUI(); render();

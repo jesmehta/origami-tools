@@ -904,6 +904,43 @@ function snapAboutCentre(p) {
   const C = [S.centre.x, S.centre.y], a = OT.snapDir(C, p, snapTol()) * DEG, r = Math.hypot(p.x - C[0], p.y - C[1]);
   return { x: C[0] + r * Math.cos(a), y: C[1] + r * Math.sin(a) };
 }
+/* Moving a whole line / vertical: each of its end handles is tried against the snap targets, and the whole thing
+   shifts by the smallest correction that lands one of them (so it snaps whenever either end can). */
+// line i, both params shifted by dt from orig: returns the (possibly corrected) dt
+function snapLineShift(i, orig, dt) {
+  const h = S.hors[i], ends = [[S.verts[h.k], orig.a], [S.verts[nx(h.k)], orig.b]];
+  let best = dt, bd = Infinity, mark = null;
+  ends.forEach(([v, t0]) => {
+    const P = vp(v, t0 + dt), t = snapTOn({ x: P[0], y: P[1] }, v, null, i);
+    if (!OT.lastSnap) return;
+    const q = vp(v, t), dd = Math.hypot(q[0] - P[0], q[1] - P[1]);
+    if (dd < bd) { bd = dd; best = t - t0; mark = OT.lastSnap; }
+  });
+  OT.lastSnap = mark;
+  return best;
+}
+// linear vertical i moved sideways by dx from orig: snap its top or its bottom end, whichever is nearer a target
+function snapVertShift(i, orig, dx) {
+  let best = dx, bd = Infinity, mark = null;
+  [['xt', 0], ['xb', S.H]].forEach(([k, y]) => {
+    const x = orig[k] + dx, sx = snapEdgeX(x, y, null, i);
+    if (OT.lastSnap && Math.abs(sx - x) < bd) { bd = Math.abs(sx - x); best = sx - orig[k]; mark = OT.lastSnap; }
+  });
+  OT.lastSnap = mark;
+  return best;
+}
+// free radial vertical moved sideways: snap whichever visible end lies on the top/bottom edge
+function snapFreeShift(i, orig, dx) {
+  const e = vEnds({ xt: orig.xt + dx, xb: orig.xb + dx });
+  let best = dx, bd = Infinity, mark = null;
+  (e || []).forEach(q => {
+    if (Math.abs(q[1]) > 1e-6 && Math.abs(q[1] - S.H) > 1e-6) return;          // an end on a side edge doesn't move along x
+    const sx = snapEdgeX(q[0], q[1], null, i);
+    if (OT.lastSnap && Math.abs(sx - q[0]) < bd) { bd = Math.abs(sx - q[0]); best = dx + sx - q[0]; mark = OT.lastSnap; }
+  });
+  OT.lastSnap = mark;
+  return best;
+}
 // adjacent vertical + t for the second click of a new line
 function drawTarget(p) {
   const n = S.verts.length, d = UI.draw, adj = RAYS() ? [(d.vi + n - 1) % n, (d.vi + 1) % n] : [d.vi - 1, d.vi + 1].filter(i => i >= 0 && i < n);
@@ -1064,8 +1101,9 @@ cv.addEventListener('pointermove', e => {
     } else setEnd(d.i, d.end, snapEdgeX(p.x, d.end === 't' ? 0 : S.H, d.end === 't' ? [v.xb, S.H] : [v.xt, 0], d.i));
     S.layout = 'free';
   } else if (d.type === 'vBody') {
-    if (MODE === 'radial') { if (S.enforce) turnTo(d.i, snapAboutCentre(p)); else moveBodyFree(d.i, d.orig, p.x - d.start.x); }
-    else moveBody(d.i, d.orig, snapEdgeX(d.orig.xt + p.x - d.start.x, 0, null, d.i) - d.orig.xt);
+    const dx = p.x - d.start.x;
+    if (MODE === 'radial') { if (S.enforce) turnTo(d.i, snapAboutCentre(p)); else moveBodyFree(d.i, d.orig, UI.snap ? snapFreeShift(d.i, d.orig, dx) : dx); }
+    else moveBody(d.i, d.orig, UI.snap ? snapVertShift(d.i, d.orig, dx) : dx);
     S.layout = 'free';
   } else if (d.type === 'centre') {
     const mx = S.mx, my = S.my, W = S.W, H = S.H;
@@ -1078,9 +1116,12 @@ cv.addEventListener('pointermove', e => {
     const mv = S.verts[movA ? h.k : nx(h.k)], fx = S.verts[movA ? nx(h.k) : h.k];
     h[d.which] = snapTOn(p, mv, vp(fx, movA ? h.b : h.a), d.i);
   } else if (d.type === 'hBody') {
-    const C = S.centre, dt = RAYS()                  // rays: slide both ends out/in by the change in distance from the centre
-      ? Math.max(-Math.min(d.orig.a, d.orig.b), Math.hypot(p.x - C.x, p.y - C.y) - Math.hypot(d.start.x - C.x, d.start.y - C.y))
-      : clamp((p.y - d.start.y) / S.H, -Math.min(d.orig.a, d.orig.b), 1 - Math.max(d.orig.a, d.orig.b));
+    const C = S.centre, lo = -Math.min(d.orig.a, d.orig.b), hi = RAYS() ? Infinity : 1 - Math.max(d.orig.a, d.orig.b);
+    let dt = RAYS()                                  // rays: slide both ends out/in by the change in distance from the centre
+      ? Math.hypot(p.x - C.x, p.y - C.y) - Math.hypot(d.start.x - C.x, d.start.y - C.y)
+      : (p.y - d.start.y) / S.H;
+    dt = clamp(dt, lo, hi);
+    if (UI.snap) dt = clamp(snapLineShift(d.i, d.orig, dt), lo, hi);
     S.hors[d.i].a = d.orig.a + dt; S.hors[d.i].b = d.orig.b + dt;
   }
   syncUI(); render();

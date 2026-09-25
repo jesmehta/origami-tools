@@ -97,18 +97,23 @@ not use it (yet).
   existing points (sheet corners/centre, vertical ends, trail vertices —
   weighted to win ties), rays at every multiple of 15° and 22.5° from the
   relevant anchor, grid crossings / ring×spoke points while the grid is shown,
-  then single grid lines (weighted so an angle ray usually beats them). An
-  orange ring marks the snap. What snaps where:
+  and only if none of those is in range, a single grid line. An orange ring
+  marks the snap. **Moving a whole thing** (a line, a vertical, the hypar ◆)
+  snaps whenever any of its end handles can: each end is tried and the whole
+  thing shifts by the smallest correction. What snaps where:
   - mirror-pleats: line handles slide along their vertical and snap there
     (the line's angle from its other end, grid-line and ring crossings,
-    vertices); linear vertical ends/bodies snap along the edge (tilt angle,
-    grid, other verticals); radial verticals through the centre snap their
+    vertices); dragging a line's body snaps whichever end can snap; linear
+    vertical ends/bodies snap along the edge (tilt angle, grid, other
+    verticals; a body by either end); a free radial vertical's body by an end
+    on the top/bottom edge; radial verticals through the centre snap their
     direction (snap angles + polar spokes); free radial ends snap along the
     outline; the ◆ snaps to sheet/page corners, edge midpoints and centre.
     This replaces the old "Snap lines to 45°" checkbox.
   - x-span: vertical x, the lattice angle θ (drag), chain-height handles and
     the grid y offset (grid lines, sheet edges/centre).
-  - hypar: new-polygon centre, ◆, corners — regular: rotation snaps to the
+  - hypar: new-polygon centre, ◆ (moving the polygon: the centre or any
+    corner, whichever is nearest a target), corners — regular: rotation snaps to the
     snap angles about the centre; free: edge angles from both neighbours.
 - Projects: a *Project* panel with **Save…** (`<tool>_<stamp>.json`),
   **Load…** (a .json, or an .svg these tools exported — the project is
