@@ -133,7 +133,8 @@ and not exported. The status bar counts segments that leave it.
 
 **Dimensions** — section widths, line angles, vertical diagonal lengths.
 
-**Export** — SVG (true mm, 1:1) and PNG (px/mm). One line colour, one rectangle
+**Export** — SVG (true mm, 1:1), PNG (px/mm), or a ZIP with both; file names
+are time-stamped (`x-span_2026_0925_143012.svg`). One line colour, one rectangle
 colour, stroke width in mm. Verticals lying on a rectangle edge are not exported
 twice. Dimensions, measurements and ghosts are not exported.
 

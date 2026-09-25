@@ -169,6 +169,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
     <div class="row">
       <button id="xSvg" class="pri">Export SVG</button>
       <button id="xPng" class="pri">Export PNG</button>
+      <button id="xZip" class="pri" data-tip="SVG + PNG together in one .zip (same time-stamped name).">Export ZIP</button>
     </div>
   </fieldset>
 
@@ -501,21 +502,7 @@ function buildSVG(bg) {
     `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
     `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
 }
-function download(blob, name) {
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-}
-$('xSvg').onclick = () => download(new Blob([buildSVG(false)], { type: 'image/svg+xml' }), 'x-span.svg');
-$('xPng').onclick = () => {
-  const ppm = +$('ppm').value || 6, sw = +$('sw').value || 0.2, img = new Image();
-  img.onload = () => {
-    const c = document.createElement('canvas');
-    c.width = Math.round((S.W + sw) * ppm); c.height = Math.round((S.H + sw) * ppm);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    c.toBlob(b => download(b, 'x-span.png'), 'image/png');
-  };
-  img.src = URL.createObjectURL(new Blob([buildSVG(true)], { type: 'image/svg+xml' }));
-};
+OT.wireExport({ base: 'x-span', svg: buildSVG, size: () => { const sw = +$('sw').value || 0.2; return [S.W + sw, S.H + sw]; } });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {

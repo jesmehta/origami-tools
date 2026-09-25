@@ -66,6 +66,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
     <div class="row">
       <button id="xSvg" class="pri">Export SVG</button>
       <button id="xPng" class="pri">Export PNG</button>
+      <button id="xZip" class="pri" data-tip="SVG + PNG together in one .zip (same time-stamped name).">Export ZIP</button>
     </div>
   </fieldset>
 
@@ -317,22 +318,10 @@ function buildSVG(bg) {
     `<g id="fold" stroke="${$('colFold').value}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round">${fold}</g>` +
     `<g id="cut" stroke="${$('colCut').value}" stroke-width="${sw}" fill="none" stroke-linejoin="round">${cut}</g></svg>`;
 }
-function download(blob, name) {
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-}
-$('xSvg').onclick = () => download(new Blob([buildSVG(false)], { type: 'image/svg+xml' }), 'hypar.svg');
-$('xPng').onclick = () => {
-  const ppm = +$('ppm').value || 6, sw = +$('sw').value || 0.2, img = new Image();
-  const xs = S.pts.map(p => p[0]), ys = S.pts.map(p => p[1]);
-  img.onload = () => {
-    const c = document.createElement('canvas');
-    c.width = Math.round((Math.max(...xs) - Math.min(...xs) + sw) * ppm); c.height = Math.round((Math.max(...ys) - Math.min(...ys) + sw) * ppm);
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    c.toBlob(b => download(b, 'hypar.png'), 'image/png');
-  };
-  img.src = URL.createObjectURL(new Blob([buildSVG(true)], { type: 'image/svg+xml' }));
-};
+OT.wireExport({ base: 'hypar', svg: buildSVG, size: () => {
+  const sw = +$('sw').value || 0.2, xs = S.pts.map(p => p[0]), ys = S.pts.map(p => p[1]);
+  return [Math.max(...xs) - Math.min(...xs) + sw, Math.max(...ys) - Math.min(...ys) + sw];
+} });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {

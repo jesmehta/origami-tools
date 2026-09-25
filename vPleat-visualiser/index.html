@@ -758,12 +758,13 @@ document.getElementById('btn-download-svg').onclick = async ()=>{
 
   // Bundled as one zip: a click can only trigger one real file download
   // before the browser starts silently blocking further ones as spam.
+  const st = OT.stamp();
   const zip = new JSZip();
-  zip.file('vpleat-pattern.svg', svgSrc);
-  zip.file('vpleat-curve.jpg', drawBlob);
-  zip.file('vpleat-segments.jpg', segBlob);
+  zip.file(`vpleat-pattern_${st}.svg`, svgSrc);
+  zip.file(`vpleat-curve_${st}.jpg`, drawBlob);
+  zip.file(`vpleat-segments_${st}.jpg`, segBlob);
   const zipBlob = await zip.generateAsync({ type:'blob' });
-  downloadBlob(zipBlob, 'vpleat-export.zip');
+  downloadBlob(zipBlob, `vpleat-export_${st}.zip`);
 };
 
 /* ---------------- Tab switching ---------------- */

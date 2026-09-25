@@ -188,13 +188,14 @@ legitimate workflow the tool shouldn't get in the way of.
 
 ## Export
 
-Clicking **Download** in the Array tab produces one `vpleat-export.zip`
-containing:
-- `vpleat-pattern.svg` — the cut pattern at true mm scale (solid black =
+Clicking **Download** in the Array tab produces one
+`vpleat-export_YYYY_MMDD_HHMMSS.zip` (local time) containing, with the same
+stamp:
+- `vpleat-pattern_<stamp>.svg` — the cut pattern at true mm scale (solid black =
   cut, dashed red = fold/score line, dotted grey = mirror-axis reference,
   not a cut).
-- `vpleat-curve.jpg` — a snapshot of the Draw tab's curve.
-- `vpleat-segments.jpg` — a snapshot of the Segments & Width tab.
+- `vpleat-curve_<stamp>.jpg` — a snapshot of the Draw tab's curve.
+- `vpleat-segments_<stamp>.jpg` — a snapshot of the Segments & Width tab.
 
 The exported SVG's `viewBox` is always reset to exactly the pattern's own
 bounding box (`0 0 patternWidth patternHeight`) regardless of how much

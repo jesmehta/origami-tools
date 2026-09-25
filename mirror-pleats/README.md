@@ -88,7 +88,8 @@ reflected-line angles, vertex gaps along each vertical.
 - The status bar always reports crossings and the smallest vertex gap
   (green = OK, red = violates).
 
-**Export** — SVG (true mm, 1:1) and PNG (px/mm). One colour for all lines
+**Export** — SVG (true mm, 1:1), PNG (px/mm), or a ZIP with both; file names
+are time-stamped (`mirror-pleats-radial_2026_0925_143012.svg`). One colour for all lines
 (default green), another for the rectangle; stroke width in mm. Verticals lying
 exactly on a rectangle edge are not exported twice. Dimensions/measurements are
 not exported.

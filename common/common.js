@@ -28,3 +28,51 @@ window.OT = window.OT || {};
   document.addEventListener('scroll', hide, true);
   document.addEventListener('pointerdown', hide, true);
 })();
+
+/* ---------- export ---------- */
+// Local-time stamp for file names: YYYY_MMDD_HHMMSS
+OT.stamp = (d = new Date()) => {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}_${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+};
+OT.download = (blob, name) => {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+// Rasterise an SVG string (w × h mm) at ppm px/mm
+OT.svgToPng = (svg, wmm, hmm, ppm) => new Promise((resolve, reject) => {
+  const img = new Image(), url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = Math.round(wmm * ppm); c.height = Math.round(hmm * ppm);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    c.toBlob(resolve, 'image/png');
+  };
+  img.onerror = reject;
+  img.src = url;
+});
+// JSZip is only fetched the first time a ZIP is asked for
+OT.jszip = () => window.JSZip ? Promise.resolve(window.JSZip) : new Promise((resolve, reject) => {
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.2/jszip.min.js';
+  s.onload = () => resolve(window.JSZip); s.onerror = () => reject(new Error('Could not load JSZip'));
+  document.head.appendChild(s);
+});
+/* Wire the #xSvg / #xPng / #xZip buttons. opts.base: file-name prefix; opts.svg(bg): the SVG string
+   (bg = white background for the PNG); opts.size(): [w, h] of that SVG in mm. PNG density from #ppm. */
+OT.wireExport = opts => {
+  const $ = id => document.getElementById(id);
+  const png = () => { const [w, h] = opts.size(); return OT.svgToPng(opts.svg(true), w, h, +$('ppm').value || 6); };
+  const svgBlob = () => new Blob([opts.svg(false)], { type: 'image/svg+xml' });
+  $('xSvg').onclick = () => OT.download(svgBlob(), `${opts.base}_${OT.stamp()}.svg`);
+  $('xPng').onclick = async () => { const st = OT.stamp(); OT.download(await png(), `${opts.base}_${st}.png`); };
+  $('xZip').onclick = async () => {
+    const st = OT.stamp(), name = `${opts.base}_${st}`;
+    try {
+      const [Z, p] = await Promise.all([OT.jszip(), png()]), zip = new Z();
+      zip.file(name + '.svg', svgBlob()); zip.file(name + '.png', p);
+      OT.download(await zip.generateAsync({ type: 'blob' }), name + '.zip');
+    } catch (e) { alert(e.message); }
+  };
+};

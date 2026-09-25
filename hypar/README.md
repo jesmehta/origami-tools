@@ -24,7 +24,8 @@ diagonal from every corner.
 - Wheel zooms, right/middle-drag pans, *Fit view* re-frames. Ctrl+Z /
   Ctrl+Shift+Z undo/redo (80 steps).
 
-**Export** — SVG (true mm, 1:1) and PNG (px/mm). Cut = black (outer boundary,
+**Export** — SVG (true mm, 1:1), PNG (px/mm), or a ZIP with both; file names
+are time-stamped (`hypar_2026_0925_143012.svg`). Cut = black (outer boundary,
 and the innermost contour when centre cut is on), fold = green (contours and
 diagonals). Cut/fold colours and stroke width are settable. The SVG has two
 layers, `<g id="fold">` and `<g id="cut">`. Ghost lines and handles are not

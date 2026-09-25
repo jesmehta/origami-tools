@@ -58,6 +58,10 @@ not use it (yet).
 - Sidebar explanations moved into hover tooltips (`data-tip`): sections with
   one show ⓘ after their heading; mode buttons carry their own how-to. The
   one-line hint in the status bar under the canvas stays.
+- Export: SVG, PNG, and ZIP (both together). Every file name carries a
+  local-time stamp, `<tool>_YYYY_MMDD_HHMMSS.svg|png|zip`; a ZIP's two files
+  share its stamp. JSZip is loaded from cdnjs only when a ZIP is first
+  requested. (vPleat already exported a ZIP; its names now carry the stamp.)
 
 ## License
 
