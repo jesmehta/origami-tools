@@ -41,6 +41,14 @@ thumbnail and link for each tool below.
   true-scale SVG fabrication export, JSON save/load. See
   [kirigami-tools/README.md](kirigami-tools/README.md).
 
+## Shared code (`common/`)
+
+Features common to the tools (backlink to this page, and more as they are
+added) live in `common/common.js` + `common/common.css`, loaded by each tool
+before its own code. It is a plain script that defines one global, `OT` — no
+modules, no build — so the tools still open straight from disk. Kirigami does
+not use it (yet).
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
