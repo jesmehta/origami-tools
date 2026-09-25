@@ -46,10 +46,10 @@
   #svg-straighten-wrap svg.pattern-svg{height:70vh;width:auto;}
   #svg-array-wrap{overflow-x:auto;}
   #svg-array-wrap svg.pattern-svg{height:60vh;width:auto;}
-  .pattern-svg .cut{stroke:#111827;stroke-width:.6;fill:none;}
-  .pattern-svg .fold{stroke:#e11d48;stroke-width:.4;stroke-dasharray:3 2;fill:none;}
-  .pattern-svg .ref{stroke:#94a3b8;stroke-width:.3;stroke-dasharray:1 2;fill:none;}
-  .pattern-svg .page-guide{stroke:#94a3b8;stroke-width:.8;stroke-dasharray:4 3;fill:none;opacity:.8;}
+  .pattern-svg .cut{stroke:#111827;stroke-width:.3;fill:none;}
+  .pattern-svg .fold{stroke:#e11d48;stroke-width:.2;stroke-dasharray:3 2;fill:none;}
+  .pattern-svg .ref{stroke:#94a3b8;stroke-width:.15;stroke-dasharray:1 2;fill:none;}
+  .pattern-svg .page-guide{stroke:#94a3b8;stroke-width:.4;stroke-dasharray:4 3;fill:none;opacity:.8;}
   .pattern-svg .page-guide-label{fill:#94a3b8;font-family:inherit;}
   .status-ok{color:#16a34a;}
   .status-warn{color:#dc2626;font-weight:600;}
@@ -332,7 +332,7 @@ function renderDraw(){
   drawGrid(drawScope);
   const segs = state.controlPoints.map(toPxArr);
   if (segs.length >= 2){
-    const path = new drawScope.Path({ segments: segs, strokeColor:'#2563eb', strokeWidth:2 });
+    const path = new drawScope.Path({ segments: segs, strokeColor:'#2563eb', strokeWidth:1 });
     path.smooth({ type:'catmull-rom' });
   }
   state.controlPoints.forEach((p,i)=>{
@@ -469,14 +469,14 @@ function renderSegments(){
 
   const trace = state.controlPoints.map(toPxArr);
   if (trace.length >= 2){
-    const t = new segScope.Path({ segments: trace, strokeColor:'#cbd5e1', strokeWidth:2 });
+    const t = new segScope.Path({ segments: trace, strokeColor:'#cbd5e1', strokeWidth:1 });
     t.smooth({ type:'catmull-rom' });
   }
 
   const geo = computeSegmentGeometry();
-  new segScope.Path({ segments: geo.bp.map(toPxArr), strokeColor:'#1e293b', strokeWidth:2 });
-  new segScope.Path({ segments: geo.cornersL.map(toPxArr), strokeColor:'#2563eb', strokeWidth:2 });
-  new segScope.Path({ segments: geo.cornersR.map(toPxArr), strokeColor:'#e11d48', strokeWidth:2 });
+  new segScope.Path({ segments: geo.bp.map(toPxArr), strokeColor:'#1e293b', strokeWidth:1 });
+  new segScope.Path({ segments: geo.cornersL.map(toPxArr), strokeColor:'#2563eb', strokeWidth:1 });
+  new segScope.Path({ segments: geo.cornersR.map(toPxArr), strokeColor:'#e11d48', strokeWidth:1 });
 
   geo.bp.forEach((p,i)=>{
     if (i===0 || i===geo.bp.length-1) return;

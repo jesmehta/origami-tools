@@ -498,7 +498,7 @@ function render() {
   const V = S.verts;
   lastAll = computeAll();
   if (!drag) UI.info = analyze(lastAll);
-  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="2" ${NS}/>`;
+  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
   UI.hiddenV = V.filter(v => !vSeg(v)).length;
   UI.hiddenS = lastAll.segs.filter(g => !g.c).length;
@@ -515,15 +515,15 @@ function render() {
       const c = clipBox(sg.s[0], sg.s[1], sg.s[2], sg.s[3], b.x0, b.y0, b.x1, b.y1);
       if (c) g += ln(...c);
     });
-    s += `<g stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
+    s += `<g stroke="#9e9e9e" stroke-width="0.5" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
   }
 
-  s += `<g stroke="${lc}" stroke-width="1.1" fill="none" stroke-linecap="round" ${NS}>`;
+  s += `<g stroke="${lc}" stroke-width="0.55" fill="none" stroke-linecap="round" ${NS}>`;
   V.forEach(v => { if (!edgeVert(v)) s += ln(...vSeg(v)); });
   lastAll.segs.forEach(g => { if (g.c) s += ln(...g.c); });
   s += '</g>';
 
-  const hl = `stroke="#1976d2" stroke-width="5" opacity=".3" ${NS}`;
+  const hl = `stroke="#1976d2" stroke-width="2.5" opacity=".3" ${NS}`;
   if (UI.selV >= 0 && V[UI.selV]) { const sc = vSeg(V[UI.selV]) || vView(V[UI.selV]); if (sc) s += ln(...sc, hl); }
   if (UI.selH >= 0 && S.hors[UI.selH]) {
     const h = S.hors[UI.selH];
@@ -540,7 +540,7 @@ function render() {
       for (let i = 0; i < arr.length - 1; i++) {
         const a = arr[i], c = arr[i + 1];
         if (c - a < 0.05) continue;
-        s += `<g stroke="${ink}" stroke-width="1" ${NS}>${ln(a, y, c, y)}${ln(a, y - 3 * px, a, y + 3 * px)}${ln(c, y - 3 * px, c, y + 3 * px)}</g>`;
+        s += `<g stroke="${ink}" stroke-width="0.5" ${NS}>${ln(a, y, c, y)}${ln(a, y - 3 * px, a, y + 3 * px)}${ln(c, y - 3 * px, c, y + 3 * px)}</g>`;
         if ((c - a) / px > 26) s += T((a + c) / 2, top ? y - 4 * px : y + 13 * px, (c - a).toFixed(1));
       }
     });
@@ -569,32 +569,32 @@ function render() {
   UI.meas.forEach(m => {
     if (m.type === 'dist') {
       const d = Math.hypot(m.q[0] - m.p[0], m.q[1] - m.p[1]);
-      s += `<g stroke="${mc}" stroke-width="1.5" ${NS}>${ln(m.p[0], m.p[1], m.q[0], m.q[1])}</g>`;
+      s += `<g stroke="${mc}" stroke-width="0.75" ${NS}>${ln(m.p[0], m.p[1], m.q[0], m.q[1])}</g>`;
       s += `<circle cx="${m.p[0]}" cy="${m.p[1]}" r="${3 * px}" fill="${mc}"/><circle cx="${m.q[0]}" cy="${m.q[1]}" r="${3 * px}" fill="${mc}"/>`;
       s += T((m.p[0] + m.q[0]) / 2, (m.p[1] + m.q[1]) / 2 - 5 * px, `${d.toFixed(2)} mm  (Δx ${Math.abs(m.q[0] - m.p[0]).toFixed(1)}, Δy ${Math.abs(m.q[1] - m.p[1]).toFixed(1)})`, { c: mc });
     } else {
-      s += `<g stroke="${mc}" stroke-width="3" opacity=".65" ${NS}>${ln(...m.l1)}${ln(...m.l2)}</g>`;
+      s += `<g stroke="${mc}" stroke-width="1.5" opacity=".65" ${NS}>${ln(...m.l1)}${ln(...m.l2)}</g>`;
       s += T(m.at[0], m.at[1] - 6 * px, `${m.acute.toFixed(2)}° / ${(180 - m.acute).toFixed(2)}°`, { c: mc });
     }
   });
   if (UI.mp) {
     if (UI.mp.pt) {
       s += `<circle cx="${UI.mp.pt[0]}" cy="${UI.mp.pt[1]}" r="${4 * px}" fill="${mc}"/>`;
-      if (UI.mcur) s += ln(UI.mp.pt[0], UI.mp.pt[1], UI.mcur[0], UI.mcur[1], `stroke="${mc}" stroke-dasharray="5 4" stroke-width="1.2" ${NS}`);
-    } else if (UI.mp.line) s += ln(...UI.mp.line, `stroke="${mc}" stroke-width="3" opacity=".65" ${NS}`);
+      if (UI.mcur) s += ln(UI.mp.pt[0], UI.mp.pt[1], UI.mcur[0], UI.mcur[1], `stroke="${mc}" stroke-dasharray="5 4" stroke-width="0.6" ${NS}`);
+    } else if (UI.mp.line) s += ln(...UI.mp.line, `stroke="${mc}" stroke-width="1.5" opacity=".65" ${NS}`);
   }
 
   // handles (verticals only editable in Verticals mode; lines only in Lines mode)
   const r = 5 * px, em = effMode(UI.shift);
   if (em === 'verts') {
-    s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
+    s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
     V.forEach((v, i) => (vEnds(v) || []).forEach(p => {
       s += `<rect x="${fmt(p[0] - r)}" y="${fmt(p[1] - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`;
     }));
     s += '</g>';
   }
   if (em === 'lines') {
-    s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
+    s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
     S.hors.forEach((h, i) => {
       if (!V[h.k] || !V[h.k + 1]) return;
       [vp(V[h.k], h.a), vp(V[h.k + 1], h.b)].forEach(p => {
@@ -611,17 +611,17 @@ function render() {
   if (UI.draw && V[UI.draw.vi]) {
     const P = vp(V[UI.draw.vi], UI.draw.t);
     s += `<circle cx="${P[0]}" cy="${P[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".7"/>`;
-    if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#1976d2" stroke-dasharray="5 4" stroke-width="1.5" ${NS}`);
+    if (UI.draw.cur) s += ln(P[0], P[1], UI.draw.cur[0], UI.draw.cur[1], `stroke="#1976d2" stroke-dasharray="5 4" stroke-width="0.75" ${NS}`);
   }
-  if (UI.vghost) { const gc = vSeg(UI.vghost); if (gc) s += ln(...gc, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`); }
+  if (UI.vghost) { const gc = vSeg(UI.vghost); if (gc) s += ln(...gc, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`); }
   if (UI.vdraw && UI.vdraw.pt) {
     const f = UI.vdraw, q = f.cur || f.pt;
-    s += ln(f.pt[0], f.pt[1], q[0], q[1], `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`);
+    s += ln(f.pt[0], f.pt[1], q[0], q[1], `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`);
     s += `<circle cx="${f.pt[0]}" cy="${f.pt[1]}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".8"/>`;
   } else if (UI.vdraw) {
     const f = UI.vdraw, x2 = UI.vdraw.cur === undefined ? f.x : UI.vdraw.cur;
     const [xt, xb] = f.edge === 't' ? [f.x, x2] : [x2, f.x];
-    s += ln(xt, 0, xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="1.5" ${NS}`);
+    s += ln(xt, 0, xb, S.H, `stroke="#1976d2" stroke-dasharray="6 4" stroke-width="0.75" ${NS}`);
     s += `<circle cx="${f.x}" cy="${f.edge === 't' ? 0 : S.H}" r="${fmt(r * 1.2)}" fill="#1976d2" opacity=".8"/>`;
   }
   cv.innerHTML = s;

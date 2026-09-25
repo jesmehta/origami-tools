@@ -49,6 +49,13 @@ before its own code. It is a plain script that defines one global, `OT` — no
 modules, no build — so the tools still open straight from disk. Kirigami does
 not use it (yet).
 
+### Shared-features changelog (all tools except kirigami)
+
+- Backlink "← Origami tools" at the top of every tool page.
+- On-screen strokes halved (pattern, sheet, ghost, dimension, measure and
+  handle outlines). Export stroke width is unchanged — it is a fabrication
+  setting with its own field.
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).

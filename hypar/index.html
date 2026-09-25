@@ -238,20 +238,20 @@ function render() {
   if (UI.ghost) {
     let g = '';
     M.diags.forEach(d => { if (d.ghost) g += ln(d.ghost[0], d.ghost[1]); });
-    s += `<g stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3" opacity=".9" ${NS}>${g}</g>`;
+    s += `<g stroke="#9e9e9e" stroke-width="0.5" stroke-dasharray="4 3" opacity=".9" ${NS}>${g}</g>`;
   }
 
   const foldC = S.centreCut ? M.contours.slice(0, -1) : M.contours;
-  s += `<g stroke="${cf}" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" ${NS}>`;
+  s += `<g stroke="${cf}" stroke-width="0.55" fill="none" stroke-linecap="round" stroke-linejoin="round" ${NS}>`;
   foldC.forEach(c => { s += `<polygon points="${polyStr(c)}"/>`; });
   M.diags.forEach(d => { s += ln(d.solid[0], d.solid[1]); });
   s += '</g>';
-  s += `<g stroke="${cc}" stroke-width="1.6" fill="none" stroke-linejoin="round" ${NS}><polygon points="${polyStr(S.pts)}"/>`;
+  s += `<g stroke="${cc}" stroke-width="0.8" fill="none" stroke-linejoin="round" ${NS}><polygon points="${polyStr(S.pts)}"/>`;
   if (M.inner) s += `<polygon points="${polyStr(M.inner)}"/>`;
   s += '</g>';
 
   const q = 5 * px;
-  s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
+  s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
   S.pts.forEach(p => { s += `<rect x="${fmt(p[0] - q)}" y="${fmt(p[1] - q)}" width="${fmt(2 * q)}" height="${fmt(2 * q)}"/>`; });
   s += '</g>';
   if (S.regular) {

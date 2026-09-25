@@ -394,7 +394,7 @@ function render() {
   const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#333'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
   const X = S.xs, G = lastG = computeGrid();
   const len = a => Math.hypot(a[2] - a[0], a[3] - a[1]);
-  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="2" ${NS}/>`;
+  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
   const cut = G.segs.filter(g => g.c && len(g.s) - len(g.c) > 1e-6).length, out = G.segs.filter(g => !g.c).length;
   UI.cut = cut; UI.out = out;
@@ -406,15 +406,15 @@ function render() {
       if (c) g += ln(...c);
     });
     X.forEach(x => { if (x > S.W + 1e-6 && x < b.x1) g += ln(x, b.y0, x, b.y1); });
-    s += `<g stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
+    s += `<g stroke="#9e9e9e" stroke-width="0.5" stroke-dasharray="4 3" opacity=".85" ${NS}>${g}</g>`;
   }
 
-  s += `<g stroke="${lc}" stroke-width="1.1" fill="none" stroke-linecap="round" ${NS}>`;
+  s += `<g stroke="${lc}" stroke-width="0.55" fill="none" stroke-linecap="round" ${NS}>`;
   X.forEach(x => { if (!edgeVert(x)) s += ln(x, 0, x, S.H); });
   G.segs.forEach(g => { if (g.c) s += ln(...g.c); });
   s += '</g>';
 
-  if (UI.selV >= 0 && X[UI.selV] !== undefined) s += ln(X[UI.selV], 0, X[UI.selV], S.H, `stroke="#1976d2" stroke-width="5" opacity=".3" ${NS}`);
+  if (UI.selV >= 0 && X[UI.selV] !== undefined) s += ln(X[UI.selV], 0, X[UI.selV], S.H, `stroke="#1976d2" stroke-width="2.5" opacity=".3" ${NS}`);
 
   // dimensions
   const D = UI.dim, ink = '#555';
@@ -423,7 +423,7 @@ function render() {
     for (let i = 0; i < arr.length - 1; i++) {
       const a = arr[i], c = arr[i + 1];
       if (c - a < 0.05) continue;
-      s += `<g stroke="${ink}" stroke-width="1" ${NS}>${ln(a, y, c, y)}${ln(a, y - 3 * px, a, y + 3 * px)}${ln(c, y - 3 * px, c, y + 3 * px)}</g>`;
+      s += `<g stroke="${ink}" stroke-width="0.5" ${NS}>${ln(a, y, c, y)}${ln(a, y - 3 * px, a, y + 3 * px)}${ln(c, y - 3 * px, c, y + 3 * px)}</g>`;
       if ((c - a) / px > 26) s += T((a + c) / 2, y - 4 * px, (c - a).toFixed(1));
     }
   }
@@ -443,36 +443,36 @@ function render() {
   UI.meas.forEach(m => {
     if (m.type === 'dist') {
       const d = Math.hypot(m.q[0] - m.p[0], m.q[1] - m.p[1]);
-      s += `<g stroke="${mc}" stroke-width="1.5" ${NS}>${ln(m.p[0], m.p[1], m.q[0], m.q[1])}</g>`;
+      s += `<g stroke="${mc}" stroke-width="0.75" ${NS}>${ln(m.p[0], m.p[1], m.q[0], m.q[1])}</g>`;
       s += `<circle cx="${m.p[0]}" cy="${m.p[1]}" r="${3 * px}" fill="${mc}"/><circle cx="${m.q[0]}" cy="${m.q[1]}" r="${3 * px}" fill="${mc}"/>`;
       s += T((m.p[0] + m.q[0]) / 2, (m.p[1] + m.q[1]) / 2 - 5 * px, `${d.toFixed(2)} mm  (Δx ${Math.abs(m.q[0] - m.p[0]).toFixed(1)}, Δy ${Math.abs(m.q[1] - m.p[1]).toFixed(1)})`, { c: mc });
     } else {
-      s += `<g stroke="${mc}" stroke-width="3" opacity=".65" ${NS}>${ln(...m.l1)}${ln(...m.l2)}</g>`;
+      s += `<g stroke="${mc}" stroke-width="1.5" opacity=".65" ${NS}>${ln(...m.l1)}${ln(...m.l2)}</g>`;
       s += T(m.at[0], m.at[1] - 6 * px, `${m.acute.toFixed(2)}° / ${(180 - m.acute).toFixed(2)}°`, { c: mc });
     }
   });
   if (UI.mp) {
     if (UI.mp.pt) {
       s += `<circle cx="${UI.mp.pt[0]}" cy="${UI.mp.pt[1]}" r="${4 * px}" fill="${mc}"/>`;
-      if (UI.mcur) s += ln(UI.mp.pt[0], UI.mp.pt[1], UI.mcur[0], UI.mcur[1], `stroke="${mc}" stroke-dasharray="5 4" stroke-width="1.2" ${NS}`);
-    } else if (UI.mp.line) s += ln(...UI.mp.line, `stroke="${mc}" stroke-width="3" opacity=".65" ${NS}`);
+      if (UI.mcur) s += ln(UI.mp.pt[0], UI.mp.pt[1], UI.mcur[0], UI.mcur[1], `stroke="${mc}" stroke-dasharray="5 4" stroke-width="0.6" ${NS}`);
+    } else if (UI.mp.line) s += ln(...UI.mp.line, `stroke="${mc}" stroke-width="1.5" opacity=".65" ${NS}`);
   }
 
   if (UI.ang) {                                      // angle sweep guide: anchor, pointer ray, angle
     const g = UI.ang, ac = '#1976d2', r0 = 5 * px;
-    s += ln(g.ax, g.ay, g.cur[0], g.cur[1], `stroke="${ac}" stroke-dasharray="5 4" stroke-width="1.5" ${NS}`);
+    s += ln(g.ax, g.ay, g.cur[0], g.cur[1], `stroke="${ac}" stroke-dasharray="5 4" stroke-width="0.75" ${NS}`);
     s += `<circle cx="${fmt(g.ax)}" cy="${fmt(g.ay)}" r="${fmt(r0 * 1.2)}" fill="${ac}" opacity=".85"/>`;
     s += T(g.ax + (g.cur[0] < g.ax ? -1 : 1) * 12 * px, g.ay - 8 * px, S.theta.toFixed(1) + '°', { c: ac, a: g.cur[0] < g.ax ? 'end' : 'start' });
   }
   if (isVarH() && effMode(UI.shift) === 'grid') {    // touch-level handles: drag up/down to trade height between the chains above and below
     const r = 5 * px;
-    s += `<g fill="#fff" stroke="#e65100" stroke-width="1.5" ${NS}>`;
+    s += `<g fill="#fff" stroke="#e65100" stroke-width="0.75" ${NS}>`;
     touchHandles().forEach(q => { s += `<circle cx="${fmt(q.x)}" cy="${fmt(q.y)}" r="${fmt(r)}"/>`; });
     s += '</g>';
   }
   if (effMode(UI.shift) === 'verts') {               // vertical handles, irregular Verticals mode only
     const r = 5 * px;
-    s += `<g fill="#fff" stroke="#1976d2" stroke-width="1.5" ${NS}>`;
+    s += `<g fill="#fff" stroke="#1976d2" stroke-width="0.75" ${NS}>`;
     X.forEach((x, i) => [0, S.H].forEach(y => {
       s += `<rect x="${fmt(x - r)}" y="${fmt(y - r)}" width="${fmt(2 * r)}" height="${fmt(2 * r)}" ${i === UI.selV ? 'fill="#bbdefb"' : ''}/>`;
     }));
