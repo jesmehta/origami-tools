@@ -20,8 +20,11 @@ panel and the vertical generator differ.
 
 ## Using it
 
-**Sheet** — W × H in mm, typed or from the *Size* presets (⇄ swaps
-portrait/landscape). Changing it rescales verticals.
+**Sheet** — page W × H in mm, typed or from the *Size* presets (⇄ swaps
+portrait/landscape), and a **margin** (5–15 mm). The "rectangle" everything
+below refers to is the area inside the margin: the pattern is cropped there
+and its outline is the exported cut line. Changing the page or the margin
+rescales verticals.
 
 **Verticals**
 - Linear: count, spacing (mm), first x (mm); "Fit edge to edge"; ±45° cap.

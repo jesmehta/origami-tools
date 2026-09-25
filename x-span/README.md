@@ -66,7 +66,10 @@ the vertices `t_j`; the other verticals carry the crossings `c_j`. Every crossin
 
 ## Using it
 
-**Sheet** — W × H in mm, typed or from the *Size* presets (⇄ swaps portrait/landscape).
+**Sheet** — page W × H in mm, typed or from the *Size* presets (⇄ swaps
+portrait/landscape), and a **margin** (5–15 mm). The "rectangle" below is the
+area inside the margin: the lattice fills and is cropped to it, and its outline
+is the exported cut line.
 
 **Regular · verticals** — pick what defines them: *number*, *distance*, or
 *rhombus minor diagonal* (= 2 × distance; the horizontal diagonal spans two

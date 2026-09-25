@@ -9,8 +9,12 @@ diagonal from every corner.
 
 - **Sheet** — the paper the polygon sits on (default 270 × 270 mm): a size
   preset, ⇄ to swap portrait/landscape, or W × H typed in. Resizing keeps the
-  polygon where it was relative to the sheet centre. The export is the whole
-  sheet at true size; the sheet outline itself is not exported.
+  polygon where it was relative to the sheet centre. **Margin** (5–15 mm):
+  the polygon, contours and diagonals are cropped at the margin line, which is
+  exported as a cut. The export is the whole sheet at true size; the sheet
+  outline itself is not exported. A closed outline stays one `<polygon>` while
+  it is wholly inside the margin, and becomes its surviving edge pieces once
+  cropped.
 - **Define the polygon** — with *Regular polygon* on, drag on empty canvas:
   the press point is the centre, the drag sets radius and rotation. Sides,
   radius (mm) and rotation (°) are also numeric fields. Drag the ◆ to move

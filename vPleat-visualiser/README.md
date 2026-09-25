@@ -133,6 +133,11 @@ neighbor's left edge to close it off.
 
 ### Page fit (tab 4)
 
+**Margin** (5–15 mm, default 10): the pattern has to fit inside page − 2 ×
+margin. The fit status and *Auto-fit* use that inner area, the preview draws
+it as a second dashed rectangle, and *Top-left aligned* puts the pattern on
+the margin corner. The export is still the pattern alone (no page, no margin).
+
 The Export tab can show a page-size guide and offer two different ways to
 shrink the output to fit it:
 

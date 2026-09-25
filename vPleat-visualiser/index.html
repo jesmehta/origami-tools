@@ -135,6 +135,8 @@
     <input type="number" id="in-pagew" min="0" step="1" placeholder="none">
     <label>Page height (mm)</label>
     <input type="number" id="in-pageh" min="0" step="1" placeholder="none">
+    <label data-tip="Inset on every side of the page (5–15 mm). The pattern has to fit inside it; shown as the inner dashed guide.">Margin (mm)</label>
+    <input type="number" id="in-marg" min="5" max="15" step="1">
     <label>Alignment</label>
     <div class="chk-row"><input type="radio" name="align" id="rd-align-center" checked><label for="rd-align-center">Centred</label></div>
     <div class="chk-row"><input type="radio" name="align" id="rd-align-topleft"><label for="rd-align-topleft">Top-left aligned</label></div>
@@ -174,6 +176,7 @@ const state = {
   arrayCount: 3,
   pageWidthMm: 297,   // A4 landscape default; 0 = no page constraint
   pageHeightMm: 210,
+  marginMm: 10,       // page margin: the pattern must fit inside page − 2 × margin
   pageAlign: 'center', // 'center' | 'topleft'
   fitMode: 'proportional', // 'proportional' | 'width'
   exportScale: 1,   // physical export scale multiplier, 0.1 - 1 (proportional fit mode)
@@ -629,6 +632,7 @@ function renderArray(){
   document.getElementById('lbl-width2').textContent = state.widthMm + ' mm';
   document.getElementById('in-pagew').value = state.pageWidthMm || '';
   document.getElementById('in-pageh').value = state.pageHeightMm || '';
+  document.getElementById('in-marg').value = state.marginMm;
   syncSheet();
   document.getElementById('sl-exportscale').value = Math.round(state.exportScale*100);
   document.getElementById('lbl-exportscale').textContent = Math.round(state.exportScale*100) + '%';
@@ -642,13 +646,14 @@ function renderArray(){
   // pattern's own un-scaled coordinate space: dividing by exportScale means
   // the guide correctly shows how big the page will look once the physical
   // export is shrunk by that scale.
-  const pw = state.pageWidthMm, ph = state.pageHeightMm, scale = state.exportScale;
+  const pw = state.pageWidthMm, ph = state.pageHeightMm, scale = state.exportScale, mg = state.marginMm;
   let minX=0, minY=0, maxX=totalW, maxY=H, guide=null;
   if (pw>0 && ph>0){
-    const guideW = pw/scale, guideH = ph/scale;
-    const gx = state.pageAlign==='center' ? (totalW-guideW)/2 : 0;
-    const gy = state.pageAlign==='center' ? (H-guideH)/2 : 0;
-    guide = { x:gx, y:gy, w:guideW, h:guideH };
+    const guideW = pw/scale, guideH = ph/scale, gm = mg/scale;
+    // top-left alignment puts the pattern's corner on the margin corner, not the page corner
+    const gx = state.pageAlign==='center' ? (totalW-guideW)/2 : -gm;
+    const gy = state.pageAlign==='center' ? (H-guideH)/2 : -gm;
+    guide = { x:gx, y:gy, w:guideW, h:guideH, m:gm };
     minX = Math.min(minX, gx); minY = Math.min(minY, gy);
     maxX = Math.max(maxX, gx+guideW); maxY = Math.max(maxY, gy+guideH);
   }
@@ -661,6 +666,13 @@ function renderArray(){
     r.setAttribute('width', guide.w); r.setAttribute('height', guide.h);
     r.setAttribute('class','page-guide');
     svg.appendChild(r);
+    if (guide.w > 2*guide.m && guide.h > 2*guide.m){
+      const mr = document.createElementNS(SVGNS,'rect');
+      mr.setAttribute('x', guide.x + guide.m); mr.setAttribute('y', guide.y + guide.m);
+      mr.setAttribute('width', guide.w - 2*guide.m); mr.setAttribute('height', guide.h - 2*guide.m);
+      mr.setAttribute('class','page-guide');
+      svg.appendChild(mr);
+    }
     const t = document.createElementNS(SVGNS,'text');
     t.setAttribute('x', guide.x + pad*0.2);
     t.setAttribute('y', guide.y - pad*0.2);
@@ -681,14 +693,15 @@ function renderArray(){
   const outW = totalW*scale, outH = H*scale;
   let statusHtml = '';
   if (pw>0 && ph>0){
-    const fitsW = outW <= pw + 1e-6, fitsH = outH <= ph + 1e-6;
+    const aw = pw - 2*mg, ah = ph - 2*mg;
+    const fitsW = outW <= aw + 1e-6, fitsH = outH <= ah + 1e-6;
     if (fitsW && fitsH){
-      statusHtml = `<span class="status-ok">Fits page (${pw} x ${ph} mm) — output ${outW.toFixed(1)} x ${outH.toFixed(1)} mm at ${Math.round(scale*100)}%.</span>`;
+      statusHtml = `<span class="status-ok">Fits page (${pw} x ${ph} mm, ${mg} mm margin) — output ${outW.toFixed(1)} x ${outH.toFixed(1)} mm at ${Math.round(scale*100)}%.</span>`;
     } else {
       const parts = [];
-      if (!fitsW) parts.push(`width exceeds by ${(outW-pw).toFixed(1)} mm`);
-      if (!fitsH) parts.push(`height exceeds by ${(outH-ph).toFixed(1)} mm (reducing strip width won't fix this — try proportional scale or fewer segments/instances)`);
-      statusHtml = `<span class="status-warn">Exceeds page (${pw} x ${ph} mm): ${parts.join('; ')}. Output is ${outW.toFixed(1)} x ${outH.toFixed(1)} mm at ${Math.round(scale*100)}%.</span>`;
+      if (!fitsW) parts.push(`width exceeds by ${(outW-aw).toFixed(1)} mm`);
+      if (!fitsH) parts.push(`height exceeds by ${(outH-ah).toFixed(1)} mm (reducing strip width won't fix this — try proportional scale or fewer segments/instances)`);
+      statusHtml = `<span class="status-warn">Exceeds page (${pw} x ${ph} mm, ${mg} mm margin): ${parts.join('; ')}. Output is ${outW.toFixed(1)} x ${outH.toFixed(1)} mm at ${Math.round(scale*100)}%.</span>`;
     }
   }
   document.getElementById('page-fit-status').innerHTML = statusHtml;
@@ -701,13 +714,15 @@ function autoFitToPage(){
   if (!state.pageWidthMm || !state.pageHeightMm) return;
   const H = computeStraightenData().totalLen;
   const totalW = state.widthMm*2*state.arrayCount;
+  const aw = state.pageWidthMm - 2*state.marginMm, ah = state.pageHeightMm - 2*state.marginMm;
+  if (aw <= 0 || ah <= 0) return;
   if (state.fitMode === 'proportional'){
-    const raw = Math.min(1, state.pageWidthMm/totalW, state.pageHeightMm/H);
+    const raw = Math.min(1, aw/totalW, ah/H);
     // round down to whole percent (the slider's own granularity) so the
     // displayed percentage never overstates what was actually applied
     state.exportScale = clamp(Math.floor(raw*100)/100, 0.1, 1);
   } else {
-    onWidthChange(Math.floor(state.pageWidthMm/(2*state.arrayCount)));
+    onWidthChange(Math.floor(aw/(2*state.arrayCount)));
   }
   renderArray();
 }
@@ -725,6 +740,7 @@ document.getElementById('sl-exportscale').oninput = (e)=>{
 };
 document.getElementById('in-pagew').oninput = (e)=>{ state.pageWidthMm = parseFloat(e.target.value)||0; renderArray(); };
 document.getElementById('in-pageh').oninput = (e)=>{ state.pageHeightMm = parseFloat(e.target.value)||0; renderArray(); };
+document.getElementById('in-marg').onchange = (e)=>{ state.marginMm = clamp(Math.round(parseFloat(e.target.value))||state.marginMm, 5, 15); renderArray(); };
 const syncSheet = OT.wireSheet({ get: () => [state.pageWidthMm, state.pageHeightMm], set: (w, h) => { state.pageWidthMm = w; state.pageHeightMm = h; renderArray(); } });
 document.getElementById('rd-align-center').onchange = ()=>{ state.pageAlign='center'; renderArray(); };
 document.getElementById('rd-align-topleft').onchange = ()=>{ state.pageAlign='topleft'; renderArray(); };

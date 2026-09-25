@@ -15,7 +15,7 @@ body{font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);col
 #app{display:grid;grid-template-columns:340px 1fr;height:100%}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 14px 30px}
 main{display:flex;flex-direction:column;min-width:0;min-height:0}
-#cv{flex:1;min-height:0;width:100%;background:#fff;touch-action:none;display:block}
+#cv{flex:1;min-height:0;width:100%;background:#e9e7e1;touch-action:none;display:block}
 #status{padding:6px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--mute);min-height:44px}
 #status .bad{color:#c62828;font-weight:600}
 #status .ok{color:#2e7d32;font-weight:600}
@@ -53,6 +53,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
       <label>W <input type="number" id="W" min="10" step="1"> mm</label>
       <label>H <input type="number" id="H" min="10" step="1"> mm</label>
     </div>
+    <div class="row"><label data-tip="Inset on every side (5–15 mm). The pattern is cropped at the margin line, which is exported as the cut line; the page outline is not exported. Changing it keeps the page size and rescales the pattern.">Margin <input type="number" id="marg" min="5" max="15" step="1"> mm</label></div>
   </fieldset>
 
   <fieldset><legend>Grid type</legend>
@@ -164,7 +165,7 @@ button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
   <fieldset><legend>Export</legend>
     <div class="row">
       <label>Lines <input type="color" id="colLine" value="#2e8b57"></label>
-      <label>Rectangle <input type="color" id="colRect" value="#111111"></label>
+      <label>Margin (cut) <input type="color" id="colRect" value="#111111"></label>
     </div>
     <div class="row">
       <label>Stroke <input type="number" id="sw" value="0.2" min="0.05" step="0.05"> mm</label>
@@ -203,7 +204,7 @@ const cv = $('cv');
 
 /* ---------- state ---------- */
 const S = {
-  W: 297, H: 210,
+  W: 277, H: 190, m: 10, // W × H: the area inside the margin m (origin at its top-left); the page is W + 2m × H + 2m
   kind: 'regular',      // 'regular' | 'movW' (const H, free verticals) | 'movH' (const W, variable heights) | 'both'
   xs: [],               // x of each vertical, sorted (regular: derived from `reg`; irregular: the state)
   layout: 'gen',        // irregular: 'gen' (from the fields) | 'free' (hand-edited)
@@ -362,8 +363,8 @@ function setKind(k) {
 /* ---------- view ---------- */
 function bounds() {
   if (UI.viewLock) return UI.viewLock;
-  const pad = Math.max(S.W, S.H) * 0.08;
-  return { x0: -pad, y0: -pad, x1: S.W + pad, y1: S.H + pad };
+  const e = Math.max(S.W, S.H) * 0.08 + S.m;
+  return { x0: -e, y0: -e, x1: S.W + e, y1: S.H + e };
 }
 const edgeVert = x => x < 1e-6 || x > S.W - 1e-6;      // on/outside a rectangle edge: not drawn as a line inside
 let lastG = { segs: [], diags: [], h: 0 };
@@ -384,7 +385,8 @@ function render() {
   const T = (x, y, txt, o = {}) => `<text x="${fmt(x)}" y="${fmt(y)}" font-size="${fmt(11 * px)}" text-anchor="${o.a || 'middle'}" fill="${o.c || '#333'}" stroke="#fff" stroke-width="${fmt(3 * px)}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,sans-serif">${txt}</text>`;
   const X = S.xs, G = lastG = computeGrid();
   const len = a => Math.hypot(a[2] - a[0], a[3] - a[1]);
-  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
+  let s = `<rect x="${-S.m}" y="${-S.m}" width="${S.W + 2 * S.m}" height="${S.H + 2 * S.m}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
   const cut = G.segs.filter(g => g.c && len(g.s) - len(g.c) > 1e-6).length, out = G.segs.filter(g => !g.c).length;
   UI.cut = cut; UI.out = out;
@@ -501,12 +503,13 @@ function buildSVG(bg) {
   let l = '';
   S.xs.forEach(x => { if (!edgeVert(x)) l += `<line x1="${fmt(x)}" y1="0" x2="${fmt(x)}" y2="${fmt(H)}"/>`; });
   computeGrid().segs.forEach(g => { if (g.c) l += `<line x1="${fmt(g.c[0])}" y1="${fmt(g.c[1])}" x2="${fmt(g.c[2])}" y2="${fmt(g.c[3])}"/>`; });
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(W + sw)}mm" height="${fmt(H + sw)}mm" viewBox="${-m} ${-m} ${fmt(W + sw)} ${fmt(H + sw)}">` +
-    (bg ? `<rect x="${-m}" y="${-m}" width="${fmt(W + sw)}" height="${fmt(H + sw)}" fill="#fff"/>` : '') +
+  const PW = W + 2 * S.m, PH = H + 2 * S.m;                // the whole page at true size; its outline is not drawn
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(PW)}mm" height="${fmt(PH)}mm" viewBox="${-S.m} ${-S.m} ${fmt(PW)} ${fmt(PH)}">` +
+    (bg ? `<rect x="${-S.m}" y="${-S.m}" width="${fmt(PW)}" height="${fmt(PH)}" fill="#fff"/>` : '') +
     `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
     `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
 }
-OT.wireExport({ base: 'x-span', svg: buildSVG, size: () => { const sw = +$('sw').value || 0.2; return [S.W + sw, S.H + sw]; } });
+OT.wireExport({ base: 'x-span', svg: buildSVG, size: () => [S.W + 2 * S.m, S.H + 2 * S.m] });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {
@@ -757,12 +760,19 @@ const genField = (id, key, min, max, round) => on(id, 'onchange', () => act(() =
   S.gen[key] = clamp(round ? Math.round(v) : v, min, max); regen();
 }));
 genField('gN', 'n', 2, 40, true); genField('gSp', 'spacing', 1, 1e4); genField('gSt', 'start', 0, 1e4);
-['W', 'H'].forEach(id => on(id, 'onchange', () => act(() => {
-  const nw = Math.max(10, +$('W').value || S.W), nh = Math.max(10, +$('H').value || S.H), fx = nw / S.W;
+function resize(nw, nh) {                               // new area inside the margin; free verticals scale with it
+  const fx = nw / S.W;
   if (isFreeX()) { S.xs = S.xs.map(x => x * fx); S.gen.start *= fx; S.gen.spacing *= fx; }
   S.W = nw; S.H = nh;
   if (!isFreeX() || S.layout === 'gen') regen(); else sanitize();
+}
+['W', 'H'].forEach(id => on(id, 'onchange', () => act(() => {
+  resize(Math.max(10, (+$('W').value || S.W + 2 * S.m) - 2 * S.m), Math.max(10, (+$('H').value || S.H + 2 * S.m) - 2 * S.m));
 })));
+on('marg', 'onchange', () => act(() => {                // the page keeps its size; the area inside the margin changes
+  const m = clamp(Math.round(+$('marg').value) || S.m, 5, 15), d = 2 * (S.m - m);
+  S.m = m; resize(S.W + d, S.H + d);
+}));
 on('vx', 'onchange', () => { if (UI.selV >= 0) act(() => setX(UI.selV, +$('vx').value)); });
 const nudge = sign => { if (UI.selV >= 0) act(() => setX(UI.selV, S.xs[UI.selV] + sign * (+$('step').value || 1))); };
 on('nudL', 'onclick', () => nudge(-1)); on('nudR', 'onclick', () => nudge(1));
@@ -773,11 +783,11 @@ Object.keys(UI.dim).forEach(k => {
 });
 document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI.mp = null; render(); });
 
-const syncSheet = OT.wireSheet({ get: () => [S.W, S.H], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
+const syncSheet = OT.wireSheet({ get: () => [S.W + 2 * S.m, S.H + 2 * S.m], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
 function syncUI() {
   const set = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
   const free = isFreeX(), reg = !free, X = S.xs, h = gridH(), d = X.length > 1 ? X[1] - X[0] : 0;
-  set('W', S.W); set('H', S.H); syncSheet();
+  set('W', S.W + 2 * S.m); set('H', S.H + 2 * S.m); set('marg', S.m); syncSheet();
   [['kReg', 'regular'], ['kMW', 'movW'], ['kMH', 'movH'], ['kMB', 'both']].forEach(([id, k]) => $(id).classList.toggle('on', S.kind === k));
   $('mGrid').dataset.tip = 'Drag a line to set the angle (sweep the pointer around the top of V2); drag empty space to shift the grid up/down (or type the y offset).' + (free ? ' Hold Shift to move verticals.' : '');
   $('mVerts').dataset.tip = 'Drag a vertical (or a square end handle) left/right. To add one, click a point on the top or bottom edge. Delete removes the selected vertical. Hold Shift for Grid.';

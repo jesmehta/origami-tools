@@ -47,6 +47,7 @@ document.getElementById('app').innerHTML = `
       <label>W <input type="number" id="W" min="10" step="1"> mm</label>
       <label>H <input type="number" id="H" min="10" step="1"> mm</label>
     </div>
+    <div class="row"><label data-tip="Inset on every side (5–15 mm). The pattern is cropped at the margin line, which is exported as the cut line; the page outline is not exported. Changing it keeps the page size and rescales the pattern.">Margin <input type="number" id="marg" min="5" max="15" step="1"> mm</label></div>
   </fieldset>
 
   ${vertPanel}
@@ -112,7 +113,7 @@ document.getElementById('app').innerHTML = `
   <fieldset><legend>Export</legend>
     <div class="row">
       <label>Lines <input type="color" id="colLine" value="#2e8b57"></label>
-      <label>Rectangle <input type="color" id="colRect" value="#111111"></label>
+      <label>Margin (cut) <input type="color" id="colRect" value="#111111"></label>
     </div>
     <div class="row">
       <label>Stroke <input type="number" id="sw" value="0.2" min="0.05" step="0.05"> mm</label>
@@ -138,11 +139,11 @@ const cv = $('cv');
 
 /* ---------- state ---------- */
 const S = {
-  W: 297, H: 210,
+  W: 277, H: 190, m: 10, // W × H: the area inside the margin m (origin at its top-left); the page is W + 2m × H + 2m
   verts: [],            // {xt, xb}: x at top edge (y=0) and bottom edge (y=H)
   hors: [],             // {k, a, b}: line between V_k (at a) and V_k+1 (at b); a,b in 0..1 top→bottom
   layout: 'gen',        // 'gen' (generated from parameters) | 'free' (hand-edited)
-  centre: { x: 148.5, y: -126 },
+  centre: { x: 138.5, y: -126 },
   cap: MODE === 'linear',
   enforce: MODE === 'radial',
   minGap: 4,
@@ -157,7 +158,7 @@ const UI = {
 
 /* ---------- undo ---------- */
 const undoS = [], redoS = [];
-const snap = () => JSON.stringify({ W: S.W, H: S.H, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, enforce: S.enforce, gen: S.gen, minGap: S.minGap });
+const snap = () => JSON.stringify({ W: S.W, H: S.H, m: S.m, verts: S.verts, hors: S.hors, layout: S.layout, centre: S.centre, cap: S.cap, enforce: S.enforce, gen: S.gen, minGap: S.minGap });
 function restore(j) { Object.assign(S, JSON.parse(j)); UI.selV = UI.selH = -1; UI.draw = null; UI.vdraw = null; syncUI(); render(); }
 function pushUndo(j) { undoS.push(j || snap()); if (undoS.length > 80) undoS.shift(); redoS.length = 0; }
 function act(fn) { pushUndo(); UI.note = ''; fn(); syncUI(); render(); }
@@ -474,8 +475,8 @@ function randomHors(m) {
 /* ---------- view ---------- */
 function bounds() {
   if (UI.viewLock) return UI.viewLock;
-  const pad = Math.max(S.W, S.H) * 0.08;
-  let x0 = -pad, y0 = -pad, x1 = S.W + pad, y1 = S.H + pad;
+  const pad = Math.max(S.W, S.H) * 0.08, e = S.m + pad;
+  let x0 = -e, y0 = -e, x1 = S.W + e, y1 = S.H + e;
   if (MODE === 'radial') {
     x0 = Math.min(x0, S.centre.x - pad); x1 = Math.max(x1, S.centre.x + pad);
     y0 = Math.min(y0, S.centre.y - pad); y1 = Math.max(y1, S.centre.y + pad);
@@ -498,7 +499,8 @@ function render() {
   const V = S.verts;
   lastAll = computeAll();
   if (!drag) UI.info = analyze(lastAll);
-  let s = `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
+  let s = `<rect x="${-S.m}" y="${-S.m}" width="${S.W + 2 * S.m}" height="${S.H + 2 * S.m}" fill="#fff" stroke="#b5b2a8" stroke-width="0.5" ${NS}/>`;
+  s += `<rect x="0" y="0" width="${S.W}" height="${S.H}" fill="none" stroke="${rc}" stroke-width="1" ${NS}/>`;
 
   UI.hiddenV = V.filter(v => !vSeg(v)).length;
   UI.hiddenS = lastAll.segs.filter(g => !g.c).length;
@@ -659,12 +661,13 @@ function buildSVG(bg) {
   let l = '';
   S.verts.forEach(v => { if (!edgeVert(v)) { const c = vSeg(v); l += `<line x1="${fmt(c[0])}" y1="${fmt(c[1])}" x2="${fmt(c[2])}" y2="${fmt(c[3])}"/>`; } });
   computeAll().segs.forEach(g => { if (g.c) l += `<line x1="${fmt(g.c[0])}" y1="${fmt(g.c[1])}" x2="${fmt(g.c[2])}" y2="${fmt(g.c[3])}"/>`; });
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(W + sw)}mm" height="${fmt(H + sw)}mm" viewBox="${-m} ${-m} ${fmt(W + sw)} ${fmt(H + sw)}">` +
-    (bg ? `<rect x="${-m}" y="${-m}" width="${fmt(W + sw)}" height="${fmt(H + sw)}" fill="#fff"/>` : '') +
+  const PW = W + 2 * S.m, PH = H + 2 * S.m;                // the whole page at true size; its outline is not drawn
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fmt(PW)}mm" height="${fmt(PH)}mm" viewBox="${-S.m} ${-S.m} ${fmt(PW)} ${fmt(PH)}">` +
+    (bg ? `<rect x="${-S.m}" y="${-S.m}" width="${fmt(PW)}" height="${fmt(PH)}" fill="#fff"/>` : '') +
     `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="${$('colRect').value}" stroke-width="${sw}"/>` +
     `<g stroke="${$('colLine').value}" stroke-width="${sw}" fill="none" stroke-linecap="round">${l}</g></svg>`;
 }
-OT.wireExport({ base: `mirror-pleats-${MODE}`, svg: buildSVG, size: () => { const sw = +$('sw').value || 0.2; return [S.W + sw, S.H + sw]; } });
+OT.wireExport({ base: `mirror-pleats-${MODE}`, svg: buildSVG, size: () => [S.W + 2 * S.m, S.H + 2 * S.m] });
 
 /* ---------- pointer interaction ---------- */
 function ptr(e) {
@@ -990,14 +993,21 @@ genField('gN', 'n', 2, 40, true);
 if (MODE === 'linear') { genField('gSp', 'spacing', 1, 1e4); genField('gSt', 'start', 0, 1e4); }
 else { genField('gStep', 'step', 0.5, 90); genField('gOff', 'offset', -89, 89); }
 ['cx', 'cy'].forEach(id => on(id, 'onchange', () => act(() => { S.centre = { x: +$('cx').value, y: +$('cy').value }; regen(false); })));
-['W', 'H'].forEach(id => on(id, 'onchange', () => act(() => {
-  const nw = Math.max(10, +$('W').value || S.W), nh = Math.max(10, +$('H').value || S.H), fx = nw / S.W, fy = nh / S.H;
+function resize(nw, nh) {                               // new area inside the margin; the pattern scales with it
+  const fx = nw / S.W, fy = nh / S.H;
   S.verts.forEach(v => { v.xt *= fx; v.xb *= fx; });
   S.centre = { x: S.centre.x * fx, y: S.centre.y * fy };
   if (MODE === 'linear') { S.gen.start *= fx; S.gen.spacing *= fx; }
   S.W = nw; S.H = nh;
   if (S.layout === 'gen') regen(false); else sanitize();
+}
+['W', 'H'].forEach(id => on(id, 'onchange', () => act(() => {
+  resize(Math.max(10, (+$('W').value || S.W + 2 * S.m) - 2 * S.m), Math.max(10, (+$('H').value || S.H + 2 * S.m) - 2 * S.m));
 })));
+on('marg', 'onchange', () => act(() => {                // the page keeps its size; the area inside the margin changes
+  const m = clamp(Math.round(+$('marg').value) || S.m, 5, 15), d = 2 * (S.m - m);
+  S.m = m; resize(S.W + d, S.H + d);
+}));
 const setX = (which, x) => {
   const i = UI.selV, y = which === 'xt' ? 0 : S.H;
   if (MODE === 'radial') {
@@ -1027,7 +1037,7 @@ Object.keys(UI.dim).forEach(k => {
 });
 document.querySelectorAll('input[name=mt]').forEach(r => r.onchange = () => { UI.mp = null; render(); });
 
-const syncSheet = OT.wireSheet({ get: () => [S.W, S.H], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
+const syncSheet = OT.wireSheet({ get: () => [S.W + 2 * S.m, S.H + 2 * S.m], set: (w, h) => { $('W').value = w; $('H').value = h; $('W').onchange(); } });
 function modeTips() {
   $('mLines').dataset.tip = 'Click a vertical to start a line, click an adjacent one to finish. Drag circles/lines to move them. Hold Shift to move verticals.';
   $('mVerts').dataset.tip = MODE === 'radial'
@@ -1037,7 +1047,7 @@ function modeTips() {
 function syncUI() {
   modeTips();
   const set = (id, v) => { const el = $(id); if (el && document.activeElement !== el) el.value = typeof v === 'number' ? +v.toFixed(2) : v; };
-  set('W', S.W); set('H', S.H); syncSheet(); set('gN', S.gen.n); set('mg', S.minGap);
+  set('W', S.W + 2 * S.m); set('H', S.H + 2 * S.m); set('marg', S.m); syncSheet(); set('gN', S.gen.n); set('mg', S.minGap);
   if (MODE === 'linear') { set('gSp', S.gen.spacing); set('gSt', S.gen.start); if ($('cap')) $('cap').checked = S.cap; }
   else { if ($('enf')) $('enf').checked = S.enforce; set('gStep', S.gen.step); set('gOff', S.gen.offset); set('cx', S.centre.x); set('cy', S.centre.y); }
   const sv = UI.selV >= 0 ? S.verts[UI.selV] : null;

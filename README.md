@@ -67,6 +67,15 @@ not use it (yet).
   `name, width, height` line per size; add your own there. Opened from disk
   (no server) the browser can't read that file, so the built-in copy in
   `common.js` is used. Hypar now has a sheet too (it had none).
+- Margin, 5–15 mm (default 10), the same on every side. The pattern is
+  cropped at the margin line; the export is the whole page at true size with
+  the margin outline as the cut line (plus the folds as before), and no page
+  outline. On screen the page is white on a grey canvas. In mirror-pleats and
+  x-span the model's rectangle *is* the area inside the margin, so all the
+  geometry (fit edge to edge, layouts, tiling) fills that area; changing the
+  margin keeps the page size and rescales the pattern. vPleat exports only the
+  pattern, so there the margin shrinks the area the pattern must fit (status
+  and auto-fit) and is drawn as an inner guide.
 
 ## License
 
